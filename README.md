@@ -2,7 +2,7 @@
 
 # APEX VELOCITY · 极速巅峰
 
-**Godot 4 原生重制 · 45 台真车 · 9 条赛道 · 9×9km 无界大陆**
+**Godot 4 原生重制 · 46 台可驾驶真车 · 11 条赛道 · 9×9km 无界大陆**
 
 [![Godot](https://img.shields.io/badge/Godot-4.7.2-478cbf?logo=godotengine&logoColor=white)](https://godotengine.org/)
 [![Release](https://img.shields.io/github/v/release/TongJX614/apex-velocity?label=release&color=4fe9ff)](https://github.com/TongJX614/apex-velocity/releases)
@@ -28,14 +28,26 @@
 
 | | |
 | --- | --- |
-| **45 台车** | 按真车标定功率 / 扭矩 / 质量 / 驱动 / 极速 / 0-100，11 类引擎声档，8 类改装 |
-| **9 条赛道** | 8 条主题 GP 赛道 + 9×9km 无边界开放世界，每图独立光照、天气与菜单实景 |
+| **46 台车** | 按真车标定功率 / 扭矩 / 质量 / 驱动 / 极速 / 0-100，11 类引擎声档，8 类改装 |
+| **11 条赛道** | 10 条主题赛道 + 9×9km 无边界开放世界，每图独立光照、天气与菜单实景 |
 | **街机物理** | 扭矩负载起步打滑、速度敏感转向、OBB 车-车碰撞、防粘连分离、手动挡 / 氮气 |
 | **画面** | 四档画质、程序化天空与流动云、CC0 真实植被建筑、SSR / SSAO / SSIL / 体积雾 / 速度拉丝 |
 | **声音** | 逐车物理建模引擎声 + 16 首分赛道 BGM + 6 总线混音 |
 | **本地双人** | 真·分屏、独立相机与输入、P1/P2 同场竞速 |
 
-## 实机画面
+## 画面
+
+| 落日港湾 | 雾岭山道 |
+| --- | --- |
+| ![落日港湾](docs/media/tracks/sunset-harbor.jpg) | ![雾岭山道](docs/media/tracks/misty-pass.jpg) |
+
+| 霓虹都市 | 雪山隘口 |
+| --- | --- |
+| ![霓虹都市](docs/media/tracks/neon-district.jpg) | ![雪山隘口](docs/media/tracks/alpine-pass.jpg) |
+
+| 冰川湖环道 | 都会环线 |
+| --- | --- |
+| ![冰川湖环道](docs/media/tracks/glacier-ring.jpg) | ![都会环线](docs/media/tracks/metro-ring.jpg) |
 
 比赛 HUD：小地图、圈速、名次、转速表、档位与氮气一屏呈现。
 
@@ -180,7 +192,7 @@ UI 层     menu / race_hud / garage_screen / settings_screen / achievements / da
 - **程序化世界**：`scenes/main.tscn` 只挂一个根节点，赛道与场景由 `track_path` + `track_builder` + `scenery_kit` 在启动时生成，换图只换数据；
 - **无界大陆**：8 张赛道缝成 9×9km 高度场，按需求生成布景并分类收紧可见距离，域间长渐变过渡；
 - **车辆物理**：街机手感 + 扭矩负载、速度敏感转向、OBB 碰撞与低速防粘连，AI 按 skill 派生快慢 / 弯道自信 / 车线 / 激进度；
-- **逐车声线**：物理建模合成（点火、缸数、断油、涡轮），45 台车各有独立档案；
+- **逐车声线**：物理建模合成（点火、缸数、断油、涡轮），46 台车各有独立档案；
 - **输入**：键盘 / 手柄 / MCHOSE Ace68-II 磁轴键盘模拟量（按键深度 → 线性油门与转向）。
 
 ---
@@ -238,8 +250,8 @@ apex-velocity/
 | --- | --- |
 | GDScript | 59 个文件 / 37,641 行 |
 | 着色器 | 5 个 `.gdshader` |
-| 车辆 | 45 台（模型 + 真车数值 + 配色 + 声线） |
-| 赛道 | 9 条（8 封闭 + 1 开放世界 9×9km） |
+| 车辆 | 46 台可驾驶（45 套车模 + 真车数值 + 配色 + 声线） |
+| 赛道 | 11 条（10 封闭 + 1 开放世界 9×9km） |
 | 资产 | 1.8GB 压缩包（第三方 CC0 / 车模 / 场地 / 音频 / 视频） |
 | 文档 | 56 篇里程碑文档 + 截图 |
 | 实测帧率 | 1600×900 关闭垂直同步：城市 120–270fps（M1 Pro） |
@@ -251,7 +263,7 @@ apex-velocity/
 **当前限制**
 
 1. 地形以高度场为主，赛道是 2D 控制点样条，暂不支持隧道与立交；
-2. 车模未做 LOD，45 台车全量加载时 draw call 约 777；
+2. 车模未做 LOD，46 台车全量加载时 draw call 约 777；
 3. 拉花未渲染，涂装仅支持纯色 / 哑光 / 原厂保留；
 4. AI 碰撞是事后修正而非物理响应（粘连/闪现已修，机制未换）；
 5. 调参器保存是覆盖式，无自动备份轮转。
