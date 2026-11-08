@@ -1,0 +1,230 @@
+{
+ "blend_dir": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend",
+ "cars": [
+  {
+   "src": "2005 M3 E46 GTR.glb",
+   "slug": "bmw_m3_e46_gtr",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2005 M3 E46 GTR.blend"
+  },
+  {
+   "src": "2013 M3 (E92).glb",
+   "slug": "bmw_m3_e92",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2013 M3 (E92).blend"
+  },
+  {
+   "src": "2014 5系 turismo.glb",
+   "slug": "bmw_5_turismo",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2014 5系 turismo.blend"
+  },
+  {
+   "src": "2014 Varis F82 M4 GTS.glb",
+   "slug": "varis_m4_gts",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2014 Varis F82 M4 GTS.blend"
+  },
+  {
+   "src": "2015 3.0 cls hommage概念车.glb",
+   "slug": "bmw_csl_hommage",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2015 3.0 cls hommage概念车.blend"
+  },
+  {
+   "src": "2015 i8.glb",
+   "slug": "bmw_i8",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2015 i8.blend"
+  },
+  {
+   "src": "2016 M4 GTS.glb",
+   "slug": "bmw_m4_gts",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2016 M4 GTS.blend"
+  },
+  {
+   "src": "2016 X5 M.glb",
+   "slug": "bmw_x5m",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2016 X5 M.blend"
+  },
+  {
+   "src": "2016 X6 M.glb",
+   "slug": "bmw_x6m",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2016 X6 M.blend"
+  },
+  {
+   "src": "2017 PANDEM BMW M3 (E92) 火箭兔套件.glb",
+   "slug": "pandem_m3_e92",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2017 PANDEM BMW M3 (E92) 火箭兔套件.blend"
+  },
+  {
+   "src": "2017 i8 ACS.glb",
+   "slug": "bmw_i8_acs",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2017 i8 ACS.blend"
+  },
+  {
+   "src": "2018 M4 Convertible (F83).glb",
+   "slug": "bmw_m4_cabrio",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2018 M4 Convertible (F83).blend"
+  },
+  {
+   "src": "2018 M4 Coupe (F82 LCi).glb",
+   "slug": "bmw_m4_coupe",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2018 M4 Coupe (F82 LCi).blend"
+  },
+  {
+   "src": "2018 M4 F82 GT4.glb",
+   "slug": "bmw_m4_gt4",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2018 M4 F82 GT4.blend"
+  },
+  {
+   "src": "2018 M5.glb",
+   "slug": "bmw_m5_f90",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2018 M5.blend"
+  },
+  {
+   "src": "2018 M6 GT3.glb",
+   "slug": "bmw_m6_gt3",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2018 M6 GT3.blend"
+  },
+  {
+   "src": "2018-日产轩逸ev.glb",
+   "slug": "nissan_sylphy_ev",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2018-日产轩逸ev.blend"
+  },
+  {
+   "src": "2019 LB★Works i8 ver.2.glb",
+   "slug": "bmw_i8_lb",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2019 LB★Works i8 ver.2.blend"
+  },
+  {
+   "src": "2019 Z4 M40i.glb",
+   "slug": "bmw_z4_m40i",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2019 Z4 M40i.blend"
+  },
+  {
+   "src": "2020 M8 Competition convertible.glb",
+   "slug": "bmw_m8_cabrio",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2020 M8 Competition convertible.blend"
+  },
+  {
+   "src": "2020 M850i Gran Coupe.glb",
+   "slug": "bmw_m850i",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2020 M850i Gran Coupe.blend"
+  },
+  {
+   "src": "2021 218i Gran Coupe 1.5.glb",
+   "slug": "bmw_218i",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2021 218i Gran Coupe 1.5.blend"
+  },
+  {
+   "src": "2021 M4 Coupe.glb",
+   "slug": "bmw_m4_g82",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2021 M4 Coupe.blend"
+  },
+  {
+   "src": "2021-比亚迪海豚.glb",
+   "slug": "byd_dolphin",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2021-比亚迪海豚.blend"
+  },
+  {
+   "src": "2021-现代伊兰特.glb",
+   "slug": "hyundai_elantra",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2021-现代伊兰特.blend"
+  },
+  {
+   "src": "2022 M4 G82 Adro.glb",
+   "slug": "bmw_m4_adro_g82",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2022 M4 G82 Adro.blend"
+  },
+  {
+   "src": "2022 M4 GT3.glb",
+   "slug": "bmw_m4_gt3",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2022 M4 GT3.blend"
+  },
+  {
+   "src": "2022-比亚迪宋plus-ev.glb",
+   "slug": "byd_songplus_ev",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2022-比亚迪宋plus-ev.blend"
+  },
+  {
+   "src": "2023 M2 M-Performance Parts G87.glb",
+   "slug": "bmw_m2_g87",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2023 M2 M-Performance Parts G87.blend"
+  },
+  {
+   "src": "2023 M3 旅行版.glb",
+   "slug": "bmw_m3_touring",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2023 M3 旅行版.blend"
+  },
+  {
+   "src": "2023-兰博基尼Urus.glb",
+   "slug": "lambo_urus",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2023-兰博基尼Urus.blend"
+  },
+  {
+   "src": "2023-比亚迪仰望U8.glb",
+   "slug": "byd_yangwang_u8",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2023-比亚迪仰望U8.blend"
+  },
+  {
+   "src": "2023-蔚来es7.glb",
+   "slug": "nio_es7",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2023-蔚来es7.blend"
+  },
+  {
+   "src": "2024-宝马M4.glb",
+   "slug": "bmw_m4_2024",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2024-宝马M4.blend"
+  },
+  {
+   "src": "2024-比亚迪仰望U7.glb",
+   "slug": "byd_yangwang_u7",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2024-比亚迪仰望U7.blend"
+  },
+  {
+   "src": "2024-比亚迪仰望U9.glb",
+   "slug": "byd_yangwang_u9",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2024-比亚迪仰望U9.blend"
+  },
+  {
+   "src": "2024-比亚迪海狮.glb",
+   "slug": "byd_sealion",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2024-比亚迪海狮.blend"
+  },
+  {
+   "src": "2024-比亚迪海豹.glb",
+   "slug": "byd_seal",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2024-比亚迪海豹.blend"
+  },
+  {
+   "src": "2024-比亚迪海豹06gt.glb",
+   "slug": "byd_seal06gt",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2024-比亚迪海豹06gt.blend"
+  },
+  {
+   "src": "2025 M5 G99 旅行版.glb",
+   "slug": "bmw_m5_touring",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2025 M5 G99 旅行版.blend"
+  },
+  {
+   "src": "2025 M5 Sedan.glb",
+   "slug": "bmw_m5_sedan",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2025 M5 Sedan.blend"
+  },
+  {
+   "src": "2025-极氪7x.glb",
+   "slug": "zeekr_7x",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/2025-极氪7x.blend"
+  },
+  {
+   "src": "别克GL8.glb",
+   "slug": "buick_gl8",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/别克GL8.blend"
+  },
+  {
+   "src": "宝马M4-ADRO套件版.glb",
+   "slug": "bmw_m4_adro_kit",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/宝马M4-ADRO套件版.blend"
+  },
+  {
+   "src": "小米su7.glb",
+   "slug": "xiaomi_su7",
+   "blend": "/Users/tong/Desktop/Ai/赛车游戏/车辆模型_拆分版_待审查/blend/小米su7.blend"
+  }
+ ]
+}

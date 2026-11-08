@@ -1,0 +1,13 @@
+{
+  "_comment": "磁轴键盘 HID 直读配置示例。VID/PID 用 system_profiler SPUSBDataType 或在 macOS 系统信息里查。字段含义：byte=报告里的字节下标；bits/offset=位域；scale=满量程；steer=右-左 两个深度值。不同品牌协议不同，需要用厂商工具或抓包确认报告格式后再改。",
+  "vid": "0x31E3",
+  "pid": "0x1100",
+  "report_len": 64,
+  "report_id": 0,
+  "fields": {
+    "steer_left": { "byte": 4, "bits": 8, "offset": 0, "scale": 255 },
+    "steer_right": { "byte": 5, "bits": 8, "offset": 0, "scale": 255 },
+    "throttle": { "byte": 6, "bits": 8, "offset": 0, "scale": 255 },
+    "brake": { "byte": 7, "bits": 8, "offset": 0, "scale": 255 }
+  }
+}

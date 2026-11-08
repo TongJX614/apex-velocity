@@ -1,0 +1,14 @@
+# Godot
+.godot/
+*.import
+
+# 大体积资产：从 GitHub Release 下载，不入库
+assets/
+build/
+trailer/*.mp4
+
+# 本地工具状态 / 会话记忆
+.workbuddy/
+
+# 系统
+.DS_Store

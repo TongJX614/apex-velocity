@@ -1,0 +1,341 @@
+{
+  "source": "src/garage.js",
+  "wheel_styles": [
+    {
+      "name": "原厂造型",
+      "en": "FACTORY",
+      "id": "factory"
+    },
+    {
+      "name": "双辐刀锋",
+      "en": "SPLIT 5",
+      "id": "split5"
+    },
+    {
+      "name": "深盘六辐",
+      "en": "DISH 6",
+      "id": "dish6"
+    },
+    {
+      "name": "涡轮叶片",
+      "en": "TURBINE",
+      "id": "turbine"
+    },
+    {
+      "name": "赛道网状",
+      "en": "MESH",
+      "id": "mesh"
+    },
+    {
+      "name": "气动盘",
+      "en": "AERO DISC",
+      "id": "aero"
+    },
+    {
+      "name": "五角宽辐",
+      "en": "STAR 5",
+      "id": "star5"
+    },
+    {
+      "name": "多辐细条",
+      "en": "WIRE 20",
+      "id": "wire"
+    },
+    {
+      "name": "深盆抛边",
+      "en": "DEEP DISH",
+      "id": "deepdish"
+    }
+  ],
+  "tire_styles": [
+    {
+      "name": "街道性能",
+      "en": "STREET",
+      "id": "street",
+      "width": 0,
+      "tint": "#ffffff"
+    },
+    {
+      "name": "半热熔",
+      "en": "SEMI SLICK",
+      "id": "semi",
+      "width": 0.007,
+      "tint": "#c8c8c8"
+    },
+    {
+      "name": "全热熔",
+      "en": "RACE SLICK",
+      "id": "race",
+      "width": 0.013,
+      "tint": "#9a9a9e"
+    },
+    {
+      "name": "雨胎",
+      "en": "WET",
+      "id": "wet",
+      "width": -0.006,
+      "tint": "#b9c8d8"
+    }
+  ],
+  "rim_finishes": [
+    {
+      "name": "原厂银",
+      "en": "FACTORY",
+      "color": null
+    },
+    {
+      "name": "曜黑",
+      "en": "SATIN BLACK",
+      "color": "#23272c"
+    },
+    {
+      "name": "古铜",
+      "en": "BRONZE",
+      "color": "#a27647"
+    },
+    {
+      "name": "钛银",
+      "en": "TITANIUM",
+      "color": "#8f98a2"
+    }
+  ],
+  "calipers": [
+    {
+      "name": "竞速红",
+      "en": "RACE RED",
+      "color": "#b01722"
+    },
+    {
+      "name": "竞速黄",
+      "en": "RACE YELLOW",
+      "color": "#d5a51e"
+    },
+    {
+      "name": "极光青",
+      "en": "TEAL",
+      "color": "#1a9f97"
+    },
+    {
+      "name": "石墨灰",
+      "en": "GRAPHITE",
+      "color": "#3a3f45"
+    }
+  ],
+  "wing_styles": [
+    {
+      "name": "原厂尾翼",
+      "en": "FACTORY",
+      "id": "stock"
+    },
+    {
+      "name": "GT 大尾翼",
+      "en": "GT WING",
+      "id": "gt"
+    },
+    {
+      "name": "天鹅颈尾翼",
+      "en": "SWAN NECK",
+      "id": "swan"
+    },
+    {
+      "name": "鸭尾扰流",
+      "en": "DUCKTAIL",
+      "id": "duck"
+    },
+    {
+      "name": "双层风暴翼",
+      "en": "STORM WING",
+      "id": "storm"
+    },
+    {
+      "name": "低装宽刃翼",
+      "en": "BLADE WING",
+      "id": "blade"
+    },
+    {
+      "name": "无尾翼",
+      "en": "CLEAN DECK",
+      "id": "none"
+    }
+  ],
+  "liveries": [
+    {
+      "name": "原厂净色",
+      "en": "FACTORY",
+      "id": "factory"
+    },
+    {
+      "name": "双道拉花",
+      "en": "TWIN STRIPE",
+      "id": "twin"
+    },
+    {
+      "name": "侧刃线条",
+      "en": "SIDE BLADE",
+      "id": "blade"
+    },
+    {
+      "name": "霓虹描边",
+      "en": "NEON EDGE",
+      "id": "neon"
+    },
+    {
+      "name": "斜切双色",
+      "en": "DIAGONAL",
+      "id": "diagonal"
+    },
+    {
+      "name": "号码圆标",
+      "en": "NUMBER BOARD",
+      "id": "number"
+    }
+  ],
+  "upgrades": {
+    "engine": {
+      "name": "动力总成",
+      "en": "POWERTRAIN",
+      "desc": "涡轮压力 / 点火图谱",
+      "costs": [
+        0,
+        140,
+        260,
+        440,
+        700,
+        1000,
+        1350,
+        1750,
+        2200,
+        2700
+      ]
+    },
+    "tires": {
+      "name": "竞技轮胎",
+      "en": "TYRES",
+      "desc": "半热熔胎面 / 悬挂衬套",
+      "costs": [
+        0,
+        120,
+        220,
+        380,
+        620,
+        900,
+        1220,
+        1580,
+        2000,
+        2480
+      ]
+    },
+    "aero": {
+      "name": "空气动力",
+      "en": "AERO",
+      "desc": "主动尾翼 / 底盘扩散器",
+      "costs": [
+        0,
+        150,
+        280,
+        480,
+        760,
+        1080,
+        1450,
+        1880,
+        2360,
+        2900
+      ]
+    },
+    "nitro": {
+      "name": "氮气系统",
+      "en": "NITRO",
+      "desc": "加大储罐 / 延长增压",
+      "costs": [
+        0,
+        100,
+        190,
+        340,
+        560,
+        820,
+        1120,
+        1480,
+        1900,
+        2380
+      ]
+    },
+    "gearbox": {
+      "name": "变速箱",
+      "en": "GEARBOX",
+      "desc": "换挡速度 / 齿比匹配",
+      "costs": [
+        0,
+        120,
+        230,
+        400,
+        640,
+        940,
+        1280,
+        1660,
+        2100,
+        2600
+      ]
+    },
+    "brakes": {
+      "name": "制动系统",
+      "en": "BRAKES",
+      "desc": "卡钳活塞 / 碳陶盘",
+      "costs": [
+        0,
+        110,
+        210,
+        360,
+        580,
+        850,
+        1160,
+        1520,
+        1940,
+        2420
+      ]
+    },
+    "weight": {
+      "name": "轻量化",
+      "en": "WEIGHT",
+      "desc": "碳纤维覆盖件 / 内饰拆减",
+      "costs": [
+        0,
+        140,
+        270,
+        450,
+        720,
+        1040,
+        1400,
+        1820,
+        2300,
+        2840
+      ]
+    },
+    "suspension": {
+      "name": "悬挂系统",
+      "en": "SUSPENSION",
+      "desc": "绞牙避震 / 防倾杆",
+      "costs": [
+        0,
+        120,
+        220,
+        390,
+        630,
+        920,
+        1250,
+        1630,
+        2070,
+        2560
+      ]
+    }
+  },
+  "upgrade_keys": [
+    "engine",
+    "tires",
+    "aero",
+    "nitro",
+    "gearbox",
+    "brakes",
+    "weight",
+    "suspension"
+  ]
+}

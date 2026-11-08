@@ -1,0 +1,1014 @@
+{
+	"bmw_218i": {
+		"done": true,
+		"wing": {
+			"bmw_m3_e46_gtr": {
+				"dy": -0.02,
+				"dz": -0.08
+			},
+			"bmw_m4_adro_g82": {
+				"dy": -0.18,
+				"dz": -0.22
+			},
+			"bmw_m4_gt4": {
+				"dy": -0.1,
+				"dz": -0.08
+			},
+			"bmw_x6m": {
+				"dy": 0.0,
+				"dz": -0.09,
+				"scale": 0.7
+			},
+			"byd_sealion": {
+				"dy": 0.0,
+				"dz": -0.1,
+				"scale": 0.61
+			}
+		},
+		"wing_bans": [
+			"bmw_m5_f90"
+		]
+	},
+	"bmw_5_turismo": {
+		"done": true,
+		"wing": {
+			"bmw_m3_e46_gtr": {
+				"dy": 0.0,
+				"dz": -0.15
+			},
+			"bmw_m4_adro_g82": {
+				"dy": -0.17,
+				"dz": -0.19
+			},
+			"bmw_m4_gt4": {
+				"dy": -0.07,
+				"dz": -0.15
+			},
+			"bmw_m4_gts": {
+				"dy": 0.03,
+				"dz": 0.05
+			},
+			"bmw_m5_f90": {
+				"dy": 0.2,
+				"dz": -0.02,
+				"scale": 0.58
+			},
+			"bmw_x6m": {
+				"dy": 0.15,
+				"dz": -0.1,
+				"scale": 0.61
+			},
+			"byd_sealion": {
+				"dy": 0.17,
+				"dz": -0.06,
+				"scale": 0.64
+			},
+			"byd_yangwang_u7": {
+				"dy": 0.02,
+				"dz": -0.14
+			}
+		}
+	},
+	"bmw_csl_hommage": {
+		"done": true,
+		"wing": {
+			"bmw_m3_e46_gtr": {
+				"dy": -0.01,
+				"dz": -0.13
+			},
+			"bmw_m4_adro_g82": {
+				"dy": -0.32,
+				"dz": -0.1
+			},
+			"bmw_m4_gt4": {
+				"dy": -0.06,
+				"dz": -0.18
+			},
+			"bmw_m4_gts": {
+				"dy": -0.06,
+				"dz": -0.11
+			},
+			"bmw_m5_f90": {
+				"dy": 0.02,
+				"dz": -0.1,
+				"scale": 0.55
+			},
+			"bmw_x6m": {
+				"dy": -0.01,
+				"dz": -0.18,
+				"scale": 0.52
+			},
+			"byd_sealion": {
+				"dy": -0.02,
+				"dz": -0.21,
+				"scale": 0.55
+			},
+			"byd_yangwang_u7": {
+				"dy": 0.0,
+				"dz": -0.2
+			}
+		}
+	},
+	"bmw_i8": {
+		"done": true,
+		"wing": {
+			"bmw_m3_e46_gtr": {
+				"dy": 0.0,
+				"dz": -0.16
+			},
+			"bmw_m4_adro_g82": {
+				"dy": -0.15,
+				"dz": -0.15
+			},
+			"bmw_m4_gts": {
+				"dy": 0.04,
+				"dz": 0.12
+			},
+			"bmw_m5_f90": {
+				"dy": 0.07,
+				"dz": 0.13,
+				"scale": 0.64
+			},
+			"bmw_x6m": {
+				"dy": 0.07,
+				"dz": 0.0,
+				"scale": 0.64
+			},
+			"byd_sealion": {
+				"dy": 0.07,
+				"dz": 0.01,
+				"scale": 0.58
+			},
+			"byd_yangwang_u7": {
+				"dy": 0.05,
+				"dz": -0.09
+			}
+		}
+	},
+	"bmw_i8_acs": {
+		"done": true,
+		"no_wing": true
+	},
+	"bmw_i8_lb": {
+		"done": true,
+		"wing": {
+			"bmw_m4_adro_g82": {
+				"dy": -0.16,
+				"dz": -0.12
+			},
+			"bmw_m4_gt4": {
+				"dy": -0.02,
+				"dz": 0.0
+			}
+		},
+		"wing_bans": [
+			"bmw_x6m",
+			"bmw_m5_f90",
+			"byd_yangwang_u7",
+			"byd_sealion"
+		]
+	},
+	"bmw_m2_g87": {
+		"done": true,
+		"wing": {
+			"bmw_m3_e46_gtr": {
+				"dy": -0.05,
+				"dz": 0.0
+			},
+			"bmw_m4_gt4": {
+				"dy": -0.03,
+				"dz": 0.0,
+				"scale": 1.09
+			},
+			"bmw_m4_gts": {
+				"dy": 0.14,
+				"dz": 0.0
+			}
+		},
+		"wing_bans": [
+			"bmw_x6m",
+			"bmw_m5_f90",
+			"bmw_m4_adro_g82",
+			"byd_yangwang_u7",
+			"byd_sealion"
+		]
+	},
+	"bmw_m3_e46_gtr": {
+		"done": true,
+		"no_wing": false,
+		"wheels": {
+			"bmw_i8_lb": {
+				"front": {
+					"dx": -0.05,
+					"dy": 0.0,
+					"dz": 0.0
+				}
+			}
+		},
+		"wing": {
+			"bmw_m3_e46_gtr": {
+				"dy": 0.06,
+				"dz": -0.05
+			},
+			"bmw_m4_adro_g82": {
+				"dy": -0.1,
+				"dz": -0.01
+			},
+			"bmw_m4_gt4": {
+				"dy": -0.02,
+				"dz": 0.0
+			},
+			"bmw_m4_gts": {
+				"dy": 0.03,
+				"dz": 0.0
+			},
+			"bmw_m5_f90": {
+				"dy": 0.07,
+				"dz": 0.04,
+				"scale": 0.7
+			},
+			"bmw_x6m": {
+				"dy": 0.03,
+				"dz": 0.01,
+				"scale": 0.76
+			},
+			"byd_sealion": {
+				"dy": 0.06,
+				"dz": 0.01,
+				"scale": 0.73
+			},
+			"byd_yangwang_u7": {
+				"dy": 0.04,
+				"dz": 0.0
+			}
+		},
+		"wing_bans": []
+	},
+	"bmw_m3_e92": {
+		"done": true,
+		"wing": {
+			"bmw_m4_adro_g82": {
+				"dy": -0.15,
+				"dz": -0.06
+			},
+			"bmw_m4_gt4": {
+				"dy": -0.03,
+				"dz": -0.16
+			},
+			"bmw_m5_f90": {
+				"dy": 0.03,
+				"dz": -0.12,
+				"scale": 0.64
+			},
+			"bmw_x6m": {
+				"dy": 0.03,
+				"dz": -0.21,
+				"scale": 0.58
+			},
+			"byd_sealion": {
+				"dy": 0.02,
+				"dz": -0.19,
+				"scale": 0.64
+			},
+			"byd_yangwang_u7": {
+				"dy": 0.02,
+				"dz": -0.22
+			}
+		}
+	},
+	"bmw_m3_touring": {
+		"done": true,
+		"no_wing": true
+	},
+	"bmw_m4_2024": {
+		"done": true,
+		"wing": {
+			"bmw_m4_adro_g82": {
+				"dy": -0.05,
+				"dz": -0.06
+			},
+			"bmw_m4_gt4": {
+				"dy": 0.07,
+				"dz": -0.04
+			},
+			"bmw_m4_gts": {
+				"dy": 0.11,
+				"dz": 0.0
+			},
+			"bmw_x6m": {
+				"dy": 0.15,
+				"dz": -0.08,
+				"scale": 0.67
+			},
+			"byd_yangwang_u7": {
+				"dy": 0.15,
+				"dz": -0.06
+			}
+		},
+		"wing_bans": [
+			"bmw_m5_f90",
+			"byd_sealion"
+		]
+	},
+	"bmw_m4_adro_g82": {
+		"done": true,
+		"wing": {
+			"bmw_m4_adro_g82": {
+				"dy": -0.16,
+				"dz": -0.11
+			},
+			"bmw_m4_gt4": {
+				"dy": -0.04,
+				"dz": 0.0
+			},
+			"bmw_m4_gts": {
+				"dy": -0.03,
+				"dz": 0.07
+			},
+			"bmw_x6m": {
+				"dy": 0.05,
+				"dz": -0.12,
+				"scale": 0.5
+			},
+			"byd_yangwang_u7": {
+				"dy": 0.01,
+				"dz": -0.12
+			}
+		},
+		"wing_bans": [
+			"bmw_m5_f90",
+			"byd_sealion"
+		]
+	},
+	"bmw_m4_adro_kit": {
+		"done": true,
+		"wing": {
+			"bmw_m4_adro_g82": {
+				"dy": -0.04,
+				"dz": -0.06
+			},
+			"bmw_m4_gts": {
+				"dy": 0.11,
+				"dz": 0.03
+			}
+		},
+		"wing_bans": [
+			"bmw_x6m",
+			"bmw_m5_f90",
+			"byd_yangwang_u7",
+			"byd_sealion"
+		]
+	},
+	"bmw_m4_cabrio": {
+		"done": true,
+		"wing": {
+			"bmw_m4_adro_g82": {
+				"dy": -0.11,
+				"dz": -0.02
+			},
+			"bmw_m4_gts": {
+				"dy": 0.04,
+				"dz": 0.09
+			},
+			"bmw_m5_f90": {
+				"dy": 0.12,
+				"dz": 0.01,
+				"scale": 0.64
+			},
+			"bmw_x6m": {
+				"dy": 0.09,
+				"dz": -0.08,
+				"scale": 0.73
+			},
+			"byd_sealion": {
+				"dy": 0.08,
+				"dz": -0.06,
+				"scale": 0.76
+			},
+			"byd_yangwang_u7": {
+				"dy": 0.05,
+				"dz": 0.0
+			}
+		}
+	},
+	"bmw_m4_coupe": {
+		"done": true,
+		"wing": {
+			"bmw_m3_e46_gtr": {
+				"dy": 0.13,
+				"dz": -0.09
+			},
+			"bmw_m4_adro_g82": {
+				"dy": -0.12,
+				"dz": -0.17
+			},
+			"bmw_m4_gt4": {
+				"dy": 0.05,
+				"dz": 0.0
+			},
+			"bmw_m4_gts": {
+				"dy": 0.12,
+				"dz": 0.0
+			},
+			"bmw_m5_f90": {
+				"dy": 0.18,
+				"dz": -0.04,
+				"scale": 0.5
+			},
+			"bmw_x6m": {
+				"dy": 0.11,
+				"dz": -0.13,
+				"scale": 0.67
+			},
+			"byd_sealion": {
+				"dy": 0.09,
+				"dz": -0.11,
+				"scale": 0.67
+			},
+			"byd_yangwang_u7": {
+				"dy": 0.12,
+				"dz": 0.0
+			}
+		}
+	},
+	"bmw_m4_g82": {
+		"done": true,
+		"wing": {
+			"bmw_m4_adro_g82": {
+				"dy": -0.17,
+				"dz": -0.13
+			},
+			"bmw_m4_gt4": {
+				"dy": -0.05,
+				"dz": 0.0
+			}
+		},
+		"wing_bans": [
+			"bmw_x6m",
+			"bmw_m5_f90",
+			"byd_sealion"
+		]
+	},
+	"bmw_m4_gt3": {
+		"done": true,
+		"no_wing": true
+	},
+	"bmw_m4_gt4": {
+		"done": true,
+		"wing": {
+			"bmw_m3_e46_gtr": {
+				"dy": -0.13,
+				"dz": 0.0
+			},
+			"bmw_m4_adro_g82": {
+				"dy": -0.16,
+				"dz": -0.19,
+				"scale": 1.09
+			},
+			"bmw_m4_gt4": {
+				"dy": 0.04,
+				"dz": -0.09,
+				"scale": 0.85
+			},
+			"bmw_m4_gts": {
+				"dy": 0.03,
+				"dz": 0.01
+			},
+			"byd_yangwang_u7": {
+				"dy": 0.0,
+				"dz": -0.06
+			}
+		},
+		"wing_bans": [
+			"bmw_m5_f90",
+			"byd_sealion",
+			"bmw_x6m"
+		]
+	},
+	"bmw_m4_gts": {
+		"cuts": [],
+		"done": true,
+		"wing": {
+			"bmw_m3_e46_gtr": {
+				"dy": -0.12,
+				"dz": -0.09
+			},
+			"bmw_m4_adro_g82": {
+				"dy": -0.15,
+				"dz": -0.19
+			},
+			"bmw_m4_gt4": {
+				"dy": -0.09,
+				"dz": -0.07
+			},
+			"bmw_m4_gts": {
+				"dy": 0.06,
+				"dz": -0.04
+			},
+			"bmw_m5_f90": {
+				"dy": 0.13,
+				"dz": 0.12,
+				"scale": 1.12
+			},
+			"bmw_x6m": {
+				"dy": 0.13,
+				"dz": 0.05,
+				"scale": 1.09
+			},
+			"byd_sealion": {
+				"dy": 0.1,
+				"dz": 0.09,
+				"scale": 1.09
+			},
+			"byd_yangwang_u7": {
+				"dy": 0.0,
+				"dz": -0.06
+			}
+		}
+	},
+	"bmw_m5_f90": {
+		"done": true,
+		"wing": {
+			"bmw_m3_e46_gtr": {
+				"dy": 0.0,
+				"dz": -0.07
+			},
+			"bmw_m4_adro_g82": {
+				"dy": -0.12,
+				"dz": -0.17
+			},
+			"bmw_m4_gt4": {
+				"dy": 0.0,
+				"dz": -0.08
+			},
+			"bmw_m4_gts": {
+				"dy": 0.08,
+				"dz": 0.0
+			},
+			"bmw_m5_f90": {
+				"dy": 0.15,
+				"dz": -0.01,
+				"scale": 0.76
+			},
+			"bmw_x6m": {
+				"dy": 0.13,
+				"dz": -0.14,
+				"scale": 0.73
+			},
+			"byd_sealion": {
+				"dy": 0.11,
+				"dz": -0.08,
+				"scale": 0.7
+			},
+			"byd_yangwang_u7": {
+				"dy": 0.08,
+				"dz": -0.11
+			}
+		}
+	},
+	"bmw_m5_sedan": {
+		"done": true,
+		"wing": {
+			"bmw_m4_adro_g82": {
+				"dy": -0.15,
+				"dz": -0.07
+			},
+			"bmw_m4_gt4": {
+				"dy": -0.02,
+				"dz": 0.0
+			}
+		},
+		"wing_bans": [
+			"bmw_x6m",
+			"bmw_m5_f90",
+			"byd_sealion"
+		]
+	},
+	"bmw_m5_touring": {
+		"done": true,
+		"no_wing": true
+	},
+	"bmw_m6_gt3": {
+		"done": true,
+		"wing": {
+			"bmw_m3_e46_gtr": {
+				"dy": -0.16,
+				"dz": 0.0
+			},
+			"bmw_m4_adro_g82": {
+				"dy": -0.26,
+				"dz": -0.08,
+				"scale": 1.15
+			},
+			"bmw_m4_gt4": {
+				"dy": -0.09,
+				"dz": 0.01,
+				"scale": 1.0
+			},
+			"bmw_m4_gts": {
+				"dy": 0.05,
+				"dz": 0.06
+			}
+		},
+		"wing_bans": [
+			"bmw_m5_f90",
+			"byd_sealion",
+			"bmw_x6m"
+		]
+	},
+	"bmw_m850i": {
+		"done": true,
+		"wing": {
+			"bmw_m4_adro_g82": {
+				"dy": -0.11,
+				"dz": -0.14
+			},
+			"bmw_m4_gts": {
+				"dy": 0.11,
+				"dz": 0.0,
+				"scale": 0.76
+			},
+			"bmw_m5_f90": {
+				"dy": 0.22,
+				"dz": -0.02,
+				"scale": 0.5
+			},
+			"byd_sealion": {
+				"dy": 0.15,
+				"dz": -0.1,
+				"scale": 0.52
+			},
+			"byd_yangwang_u7": {
+				"dy": 0.07,
+				"dz": 0.0
+			}
+		},
+		"wing_bans": [
+			"bmw_x6m",
+			"bmw_m5_f90",
+			"byd_sealion"
+		]
+	},
+	"bmw_m8_cabrio": {
+		"done": true,
+		"wing": {
+			"bmw_m4_adro_g82": {
+				"dy": -0.16,
+				"dz": 0.0
+			},
+			"bmw_m4_gt4": {
+				"dy": -0.02,
+				"dz": 0.0
+			},
+			"bmw_x6m": {
+				"dy": 0.01,
+				"dz": 0.0,
+				"scale": 0.67
+			}
+		},
+		"wing_bans": [
+			"bmw_m5_f90",
+			"byd_yangwang_u7",
+			"byd_sealion"
+		]
+	},
+	"bmw_x5m": {
+		"done": true,
+		"no_wing": true,
+		"wing_bans": []
+	},
+	"bmw_x6m": {
+		"done": true,
+		"no_wing": true
+	},
+	"bmw_z4_m40i": {
+		"done": true,
+		"wing": {
+			"bmw_m4_adro_g82": {
+				"dy": -0.11,
+				"dz": 0.0
+			},
+			"bmw_m4_gts": {
+				"dy": 0.09,
+				"dz": 0.05,
+				"scale": 0.76
+			}
+		},
+		"wing_bans": [
+			"bmw_x6m",
+			"bmw_m5_f90",
+			"byd_yangwang_u7",
+			"byd_sealion"
+		]
+	},
+	"buick_gl8": {
+		"done": true,
+		"no_wing": true
+	},
+	"byd_dolphin": {
+		"done": true,
+		"no_wing": true
+	},
+	"byd_seal": {
+		"done": true,
+		"wing": {
+			"bmw_m4_adro_g82": {
+				"dy": -0.21,
+				"dz": -0.2
+			},
+			"bmw_m4_gt4": {
+				"dy": -0.07,
+				"dz": -0.1
+			},
+			"bmw_m4_gts": {
+				"dy": 0.0,
+				"dz": -0.08
+			},
+			"bmw_x6m": {
+				"dy": 0.02,
+				"dz": -0.07,
+				"scale": 0.76
+			},
+			"byd_sealion": {
+				"dy": 0.02,
+				"dz": -0.07,
+				"scale": 0.73
+			}
+		},
+		"wing_bans": [
+			"bmw_m5_f90"
+		]
+	},
+	"byd_seal06gt": {
+		"done": true,
+		"no_wing": true
+	},
+	"byd_sealion": {
+		"done": true,
+		"no_wing": true
+	},
+	"byd_songplus_ev": {
+		"done": true,
+		"no_wing": true
+	},
+	"byd_yangwang_u7": {
+		"done": true,
+		"wing": {
+			"bmw_m3_e46_gtr": {
+				"dy": 0.0,
+				"dz": 0.03
+			},
+			"bmw_m4_adro_g82": {
+				"dy": -0.23,
+				"dz": -0.14
+			},
+			"bmw_m4_gt4": {
+				"dy": -0.13,
+				"dz": -0.08
+			}
+		},
+		"wing_bans": [
+			"bmw_x6m",
+			"bmw_m5_f90",
+			"byd_sealion"
+		]
+	},
+	"byd_yangwang_u8": {
+		"done": true,
+		"no_wing": true
+	},
+	"byd_yangwang_u9": {
+		"done": true,
+		"wing": {
+			"bmw_m4_adro_g82": {
+				"dy": -0.22,
+				"dz": -0.17
+			},
+			"bmw_m4_gt4": {
+				"dy": -0.07,
+				"dz": -0.11
+			},
+			"bmw_m4_gts": {
+				"dy": 0.0,
+				"dz": -0.03
+			},
+			"bmw_x6m": {
+				"dy": 0.04,
+				"dz": 0.0,
+				"scale": 0.85
+			}
+		},
+		"wing_bans": [
+			"bmw_m5_f90",
+			"byd_yangwang_u7",
+			"byd_sealion"
+		]
+	},
+	"hyundai_elantra": {
+		"done": true,
+		"wing": {
+			"bmw_m3_e46_gtr": {
+				"dy": -0.02,
+				"dz": -0.07
+			},
+			"bmw_m4_adro_g82": {
+				"dy": -0.19,
+				"dz": -0.16
+			},
+			"bmw_m4_gt4": {
+				"dy": -0.06,
+				"dz": -0.13
+			},
+			"bmw_m4_gts": {
+				"dy": 0.05,
+				"dz": -0.04
+			},
+			"bmw_x6m": {
+				"dy": 0.1,
+				"dz": -0.09,
+				"scale": 0.76
+			},
+			"byd_yangwang_u7": {
+				"dy": 0.05,
+				"dz": -0.13
+			}
+		},
+		"wing_bans": [
+			"bmw_m5_f90",
+			"byd_sealion"
+		]
+	},
+	"lambo_urus": {
+		"done": true,
+		"wing": {
+			"bmw_m4_adro_g82": {
+				"dy": -0.15,
+				"dz": -0.13
+			}
+		},
+		"wing_bans": [
+			"bmw_x6m",
+			"bmw_m5_f90",
+			"byd_sealion"
+		]
+	},
+	"nio_es7": {
+		"done": true,
+		"no_wing": true
+	},
+	"nissan_sylphy_ev": {
+		"done": true,
+		"wing": {
+			"bmw_m4_adro_g82": {
+				"dy": -0.16,
+				"dz": -0.13
+			},
+			"bmw_m4_gt4": {
+				"dy": -0.06,
+				"dz": -0.08
+			},
+			"bmw_x6m": {
+				"dy": 0.05,
+				"dz": 0.0,
+				"scale": 0.76
+			},
+			"byd_yangwang_u7": {
+				"dy": 0.02,
+				"dz": -0.07
+			}
+		},
+		"wing_bans": [
+			"bmw_m5_f90",
+			"byd_sealion"
+		]
+	},
+	"pandem_m3_e92": {
+		"done": true,
+		"wing": {
+			"bmw_m4_adro_g82": {
+				"dy": -0.1,
+				"dz": -0.2
+			},
+			"bmw_m4_gt4": {
+				"dy": 0.02,
+				"dz": -0.14
+			}
+		},
+		"wing_bans": [
+			"bmw_m5_f90",
+			"bmw_m4_adro_g82",
+			"byd_yangwang_u7",
+			"byd_sealion"
+		]
+	},
+	"varis_m4_gts": {
+		"cuts": [
+			{
+				"node": "CarRoot/b_Kit4_Paint_Geo_lodA_Kit4_Paint_Geo_lodA_BMW_VarisM4GT_ce",
+				"surf": 0.0,
+				"tris": [
+					1949.0,
+					1950.0
+				]
+			},
+			{
+				"node": "CarRoot/b_Kit4_Paint_Geo_lodA_Kit4_Paint_Geo_lodA_BMW_VarisM4GT_ce",
+				"surf": 0.0,
+				"tris": [
+					1949.0,
+					1950.0
+				]
+			},
+			{
+				"node": "CarRoot/b_Kit4_Paint_Geo_lodA_Kit4_Paint_Geo_lodA_BMW_VarisM4GT_ce",
+				"surf": 0.0,
+				"tris": [
+					1949.0,
+					1950.0
+				]
+			},
+			{
+				"node": "CarRoot/b_Kit4_Paint_Geo_lodA_Kit4_Paint_Geo_lodA_BMW_VarisM4GT_ce",
+				"surf": 0.0,
+				"tris": [
+					1950.0
+				]
+			},
+			{
+				"node": "CarRoot/b_Kit4_Paint_Geo_lodA_Kit4_Paint_Geo_lodA_BMW_VarisM4GT_ce",
+				"surf": 0.0,
+				"tris": [
+					1949.0
+				]
+			},
+			{
+				"node": "CarRoot/b_Kit4_Paint_Geo_lodA_Kit4_Paint_Geo_lodA_BMW_VarisM4GT_ce",
+				"surf": 0.0,
+				"tris": [
+					1950.0
+				]
+			}
+		],
+		"done": true,
+		"no_wing": true,
+		"wing": {
+			"bmw_m4_adro_g82": {
+				"dy": -0.12,
+				"dz": -0.19
+			},
+			"bmw_m4_gts": {
+				"dy": 0.09,
+				"dz": 0.0
+			},
+			"bmw_m5_f90": {
+				"dy": 0.18,
+				"dz": 0.03,
+				"scale": 0.64
+			},
+			"bmw_x6m": {
+				"dy": 0.11,
+				"dz": -0.1,
+				"scale": 0.61
+			},
+			"byd_sealion": {
+				"dy": 0.12,
+				"dz": -0.1,
+				"scale": 0.64
+			},
+			"byd_yangwang_u7": {
+				"dy": 0.05,
+				"dz": -0.11
+			}
+		}
+	},
+	"xiaomi_su7": {
+		"done": true,
+		"wing": {
+			"bmw_m3_e46_gtr": {
+				"dy": -0.04,
+				"dz": -0.1
+			},
+			"bmw_m4_adro_g82": {
+				"dy": -0.19,
+				"dz": -0.19
+			},
+			"bmw_m4_gt4": {
+				"dy": -0.08,
+				"dz": -0.08
+			},
+			"byd_yangwang_u7": {
+				"dy": 0.0,
+				"dz": -0.15
+			}
+		},
+		"wing_bans": [
+			"bmw_x6m",
+			"bmw_m5_f90",
+			"byd_sealion"
+		]
+	},
+	"zeekr_7x": {
+		"done": true,
+		"no_wing": true
+	}
+}

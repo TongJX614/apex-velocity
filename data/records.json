@@ -1,0 +1,34 @@
+{
+ "source": "src/records.js",
+ "medal_info": {
+  "gold": {
+   "cn": "金牌",
+   "en": "GOLD",
+   "glyph": "G",
+   "color": "#ffcf5c",
+   "bonus": 900,
+   "rank": 3
+  },
+  "silver": {
+   "cn": "银牌",
+   "en": "SILVER",
+   "glyph": "S",
+   "color": "#cfd9e6",
+   "bonus": 600,
+   "rank": 2
+  },
+  "bronze": {
+   "cn": "铜牌",
+   "en": "BRONZE",
+   "glyph": "B",
+   "color": "#d8955a",
+   "bonus": 350,
+   "rank": 1
+  }
+ },
+ "pace": {
+  "gold": 58,
+  "silver": 50,
+  "bronze": 42
+ }
+}

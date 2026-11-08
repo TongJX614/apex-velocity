@@ -1,0 +1,3919 @@
+{
+ "source": "src/cars/roster.js",
+ "count": 46,
+ "specs": [
+  {
+   "id": "bmw_m3_e46_gtr",
+   "name": "M3 E46 GTR",
+   "cn": "2005 宝马 M3 E46 GTR · 赛用 V8",
+   "tag": "TRACK",
+   "number": 6,
+   "badge": "BMW",
+   "color": "#1c4fa1",
+   "rim": "#c9d2da",
+   "accent": "#eef2f6",
+   "maxSpeed": 80.56,
+   "accel": 7.26,
+   "brake": 34.45,
+   "grip": 7.6,
+   "zeroTo100": 3.8,
+   "stats": {
+    "speed": 55,
+    "accel": 48,
+    "handling": 54
+   },
+   "caps": {
+    "speed": 82,
+    "accel": 77,
+    "handling": 81
+   },
+   "topKph": 290,
+   "desc": "P60 赛用 V8，ALMS 时代把保时捷按在地上摩擦的传奇。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 3.8,
+   "fuelType": "ice",
+   "aspiration": "na",
+   "powerHp": 445,
+   "torqueNm": 480,
+   "weightKg": 1120,
+   "drivetrain": "RWD",
+   "engineProfile": "v8",
+   "redline": 0.97,
+   "gears": 6
+  },
+  {
+   "id": "bmw_m3_e92",
+   "name": "M3 E92",
+   "cn": "2013 宝马 M3 E92 · V8 高转",
+   "tag": "GT",
+   "number": 92,
+   "badge": "BMW",
+   "color": "#b31b2c",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 69.44,
+   "accel": 6.07,
+   "brake": 33.32,
+   "grip": 7.3,
+   "zeroTo100": 4.6,
+   "stats": {
+    "speed": 47,
+    "accel": 41,
+    "handling": 52
+   },
+   "caps": {
+    "speed": 71,
+    "accel": 70,
+    "handling": 79
+   },
+   "topKph": 250,
+   "desc": "最后一代 V8 M3，八千转的声线比数据更动人。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 4.6,
+   "fuelType": "ice",
+   "aspiration": "na",
+   "powerHp": 420,
+   "torqueNm": 400,
+   "weightKg": 1655,
+   "drivetrain": "RWD",
+   "engineProfile": "v8",
+   "redline": 0.98,
+   "gears": 6
+  },
+  {
+   "id": "bmw_5_turismo",
+   "name": "5 TOURING",
+   "cn": "2014 宝马 5系 GT · 行政旅行",
+   "tag": "WAGON",
+   "number": 35,
+   "badge": "BMW",
+   "color": "#3f5d78",
+   "rim": "#c9d2da",
+   "accent": "#eef2f6",
+   "maxSpeed": 69.44,
+   "accel": 4.54,
+   "brake": 31.92,
+   "grip": 6.5,
+   "zeroTo100": 6.1,
+   "stats": {
+    "speed": 47,
+    "accel": 33,
+    "handling": 46
+   },
+   "caps": {
+    "speed": 71,
+    "accel": 62,
+    "handling": 73
+   },
+   "topKph": 250,
+   "desc": "带尾箱的行政座驾，稳得像在轨交上跑。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 6.1,
+   "fuelType": "ice",
+   "aspiration": "turbo",
+   "powerHp": 306,
+   "torqueNm": 400,
+   "weightKg": 1800,
+   "drivetrain": "RWD",
+   "engineProfile": "i6",
+   "redline": 0.92,
+   "gears": 6
+  },
+  {
+   "id": "varis_m4_gts",
+   "name": "VARIS M4",
+   "cn": "2014 宝马 Varis M4 GTS · 宽体竞技",
+   "tag": "WIDE BODY",
+   "number": 14,
+   "badge": "VARIS",
+   "color": "#cfd3d6",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 69.44,
+   "accel": 6.91,
+   "brake": 33.98,
+   "grip": 7.9,
+   "zeroTo100": 4.1,
+   "stats": {
+    "speed": 47,
+    "accel": 45,
+    "handling": 56
+   },
+   "caps": {
+    "speed": 71,
+    "accel": 74,
+    "handling": 83
+   },
+   "topKph": 250,
+   "desc": "全碳宽体把轮距推到极限，直道上格外稳。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 4.1,
+   "fuelType": "ice",
+   "aspiration": "twin_turbo",
+   "powerHp": 431,
+   "torqueNm": 550,
+   "weightKg": 1530,
+   "drivetrain": "RWD",
+   "engineProfile": "i6",
+   "redline": 0.94,
+   "gears": 6
+  },
+  {
+   "id": "bmw_csl_hommage",
+   "name": "3.0 CSL HOMMAGE",
+   "cn": "2015 宝马 3.0 CSL Hommage · 概念致敬",
+   "tag": "CONCEPT",
+   "number": 30,
+   "badge": "BMW",
+   "color": "#c8e000",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 83.33,
+   "accel": 7.42,
+   "brake": 34.45,
+   "grip": 7.5,
+   "zeroTo100": 3.8,
+   "stats": {
+    "speed": 57,
+    "accel": 48,
+    "handling": 53
+   },
+   "caps": {
+    "speed": 85,
+    "accel": 77,
+    "handling": 80
+   },
+   "topKph": 300,
+   "desc": "带 eBoost 混动直六的概念车，黄绿车漆比圈速更抢眼。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 3.8,
+   "fuelType": "hybrid",
+   "aspiration": "turbo",
+   "powerHp": 480,
+   "torqueNm": 600,
+   "weightKg": 1400,
+   "drivetrain": "RWD",
+   "engineProfile": "i6",
+   "redline": 0.96,
+   "gears": 6
+  },
+  {
+   "id": "bmw_i8",
+   "name": "i8",
+   "cn": "2015 宝马 i8 · 插混碳纤维",
+   "tag": "HYBRID",
+   "number": 8,
+   "badge": "BMW",
+   "color": "#e9eaec",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 69.44,
+   "accel": 6.69,
+   "brake": 33.57,
+   "grip": 6.9,
+   "zeroTo100": 4.4,
+   "stats": {
+    "speed": 47,
+    "accel": 43,
+    "handling": 49
+   },
+   "caps": {
+    "speed": 71,
+    "accel": 72,
+    "handling": 76
+   },
+   "topKph": 250,
+   "desc": "碳纤维座舱配三缸电机，未来感从来没退流行。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 4.4,
+   "fuelType": "hybrid",
+   "aspiration": "turbo",
+   "powerHp": 362,
+   "torqueNm": 570,
+   "weightKg": 1485,
+   "drivetrain": "AWD",
+   "engineProfile": "i3",
+   "redline": 0.94,
+   "gears": 6
+  },
+  {
+   "id": "bmw_m4_gts",
+   "name": "M4 GTS",
+   "cn": "2016 宝马 M4 GTS · 水喷射直六",
+   "tag": "TRACK",
+   "number": 16,
+   "badge": "BMW",
+   "color": "#76797d",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 84.72,
+   "accel": 7.4,
+   "brake": 34.45,
+   "grip": 8.0,
+   "zeroTo100": 3.8,
+   "stats": {
+    "speed": 58,
+    "accel": 48,
+    "handling": 57
+   },
+   "caps": {
+    "speed": 86,
+    "accel": 77,
+    "handling": 84
+   },
+   "topKph": 305,
+   "desc": "带水喷射的限量直六，赛道日里的常客。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 3.8,
+   "fuelType": "ice",
+   "aspiration": "twin_turbo",
+   "powerHp": 500,
+   "torqueNm": 600,
+   "weightKg": 1510,
+   "drivetrain": "RWD",
+   "engineProfile": "i6",
+   "redline": 0.95,
+   "gears": 6
+  },
+  {
+   "id": "bmw_x5m",
+   "name": "X5 M",
+   "cn": "2016 宝马 X5 M · 高性能 SUV",
+   "tag": "SUV",
+   "number": 51,
+   "badge": "BMW",
+   "color": "#4a5058",
+   "rim": "#c9d2da",
+   "accent": "#eef2f6",
+   "maxSpeed": 69.44,
+   "accel": 6.21,
+   "brake": 33.84,
+   "grip": 6.3,
+   "zeroTo100": 4.2,
+   "stats": {
+    "speed": 47,
+    "accel": 44,
+    "handling": 45
+   },
+   "caps": {
+    "speed": 71,
+    "accel": 73,
+    "handling": 72
+   },
+   "topKph": 250,
+   "desc": "两吨多的车身配 V8，物理定律只能在后面追。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 4.2,
+   "fuelType": "ice",
+   "aspiration": "twin_turbo",
+   "powerHp": 567,
+   "torqueNm": 750,
+   "weightKg": 2380,
+   "drivetrain": "AWD",
+   "engineProfile": "v8",
+   "redline": 0.92,
+   "gears": 6
+  },
+  {
+   "id": "bmw_x6m",
+   "name": "X6 M",
+   "cn": "2016 宝马 X6 M · 轿跑 SUV",
+   "tag": "SUV",
+   "number": 61,
+   "badge": "BMW",
+   "color": "#0072c6",
+   "rim": "#c9d2da",
+   "accent": "#eef2f6",
+   "maxSpeed": 69.44,
+   "accel": 6.21,
+   "brake": 33.84,
+   "grip": 6.3,
+   "zeroTo100": 4.2,
+   "stats": {
+    "speed": 47,
+    "accel": 44,
+    "handling": 45
+   },
+   "caps": {
+    "speed": 71,
+    "accel": 73,
+    "handling": 72
+   },
+   "topKph": 250,
+   "desc": "溜背造型的 SUV，重心比看上去低一点。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 4.2,
+   "fuelType": "ice",
+   "aspiration": "twin_turbo",
+   "powerHp": 567,
+   "torqueNm": 750,
+   "weightKg": 2340,
+   "drivetrain": "AWD",
+   "engineProfile": "v8",
+   "redline": 0.92,
+   "gears": 6
+  },
+  {
+   "id": "pandem_m3_e92",
+   "name": "PANDEM M3",
+   "cn": "2017 宝马 PANDEM M3 · 火箭兔宽体",
+   "tag": "DRIFT",
+   "number": 72,
+   "badge": "PANDEM",
+   "color": "#cf3b2b",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 69.44,
+   "accel": 6.07,
+   "brake": 33.32,
+   "grip": 7.1,
+   "zeroTo100": 4.6,
+   "stats": {
+    "speed": 47,
+    "accel": 41,
+    "handling": 50
+   },
+   "caps": {
+    "speed": 71,
+    "accel": 70,
+    "handling": 77
+   },
+   "topKph": 250,
+   "desc": "火箭兔全套宽体，天生就是为了横着走。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 4.6,
+   "fuelType": "ice",
+   "aspiration": "na",
+   "powerHp": 420,
+   "torqueNm": 400,
+   "weightKg": 1655,
+   "drivetrain": "RWD",
+   "engineProfile": "v8",
+   "redline": 0.98,
+   "gears": 6
+  },
+  {
+   "id": "bmw_i8_acs",
+   "name": "i8 ACS",
+   "cn": "2017 宝马 i8 ACS · 空力套件",
+   "tag": "HYBRID",
+   "number": 17,
+   "badge": "ACS",
+   "color": "#b81c25",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 69.44,
+   "accel": 6.69,
+   "brake": 33.57,
+   "grip": 7.0,
+   "zeroTo100": 4.4,
+   "stats": {
+    "speed": 47,
+    "accel": 43,
+    "handling": 50
+   },
+   "caps": {
+    "speed": 71,
+    "accel": 72,
+    "handling": 77
+   },
+   "topKph": 250,
+   "desc": "原厂 i8 加上全套空力，风阻和颜值一起降。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 4.4,
+   "fuelType": "hybrid",
+   "aspiration": "turbo",
+   "powerHp": 362,
+   "torqueNm": 570,
+   "weightKg": 1485,
+   "drivetrain": "AWD",
+   "engineProfile": "i3",
+   "redline": 0.94,
+   "gears": 6
+  },
+  {
+   "id": "bmw_m4_cabrio",
+   "name": "M4 CABRIO",
+   "cn": "2018 宝马 M4 敞篷 · 开篷巡航",
+   "tag": "OPEN AIR",
+   "number": 13,
+   "badge": "BMW",
+   "color": "#7a1f24",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 69.44,
+   "accel": 6.57,
+   "brake": 33.7,
+   "grip": 6.9,
+   "zeroTo100": 4.3,
+   "stats": {
+    "speed": 47,
+    "accel": 43,
+    "handling": 49
+   },
+   "caps": {
+    "speed": 71,
+    "accel": 72,
+    "handling": 76
+   },
+   "topKph": 250,
+   "desc": "敞篷一开，排气声直接进耳朵，圈速随缘。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 4.3,
+   "fuelType": "ice",
+   "aspiration": "twin_turbo",
+   "powerHp": 431,
+   "torqueNm": 550,
+   "weightKg": 1750,
+   "drivetrain": "RWD",
+   "engineProfile": "i6",
+   "redline": 0.94,
+   "gears": 6
+  },
+  {
+   "id": "bmw_m4_coupe",
+   "name": "M4 F82",
+   "cn": "2018 宝马 M4 双门 · LCi 后期",
+   "tag": "COUPE",
+   "number": 82,
+   "badge": "BMW",
+   "color": "#8b0f18",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 69.44,
+   "accel": 6.91,
+   "brake": 33.98,
+   "grip": 7.2,
+   "zeroTo100": 4.1,
+   "stats": {
+    "speed": 47,
+    "accel": 45,
+    "handling": 51
+   },
+   "caps": {
+    "speed": 71,
+    "accel": 74,
+    "handling": 78
+   },
+   "topKph": 250,
+   "desc": "后驱直六双门，出弯要会收油。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 4.1,
+   "fuelType": "ice",
+   "aspiration": "twin_turbo",
+   "powerHp": 431,
+   "torqueNm": 550,
+   "weightKg": 1572,
+   "drivetrain": "RWD",
+   "engineProfile": "i6",
+   "redline": 0.94,
+   "gears": 6
+  },
+  {
+   "id": "bmw_m4_gt4",
+   "name": "M4 GT4",
+   "cn": "2018 宝马 M4 GT4 · 客户赛车",
+   "tag": "RACE",
+   "number": 4,
+   "badge": "GT4",
+   "color": "#e7e9ea",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 77.78,
+   "accel": 7.24,
+   "brake": 34.28,
+   "grip": 8.1,
+   "zeroTo100": 3.9,
+   "stats": {
+    "speed": 53,
+    "accel": 47,
+    "handling": 58
+   },
+   "caps": {
+    "speed": 79,
+    "accel": 76,
+    "handling": 85
+   },
+   "topKph": 280,
+   "desc": "客户赛车的标准答案：防滚架、大尾翼、没有舒适性。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 3.9,
+   "fuelType": "ice",
+   "aspiration": "twin_turbo",
+   "powerHp": 431,
+   "torqueNm": 600,
+   "weightKg": 1480,
+   "drivetrain": "RWD",
+   "engineProfile": "i6",
+   "redline": 0.96,
+   "gears": 6
+  },
+  {
+   "id": "bmw_m5_f90",
+   "name": "M5",
+   "cn": "2018 宝马 M5 · 四驱猛兽",
+   "tag": "SEDAN",
+   "number": 5,
+   "badge": "BMW",
+   "color": "#0d3fa6",
+   "rim": "#c9d2da",
+   "accent": "#eef2f6",
+   "maxSpeed": 84.72,
+   "accel": 7.63,
+   "brake": 35.18,
+   "grip": 7.3,
+   "zeroTo100": 3.4,
+   "stats": {
+    "speed": 58,
+    "accel": 52,
+    "handling": 52
+   },
+   "caps": {
+    "speed": 86,
+    "accel": 81,
+    "handling": 79
+   },
+   "topKph": 305,
+   "desc": "四门行政车的心脏是台 V8，超车只要两秒。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 3.4,
+   "fuelType": "ice",
+   "aspiration": "twin_turbo",
+   "powerHp": 600,
+   "torqueNm": 750,
+   "weightKg": 1855,
+   "drivetrain": "AWD",
+   "engineProfile": "v8",
+   "redline": 0.92,
+   "gears": 6
+  },
+  {
+   "id": "bmw_m6_gt3",
+   "name": "M6 GT3",
+   "cn": "2018 宝马 M6 GT3 · GT3 赛车",
+   "tag": "RACE",
+   "number": 66,
+   "badge": "GT3",
+   "color": "#eceeef",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 83.33,
+   "accel": 8.68,
+   "brake": 35.61,
+   "grip": 8.3,
+   "zeroTo100": 3.2,
+   "stats": {
+    "speed": 57,
+    "accel": 54,
+    "handling": 59
+   },
+   "caps": {
+    "speed": 85,
+    "accel": 83,
+    "handling": 86
+   },
+   "topKph": 300,
+   "desc": "纯种 GT3，P58 V8 把车按在路面上跑。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 3.2,
+   "fuelType": "ice",
+   "aspiration": "twin_turbo",
+   "powerHp": 585,
+   "torqueNm": 700,
+   "weightKg": 1300,
+   "drivetrain": "RWD",
+   "engineProfile": "v8",
+   "redline": 0.97,
+   "gears": 6
+  },
+  {
+   "id": "nissan_sylphy_ev",
+   "name": "SYLPHY EV",
+   "cn": "2018 日产 轩逸纯电 · 家用电车",
+   "tag": "EV",
+   "number": 88,
+   "badge": "NISSAN",
+   "color": "#dfe3e6",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 40.0,
+   "accel": 3.7,
+   "brake": 29.76,
+   "grip": 5.7,
+   "zeroTo100": 11.2,
+   "stats": {
+    "speed": 26,
+    "accel": 21,
+    "handling": 40
+   },
+   "caps": {
+    "speed": 42,
+    "accel": 50,
+    "handling": 67
+   },
+   "topKph": 144,
+   "desc": "三厢版聆风，安静、宽敞、完全不想开快。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 11.2,
+   "fuelType": "ev",
+   "aspiration": "none",
+   "powerHp": 109,
+   "torqueNm": 254,
+   "weightKg": 1521,
+   "drivetrain": "FWD",
+   "engineProfile": "ev",
+   "redline": 1.0,
+   "gears": 1
+  },
+  {
+   "id": "bmw_i8_lb",
+   "name": "i8 LB WORKS",
+   "cn": "2019 宝马 i8 LB Works · 宽体二代",
+   "tag": "WIDE BODY",
+   "number": 19,
+   "badge": "LB",
+   "color": "#2b2f36",
+   "rim": "#c9d2da",
+   "accent": "#eef2f6",
+   "maxSpeed": 69.44,
+   "accel": 6.69,
+   "brake": 33.57,
+   "grip": 7.0,
+   "zeroTo100": 4.4,
+   "stats": {
+    "speed": 47,
+    "accel": 43,
+    "handling": 50
+   },
+   "caps": {
+    "speed": 71,
+    "accel": 72,
+    "handling": 77
+   },
+   "topKph": 250,
+   "desc": "低趴宽体的 i8，看起来比实际快十倍。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 4.4,
+   "fuelType": "hybrid",
+   "aspiration": "turbo",
+   "powerHp": 362,
+   "torqueNm": 570,
+   "weightKg": 1485,
+   "drivetrain": "AWD",
+   "engineProfile": "i3",
+   "redline": 0.94,
+   "gears": 6
+  },
+  {
+   "id": "bmw_z4_m40i",
+   "name": "Z4 M40i",
+   "cn": "2019 宝马 Z4 M40i · 敞篷后驱",
+   "tag": "ROADSTER",
+   "number": 40,
+   "badge": "BMW",
+   "color": "#0b6a86",
+   "rim": "#c9d2da",
+   "accent": "#eef2f6",
+   "maxSpeed": 69.44,
+   "accel": 6.42,
+   "brake": 33.57,
+   "grip": 7.0,
+   "zeroTo100": 4.4,
+   "stats": {
+    "speed": 47,
+    "accel": 43,
+    "handling": 50
+   },
+   "caps": {
+    "speed": 71,
+    "accel": 72,
+    "handling": 77
+   },
+   "topKph": 250,
+   "desc": "短轴后驱敞篷，山路比直道更适合它。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 4.4,
+   "fuelType": "ice",
+   "aspiration": "turbo",
+   "powerHp": 382,
+   "torqueNm": 500,
+   "weightKg": 1535,
+   "drivetrain": "RWD",
+   "engineProfile": "i6",
+   "redline": 0.94,
+   "gears": 6
+  },
+  {
+   "id": "bmw_m8_cabrio",
+   "name": "M8 CABRIO",
+   "cn": "2020 宝马 M8 敞篷 · 豪华性能",
+   "tag": "OPEN AIR",
+   "number": 8,
+   "badge": "BMW",
+   "color": "#f2f3f4",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 84.72,
+   "accel": 7.9,
+   "brake": 35.39,
+   "grip": 7.1,
+   "zeroTo100": 3.3,
+   "stats": {
+    "speed": 58,
+    "accel": 53,
+    "handling": 50
+   },
+   "caps": {
+    "speed": 86,
+    "accel": 82,
+    "handling": 77
+   },
+   "topKph": 305,
+   "desc": "敞着篷跑到三百，风噪是唯一的速度表。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 3.3,
+   "fuelType": "ice",
+   "aspiration": "twin_turbo",
+   "powerHp": 617,
+   "torqueNm": 750,
+   "weightKg": 2040,
+   "drivetrain": "AWD",
+   "engineProfile": "v8",
+   "redline": 0.93,
+   "gears": 6
+  },
+  {
+   "id": "bmw_m850i",
+   "name": "M850i",
+   "cn": "2020 宝马 M850i · 四门 GT",
+   "tag": "GRAND TOUR",
+   "number": 850,
+   "badge": "BMW",
+   "color": "#4f7f57",
+   "rim": "#c9d2da",
+   "accent": "#eef2f6",
+   "maxSpeed": 69.44,
+   "accel": 6.74,
+   "brake": 34.28,
+   "grip": 7.0,
+   "zeroTo100": 3.9,
+   "stats": {
+    "speed": 47,
+    "accel": 47,
+    "handling": 50
+   },
+   "caps": {
+    "speed": 71,
+    "accel": 76,
+    "handling": 77
+   },
+   "topKph": 250,
+   "desc": "四门大 GT，长途比冲刺更对味。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 3.9,
+   "fuelType": "ice",
+   "aspiration": "twin_turbo",
+   "powerHp": 523,
+   "torqueNm": 750,
+   "weightKg": 1900,
+   "drivetrain": "AWD",
+   "engineProfile": "v8",
+   "redline": 0.93,
+   "gears": 6
+  },
+  {
+   "id": "bmw_218i",
+   "name": "218i",
+   "cn": "2021 宝马 218i · 前驱三缸",
+   "tag": "SEDAN",
+   "number": 21,
+   "badge": "BMW",
+   "color": "#1b7fba",
+   "rim": "#c9d2da",
+   "accent": "#eef2f6",
+   "maxSpeed": 58.89,
+   "accel": 3.74,
+   "brake": 30.54,
+   "grip": 6.0,
+   "zeroTo100": 8.7,
+   "stats": {
+    "speed": 39,
+    "accel": 26,
+    "handling": 43
+   },
+   "caps": {
+    "speed": 61,
+    "accel": 55,
+    "handling": 70
+   },
+   "topKph": 212,
+   "desc": "三缸小车，胜在轻和便宜。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 8.7,
+   "fuelType": "ice",
+   "aspiration": "turbo",
+   "powerHp": 136,
+   "torqueNm": 220,
+   "weightKg": 1500,
+   "drivetrain": "FWD",
+   "engineProfile": "i3",
+   "redline": 0.95,
+   "gears": 6
+  },
+  {
+   "id": "bmw_m4_g82",
+   "name": "M4 G82",
+   "cn": "2021 宝马 M4 · 大鼻孔双门",
+   "tag": "COUPE",
+   "number": 24,
+   "badge": "BMW",
+   "color": "#d8e600",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 80.56,
+   "accel": 7.19,
+   "brake": 34.28,
+   "grip": 7.4,
+   "zeroTo100": 3.9,
+   "stats": {
+    "speed": 55,
+    "accel": 47,
+    "handling": 53
+   },
+   "caps": {
+    "speed": 82,
+    "accel": 76,
+    "handling": 80
+   },
+   "topKph": 290,
+   "desc": "争议最大的前脸，配上最不该低调的车漆。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 3.9,
+   "fuelType": "ice",
+   "aspiration": "twin_turbo",
+   "powerHp": 473,
+   "torqueNm": 550,
+   "weightKg": 1725,
+   "drivetrain": "RWD",
+   "engineProfile": "i6",
+   "redline": 0.94,
+   "gears": 6
+  },
+  {
+   "id": "byd_dolphin",
+   "name": "DOLPHIN",
+   "cn": "2021 比亚迪 海豚 · 城市纯电",
+   "tag": "EV",
+   "number": 25,
+   "badge": "BYD",
+   "color": "#12a5c9",
+   "rim": "#c9d2da",
+   "accent": "#eef2f6",
+   "maxSpeed": 44.44,
+   "accel": 5.47,
+   "brake": 31.07,
+   "grip": 5.9,
+   "zeroTo100": 7.0,
+   "stats": {
+    "speed": 29,
+    "accel": 30,
+    "handling": 42
+   },
+   "caps": {
+    "speed": 46,
+    "accel": 59,
+    "handling": 69
+   },
+   "topKph": 160,
+   "desc": "骑士版 130kW，城市代步正确解，掉头半径小到离谱。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 7.0,
+   "fuelType": "ev",
+   "aspiration": "none",
+   "powerHp": 177,
+   "torqueNm": 290,
+   "weightKg": 1405,
+   "drivetrain": "FWD",
+   "engineProfile": "ev",
+   "redline": 1.0,
+   "gears": 1
+  },
+  {
+   "id": "hyundai_elantra",
+   "name": "ELANTRA",
+   "cn": "2021 现代 伊兰特 · 运动家轿",
+   "tag": "SEDAN",
+   "number": 26,
+   "badge": "HYUNDAI",
+   "color": "#c9ccd0",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 55.56,
+   "accel": 3.5,
+   "brake": 30.5,
+   "grip": 6.1,
+   "zeroTo100": 8.8,
+   "stats": {
+    "speed": 37,
+    "accel": 25,
+    "handling": 43
+   },
+   "caps": {
+    "speed": 57,
+    "accel": 54,
+    "handling": 70
+   },
+   "topKph": 200,
+   "desc": "锐利折线的紧凑家轿，1.4T 赛道日偶尔能吓到人。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 8.8,
+   "fuelType": "ice",
+   "aspiration": "na",
+   "powerHp": 115,
+   "torqueNm": 144,
+   "weightKg": 1280,
+   "drivetrain": "FWD",
+   "engineProfile": "i4",
+   "redline": 0.95,
+   "gears": 6
+  },
+  {
+   "id": "bmw_m4_adro_g82",
+   "name": "M4 ADRO",
+   "cn": "2022 宝马 M4 ADRO · 空力宽体",
+   "tag": "WIDE BODY",
+   "number": 27,
+   "badge": "ADRO",
+   "color": "#6f7175",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 80.56,
+   "accel": 7.19,
+   "brake": 34.28,
+   "grip": 7.8,
+   "zeroTo100": 3.9,
+   "stats": {
+    "speed": 55,
+    "accel": 47,
+    "handling": 55
+   },
+   "caps": {
+    "speed": 82,
+    "accel": 76,
+    "handling": 82
+   },
+   "topKph": 290,
+   "desc": "全套 ADRO 空力，把 G82 的前脸改成另一个故事。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 3.9,
+   "fuelType": "ice",
+   "aspiration": "twin_turbo",
+   "powerHp": 473,
+   "torqueNm": 550,
+   "weightKg": 1725,
+   "drivetrain": "RWD",
+   "engineProfile": "i6",
+   "redline": 0.94,
+   "gears": 6
+  },
+  {
+   "id": "bmw_m4_gt3",
+   "name": "M4 GT3",
+   "cn": "2022 宝马 M4 GT3 · GT3 赛车",
+   "tag": "RACE",
+   "number": 28,
+   "badge": "GT3",
+   "color": "#eceeef",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 83.33,
+   "accel": 9.53,
+   "brake": 36.09,
+   "grip": 8.4,
+   "zeroTo100": 3.0,
+   "stats": {
+    "speed": 57,
+    "accel": 57,
+    "handling": 60
+   },
+   "caps": {
+    "speed": 85,
+    "accel": 86,
+    "handling": 87
+   },
+   "topKph": 300,
+   "desc": "当代 GT3 标杆，P58 V8 弯中抓地力像换了层地皮。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 3.0,
+   "fuelType": "ice",
+   "aspiration": "twin_turbo",
+   "powerHp": 590,
+   "torqueNm": 700,
+   "weightKg": 1300,
+   "drivetrain": "RWD",
+   "engineProfile": "i6",
+   "redline": 0.96,
+   "gears": 6
+  },
+  {
+   "id": "byd_songplus_ev",
+   "name": "SONG PLUS EV",
+   "cn": "2022 比亚迪 宋PLUS EV · 家用 SUV",
+   "tag": "EV SUV",
+   "number": 29,
+   "badge": "BYD",
+   "color": "#8fa9c0",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 44.44,
+   "accel": 4.97,
+   "brake": 30.97,
+   "grip": 6.0,
+   "zeroTo100": 7.7,
+   "stats": {
+    "speed": 29,
+    "accel": 28,
+    "handling": 43
+   },
+   "caps": {
+    "speed": 46,
+    "accel": 57,
+    "handling": 70
+   },
+   "topKph": 160,
+   "desc": "销量榜常客，家用 SUV 的稳妥选择。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 7.7,
+   "fuelType": "ev",
+   "aspiration": "none",
+   "powerHp": 184,
+   "torqueNm": 280,
+   "weightKg": 1950,
+   "drivetrain": "FWD",
+   "engineProfile": "ev",
+   "redline": 1.0,
+   "gears": 1
+  },
+  {
+   "id": "bmw_m2_g87",
+   "name": "M2 G87",
+   "cn": "2023 宝马 M2 M-Performance · 短轴后驱",
+   "tag": "COUPE",
+   "number": 2,
+   "badge": "BMW",
+   "color": "#2f6fbf",
+   "rim": "#c9d2da",
+   "accent": "#eef2f6",
+   "maxSpeed": 79.17,
+   "accel": 6.82,
+   "brake": 33.98,
+   "grip": 7.5,
+   "zeroTo100": 4.1,
+   "stats": {
+    "speed": 54,
+    "accel": 45,
+    "handling": 53
+   },
+   "caps": {
+    "speed": 81,
+    "accel": 74,
+    "handling": 80
+   },
+   "topKph": 285,
+   "desc": "M2 是这一代最像老 M 的一台，短轴、后驱、不听话。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 4.1,
+   "fuelType": "ice",
+   "aspiration": "twin_turbo",
+   "powerHp": 453,
+   "torqueNm": 550,
+   "weightKg": 1725,
+   "drivetrain": "RWD",
+   "engineProfile": "i6",
+   "redline": 0.94,
+   "gears": 6
+  },
+  {
+   "id": "bmw_m3_touring",
+   "name": "M3 TOURING",
+   "cn": "2023 宝马 M3 旅行版 · 首款 M3 旅行",
+   "tag": "WAGON",
+   "number": 31,
+   "badge": "BMW",
+   "color": "#95989c",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 79.17,
+   "accel": 7.44,
+   "brake": 34.79,
+   "grip": 7.5,
+   "zeroTo100": 3.6,
+   "stats": {
+    "speed": 54,
+    "accel": 50,
+    "handling": 53
+   },
+   "caps": {
+    "speed": 81,
+    "accel": 79,
+    "handling": 80
+   },
+   "topKph": 285,
+   "desc": "M3 终于有旅行版了，装行李和装圈速都不误。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 3.6,
+   "fuelType": "ice",
+   "aspiration": "twin_turbo",
+   "powerHp": 503,
+   "torqueNm": 650,
+   "weightKg": 1865,
+   "drivetrain": "AWD",
+   "engineProfile": "i6",
+   "redline": 0.94,
+   "gears": 6
+  },
+  {
+   "id": "lambo_urus",
+   "name": "URUS",
+   "cn": "2023 兰博基尼 Urus · 超级 SUV",
+   "tag": "SUV",
+   "number": 32,
+   "badge": "LAMBO",
+   "color": "#f2c500",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 84.72,
+   "accel": 7.18,
+   "brake": 34.79,
+   "grip": 7.4,
+   "zeroTo100": 3.6,
+   "stats": {
+    "speed": 58,
+    "accel": 50,
+    "handling": 53
+   },
+   "caps": {
+    "speed": 86,
+    "accel": 79,
+    "handling": 80
+   },
+   "topKph": 305,
+   "desc": "把超跑塞进 SUV 的车身，重心和脾气都不像 SUV。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 3.6,
+   "fuelType": "ice",
+   "aspiration": "twin_turbo",
+   "powerHp": 666,
+   "torqueNm": 850,
+   "weightKg": 2150,
+   "drivetrain": "AWD",
+   "engineProfile": "v8",
+   "redline": 0.92,
+   "gears": 6
+  },
+  {
+   "id": "lamborghini_aventador",
+   "name": "AVENTADOR LP700-4",
+   "cn": "2011 兰博基尼 Aventador LP700-4 · 旗舰 V12",
+   "tag": "HYPER",
+   "number": 63,
+   "badge": "LAMBO",
+   "color": "#d8dade",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 97.22,
+   "accel": 10.2,
+   "brake": 36.8,
+   "grip": 8.1,
+   "zeroTo100": 2.9,
+   "stats": {
+    "speed": 92,
+    "accel": 90,
+    "handling": 82
+   },
+   "caps": {
+    "speed": 97,
+    "accel": 96,
+    "handling": 90
+   },
+   "topKph": 350,
+   "desc": "旗舰自吸 V12 700 马力，ISR 换挡像被踹一脚，四驱稳稳咬住地面。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 2.9,
+   "fuelType": "ice",
+   "aspiration": "na",
+   "powerHp": 700,
+   "torqueNm": 690,
+   "weightKg": 1575,
+   "drivetrain": "AWD",
+   "engineProfile": "v12",
+   "redline": 0.97,
+   "gears": 7
+  },
+  {
+   "id": "byd_yangwang_u8",
+   "name": "YANGWANG U8",
+   "cn": "2023 比亚迪 仰望 U8 · 硬派越野",
+   "tag": "EV SUV",
+   "number": 33,
+   "badge": "YANGWANG",
+   "color": "#2f87ab",
+   "rim": "#c9d2da",
+   "accent": "#eef2f6",
+   "maxSpeed": 55.56,
+   "accel": 8.82,
+   "brake": 34.79,
+   "grip": 5.9,
+   "zeroTo100": 3.6,
+   "stats": {
+    "speed": 37,
+    "accel": 50,
+    "handling": 42
+   },
+   "caps": {
+    "speed": 57,
+    "accel": 79,
+    "handling": 69
+   },
+   "topKph": 200,
+   "desc": "两吨半大家伙跑出 3.6 秒，原地掉头只是日常。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 3.6,
+   "fuelType": "ev",
+   "aspiration": "none",
+   "powerHp": 1197,
+   "torqueNm": 1280,
+   "weightKg": 3460,
+   "drivetrain": "AWD",
+   "engineProfile": "ev",
+   "redline": 1.0,
+   "gears": 1
+  },
+  {
+   "id": "nio_es7",
+   "name": "NIO ES7",
+   "cn": "2023 蔚来 ES7 · 中大型纯电 SUV",
+   "tag": "EV SUV",
+   "number": 34,
+   "badge": "NIO",
+   "color": "#6f7a86",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 55.56,
+   "accel": 8.14,
+   "brake": 34.28,
+   "grip": 6.4,
+   "zeroTo100": 3.9,
+   "stats": {
+    "speed": 37,
+    "accel": 47,
+    "handling": 45
+   },
+   "caps": {
+    "speed": 57,
+    "accel": 76,
+    "handling": 72
+   },
+   "topKph": 200,
+   "desc": "空气悬挂配双电机，舒适和推背可以同时要。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 3.9,
+   "fuelType": "ev",
+   "aspiration": "none",
+   "powerHp": 653,
+   "torqueNm": 850,
+   "weightKg": 2450,
+   "drivetrain": "AWD",
+   "engineProfile": "ev",
+   "redline": 1.0,
+   "gears": 1
+  },
+  {
+   "id": "bmw_m4_2024",
+   "name": "M4 2024",
+   "cn": "2024 宝马 M4 · 年度改款",
+   "tag": "COUPE",
+   "number": 24,
+   "badge": "BMW",
+   "color": "#3a3d40",
+   "rim": "#c9d2da",
+   "accent": "#eef2f6",
+   "maxSpeed": 80.56,
+   "accel": 8.05,
+   "brake": 34.99,
+   "grip": 7.4,
+   "zeroTo100": 3.5,
+   "stats": {
+    "speed": 55,
+    "accel": 51,
+    "handling": 53
+   },
+   "caps": {
+    "speed": 82,
+    "accel": 80,
+    "handling": 80
+   },
+   "topKph": 290,
+   "desc": "xDrive 版零百 3.5 秒，底盘比初版更服帖。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 3.5,
+   "fuelType": "ice",
+   "aspiration": "twin_turbo",
+   "powerHp": 503,
+   "torqueNm": 650,
+   "weightKg": 1725,
+   "drivetrain": "RWD",
+   "engineProfile": "i6",
+   "redline": 0.94,
+   "gears": 6
+  },
+  {
+   "id": "byd_yangwang_u7",
+   "name": "YANGWANG U7",
+   "cn": "2024 比亚迪 仰望 U7 · 纯电旗舰",
+   "tag": "EV",
+   "number": 37,
+   "badge": "YANGWANG",
+   "color": "#84888c",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 75.0,
+   "accel": 10.32,
+   "brake": 36.35,
+   "grip": 6.9,
+   "zeroTo100": 2.9,
+   "stats": {
+    "speed": 51,
+    "accel": 58,
+    "handling": 49
+   },
+   "caps": {
+    "speed": 77,
+    "accel": 87,
+    "handling": 76
+   },
+   "topKph": 270,
+   "desc": "960kW 四电机旗舰轿车，起步像被弹弓打出去。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 2.9,
+   "fuelType": "ev",
+   "aspiration": "none",
+   "powerHp": 1306,
+   "torqueNm": 1680,
+   "weightKg": 2750,
+   "drivetrain": "AWD",
+   "engineProfile": "ev",
+   "redline": 1.0,
+   "gears": 1
+  },
+  {
+   "id": "byd_yangwang_u9",
+   "name": "YANGWANG U9",
+   "cn": "2024 比亚迪 仰望 U9 · 纯电超跑",
+   "tag": "EV SUPER",
+   "number": 39,
+   "badge": "YANGWANG",
+   "color": "#b8a8e4",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 83.33,
+   "accel": 12.36,
+   "brake": 37.92,
+   "grip": 8.0,
+   "zeroTo100": 2.4,
+   "stats": {
+    "speed": 57,
+    "accel": 67,
+    "handling": 57
+   },
+   "caps": {
+    "speed": 85,
+    "accel": 96,
+    "handling": 84
+   },
+   "topKph": 300,
+   "desc": "1306 马力纯电超跑，官方零百 2.36 秒。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 2.4,
+   "fuelType": "ev",
+   "aspiration": "none",
+   "powerHp": 1306,
+   "torqueNm": 1680,
+   "weightKg": 2475,
+   "drivetrain": "AWD",
+   "engineProfile": "ev",
+   "redline": 1.0,
+   "gears": 1
+  },
+  {
+   "id": "byd_sealion",
+   "name": "SEALION",
+   "cn": "2024 比亚迪 海狮07 EV · 中型纯电 SUV",
+   "tag": "EV SUV",
+   "number": 38,
+   "badge": "BYD",
+   "color": "#6969ba",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 62.5,
+   "accel": 7.31,
+   "brake": 33.84,
+   "grip": 6.0,
+   "zeroTo100": 4.2,
+   "stats": {
+    "speed": 42,
+    "accel": 44,
+    "handling": 43
+   },
+   "caps": {
+    "speed": 64,
+    "accel": 73,
+    "handling": 70
+   },
+   "topKph": 225,
+   "desc": "四驱版 390kW，日常比参数更讨喜。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 4.2,
+   "fuelType": "ev",
+   "aspiration": "none",
+   "powerHp": 530,
+   "torqueNm": 690,
+   "weightKg": 2350,
+   "drivetrain": "AWD",
+   "engineProfile": "ev",
+   "redline": 1.0,
+   "gears": 1
+  },
+  {
+   "id": "byd_seal",
+   "name": "SEAL",
+   "cn": "2024 比亚迪 海豹 · 运动纯电轿车",
+   "tag": "EV",
+   "number": 36,
+   "badge": "BYD",
+   "color": "#a9c6e7",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 50.0,
+   "accel": 8.74,
+   "brake": 34.45,
+   "grip": 6.7,
+   "zeroTo100": 3.8,
+   "stats": {
+    "speed": 33,
+    "accel": 48,
+    "handling": 48
+   },
+   "caps": {
+    "speed": 52,
+    "accel": 77,
+    "handling": 75
+   },
+   "topKph": 180,
+   "desc": "四驱性能版零百 3.8 秒，极速却守着 180。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 3.8,
+   "fuelType": "ev",
+   "aspiration": "none",
+   "powerHp": 530,
+   "torqueNm": 690,
+   "weightKg": 2185,
+   "drivetrain": "AWD",
+   "engineProfile": "ev",
+   "redline": 1.0,
+   "gears": 1
+  },
+  {
+   "id": "byd_seal06gt",
+   "name": "SEAL 06 GT",
+   "cn": "2024 比亚迪 海豹06 GT · 纯电钢炮",
+   "tag": "EV",
+   "number": 60,
+   "badge": "BYD",
+   "color": "#73815f",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 55.56,
+   "accel": 6.48,
+   "brake": 32.98,
+   "grip": 6.4,
+   "zeroTo100": 4.9,
+   "stats": {
+    "speed": 37,
+    "accel": 39,
+    "handling": 45
+   },
+   "caps": {
+    "speed": 57,
+    "accel": 68,
+    "handling": 72
+   },
+   "topKph": 200,
+   "desc": "四驱热浪版 310kW，两厢纯电钢炮，车小胆大。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 4.9,
+   "fuelType": "ev",
+   "aspiration": "none",
+   "powerHp": 422,
+   "torqueNm": 510,
+   "weightKg": 2000,
+   "drivetrain": "AWD",
+   "engineProfile": "ev",
+   "redline": 1.0,
+   "gears": 1
+  },
+  {
+   "id": "bmw_m5_touring",
+   "name": "M5 TOURING",
+   "cn": "2025 宝马 M5 旅行版 · 插混旅行",
+   "tag": "WAGON",
+   "number": 45,
+   "badge": "BMW",
+   "color": "#6e7175",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 84.72,
+   "accel": 7.18,
+   "brake": 34.79,
+   "grip": 7.2,
+   "zeroTo100": 3.6,
+   "stats": {
+    "speed": 58,
+    "accel": 50,
+    "handling": 51
+   },
+   "caps": {
+    "speed": 86,
+    "accel": 79,
+    "handling": 78
+   },
+   "topKph": 305,
+   "desc": "插混 V8 加旅行尾箱，一家人一起被推背。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 3.6,
+   "fuelType": "hybrid",
+   "aspiration": "twin_turbo",
+   "powerHp": 717,
+   "torqueNm": 1000,
+   "weightKg": 2475,
+   "drivetrain": "AWD",
+   "engineProfile": "v8",
+   "redline": 0.92,
+   "gears": 6
+  },
+  {
+   "id": "bmw_m5_sedan",
+   "name": "M5 G99",
+   "cn": "2025 宝马 M5 · 插混四门",
+   "tag": "SEDAN",
+   "number": 43,
+   "badge": "BMW",
+   "color": "#1b5f12",
+   "rim": "#c9d2da",
+   "accent": "#eef2f6",
+   "maxSpeed": 84.72,
+   "accel": 7.4,
+   "brake": 34.99,
+   "grip": 7.2,
+   "zeroTo100": 3.5,
+   "stats": {
+    "speed": 58,
+    "accel": 51,
+    "handling": 51
+   },
+   "caps": {
+    "speed": 86,
+    "accel": 80,
+    "handling": 78
+   },
+   "topKph": 305,
+   "desc": "新一代 M5 用插混补扭矩，重了但更快。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 3.5,
+   "fuelType": "hybrid",
+   "aspiration": "twin_turbo",
+   "powerHp": 717,
+   "torqueNm": 1000,
+   "weightKg": 2445,
+   "drivetrain": "AWD",
+   "engineProfile": "v8",
+   "redline": 0.92,
+   "gears": 6
+  },
+  {
+   "id": "zeekr_7x",
+   "name": "ZEEKR 7X",
+   "cn": "2025 极氪 7X · 纯电 SUV",
+   "tag": "EV SUV",
+   "number": 47,
+   "badge": "ZEEKR",
+   "color": "#e9eaec",
+   "rim": "#c9d2da",
+   "accent": "#1b1b1b",
+   "maxSpeed": 58.33,
+   "accel": 8.22,
+   "brake": 34.45,
+   "grip": 6.2,
+   "zeroTo100": 3.8,
+   "stats": {
+    "speed": 39,
+    "accel": 48,
+    "handling": 44
+   },
+   "caps": {
+    "speed": 60,
+    "accel": 77,
+    "handling": 71
+   },
+   "topKph": 210,
+   "desc": "四驱 475kW，800V 平台补能比加油还快。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 3.8,
+   "fuelType": "ev",
+   "aspiration": "none",
+   "powerHp": 646,
+   "torqueNm": 710,
+   "weightKg": 2400,
+   "drivetrain": "AWD",
+   "engineProfile": "ev",
+   "redline": 1.0,
+   "gears": 1
+  },
+  {
+   "id": "buick_gl8",
+   "name": "BUICK GL8",
+   "cn": "别克 GL8 · 商务 MPV",
+   "tag": "MPV",
+   "number": 48,
+   "badge": "BUICK",
+   "color": "#273844",
+   "rim": "#c9d2da",
+   "accent": "#eef2f6",
+   "maxSpeed": 54.17,
+   "accel": 3.31,
+   "brake": 30.35,
+   "grip": 5.7,
+   "zeroTo100": 9.2,
+   "stats": {
+    "speed": 36,
+    "accel": 25,
+    "handling": 40
+   },
+   "caps": {
+    "speed": 56,
+    "accel": 54,
+    "handling": 67
+   },
+   "topKph": 195,
+   "desc": "2.0T 商务舱之王，副驾永远比驾驶位舒服。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 9.2,
+   "fuelType": "ice",
+   "aspiration": "turbo",
+   "powerHp": 237,
+   "torqueNm": 350,
+   "weightKg": 2050,
+   "drivetrain": "FWD",
+   "engineProfile": "i4",
+   "redline": 0.92,
+   "gears": 6
+  },
+  {
+   "id": "bmw_m4_adro_kit",
+   "name": "M4 ADRO KIT",
+   "cn": "宝马 M4 ADRO 套件版 · 全碳宽体",
+   "tag": "WIDE BODY",
+   "number": 49,
+   "badge": "ADRO",
+   "color": "#2a2d31",
+   "rim": "#c9d2da",
+   "accent": "#eef2f6",
+   "maxSpeed": 80.56,
+   "accel": 7.19,
+   "brake": 34.28,
+   "grip": 7.8,
+   "zeroTo100": 3.9,
+   "stats": {
+    "speed": 55,
+    "accel": 47,
+    "handling": 55
+   },
+   "caps": {
+    "speed": 82,
+    "accel": 76,
+    "handling": 82
+   },
+   "topKph": 290,
+   "desc": "全碳纤维套件版，减重和压迫感一起上身。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 3.9,
+   "fuelType": "ice",
+   "aspiration": "twin_turbo",
+   "powerHp": 473,
+   "torqueNm": 550,
+   "weightKg": 1725,
+   "drivetrain": "RWD",
+   "engineProfile": "i6",
+   "redline": 0.94,
+   "gears": 6
+  },
+  {
+   "id": "xiaomi_su7",
+   "name": "XIAOMI SU7",
+   "cn": "小米 SU7 · 高性能纯电",
+   "tag": "EV",
+   "number": 50,
+   "badge": "XIAOMI",
+   "color": "#2f5fb0",
+   "rim": "#c9d2da",
+   "accent": "#eef2f6",
+   "maxSpeed": 73.61,
+   "accel": 10.7,
+   "brake": 36.62,
+   "grip": 7.0,
+   "zeroTo100": 2.8,
+   "stats": {
+    "speed": 50,
+    "accel": 60,
+    "handling": 50
+   },
+   "caps": {
+    "speed": 75,
+    "accel": 89,
+    "handling": 77
+   },
+   "topKph": 265,
+   "desc": "Max 版 673 马力，零百 2.78 秒，直线成绩比预想更凶。",
+   "parts": {
+    "rims": false,
+    "tires": false,
+    "wings": false,
+    "calipers": false,
+    "livery": false
+   },
+   "realZeroTo100": 2.8,
+   "fuelType": "ev",
+   "aspiration": "none",
+   "powerHp": 673,
+   "torqueNm": 838,
+   "weightKg": 2205,
+   "drivetrain": "AWD",
+   "engineProfile": "ev",
+   "redline": 1.0,
+   "gears": 1
+  }
+ ],
+ "palettes": {
+  "bmw_m3_e46_gtr": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#1c4fa1",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#eef2f6"
+   }
+  ],
+  "bmw_m3_e92": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#b31b2c",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "bmw_5_turismo": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#3f5d78",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#eef2f6"
+   }
+  ],
+  "varis_m4_gts": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#cfd3d6",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "bmw_csl_hommage": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#c8e000",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "bmw_i8": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#e9eaec",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "bmw_m4_gts": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#76797d",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "bmw_x5m": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#4a5058",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#eef2f6"
+   }
+  ],
+  "bmw_x6m": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#0072c6",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#eef2f6"
+   }
+  ],
+  "pandem_m3_e92": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#cf3b2b",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "bmw_i8_acs": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#b81c25",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "bmw_m4_cabrio": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#7a1f24",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "bmw_m4_coupe": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#8b0f18",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "bmw_m4_gt4": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#e7e9ea",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "bmw_m5_f90": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#0d3fa6",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#eef2f6"
+   }
+  ],
+  "bmw_m6_gt3": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#eceeef",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "nissan_sylphy_ev": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#dfe3e6",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "bmw_i8_lb": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#2b2f36",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#eef2f6"
+   }
+  ],
+  "bmw_z4_m40i": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#0b6a86",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#eef2f6"
+   }
+  ],
+  "bmw_m8_cabrio": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#f2f3f4",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "bmw_m850i": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#4f7f57",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#eef2f6"
+   }
+  ],
+  "bmw_218i": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#1b7fba",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#eef2f6"
+   }
+  ],
+  "bmw_m4_g82": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#d8e600",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "byd_dolphin": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#12a5c9",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#eef2f6"
+   }
+  ],
+  "hyundai_elantra": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#c9ccd0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "bmw_m4_adro_g82": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#6f7175",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "bmw_m4_gt3": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#eceeef",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "byd_songplus_ev": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#8fa9c0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "bmw_m2_g87": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#2f6fbf",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#eef2f6"
+   }
+  ],
+  "bmw_m3_touring": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#95989c",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "lambo_urus": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#f2c500",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "byd_yangwang_u8": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#2f87ab",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#eef2f6"
+   }
+  ],
+  "nio_es7": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#6f7a86",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "bmw_m4_2024": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#3a3d40",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#eef2f6"
+   }
+  ],
+  "byd_yangwang_u7": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#84888c",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "byd_yangwang_u9": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#b8a8e4",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "byd_sealion": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#6969ba",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "byd_seal": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#a9c6e7",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "byd_seal06gt": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#73815f",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "bmw_m5_touring": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#6e7175",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "bmw_m5_sedan": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#1b5f12",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#eef2f6"
+   }
+  ],
+  "zeekr_7x": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#e9eaec",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#1b1b1b"
+   }
+  ],
+  "buick_gl8": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#273844",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#eef2f6"
+   }
+  ],
+  "bmw_m4_adro_kit": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#2a2d31",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#eef2f6"
+   }
+  ],
+  "xiaomi_su7": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#2f5fb0",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "曜石黑",
+    "en": "ONYX BLACK",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "PEARL WHITE",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "RACING RED",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "NARDO GREY",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "哑光石墨",
+    "en": "MATTE GRAPHITE",
+    "color": "#3a3f45",
+    "matte": true,
+    "accent": "#eef2f6"
+   }
+  ],
+  "lamborghini_aventador": [
+   {
+    "name": "原厂漆",
+    "en": "FACTORY",
+    "color": "#d8dade",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "阿兰乔橙",
+    "en": "ARANCIO BOREALIS",
+    "color": "#ff6a00",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "曜石黑",
+    "en": "NERO ALDEBARAN",
+    "color": "#141518",
+    "accent": "#eef2f6"
+   },
+   {
+    "name": "珍珠白",
+    "en": "BIANCO ICARUS",
+    "color": "#e9e7e0",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "赛道红",
+    "en": "ROSSO MARS",
+    "color": "#b81b29",
+    "accent": "#1b1b1b"
+   },
+   {
+    "name": "纳多灰",
+    "en": "GRIGIO TELESTO",
+    "color": "#9aa1a8",
+    "accent": "#1b1b1b"
+   }
+  ]
+ },
+ "engine_for": {
+  "bmw_m3_e46_gtr": "vortex",
+  "bmw_m3_e92": "vortex",
+  "bmw_5_turismo": "kitsune",
+  "varis_m4_gts": "kitsune",
+  "bmw_csl_hommage": "aurora",
+  "bmw_i8": "aurora",
+  "bmw_m4_gts": "kitsune",
+  "bmw_x5m": "vortex",
+  "bmw_x6m": "vortex",
+  "pandem_m3_e92": "vortex",
+  "bmw_i8_acs": "aurora",
+  "bmw_m4_cabrio": "kitsune",
+  "bmw_m4_coupe": "kitsune",
+  "bmw_m4_gt4": "kitsune",
+  "bmw_m5_f90": "vortex",
+  "bmw_m6_gt3": "vortex",
+  "nissan_sylphy_ev": "zephyr",
+  "bmw_i8_lb": "aurora",
+  "bmw_z4_m40i": "kitsune",
+  "bmw_m8_cabrio": "vortex",
+  "bmw_m850i": "vortex",
+  "bmw_218i": "kitsune",
+  "bmw_m4_g82": "kitsune",
+  "byd_dolphin": "zephyr",
+  "hyundai_elantra": "kitsune",
+  "bmw_m4_adro_g82": "kitsune",
+  "bmw_m4_gt3": "vortex",
+  "byd_songplus_ev": "zephyr",
+  "bmw_m2_g87": "kitsune",
+  "bmw_m3_touring": "kitsune",
+  "lambo_urus": "vortex",
+  "byd_yangwang_u8": "zephyr",
+  "nio_es7": "zephyr",
+  "bmw_m4_2024": "kitsune",
+  "byd_yangwang_u7": "zephyr",
+  "byd_yangwang_u9": "zephyr",
+  "byd_sealion": "zephyr",
+  "byd_seal": "zephyr",
+  "byd_seal06gt": "zephyr",
+  "bmw_m5_touring": "vortex",
+  "bmw_m5_sedan": "vortex",
+  "zeekr_7x": "zephyr",
+  "buick_gl8": "kitsune",
+  "bmw_m4_adro_kit": "kitsune",
+  "xiaomi_su7": "zephyr",
+  "lamborghini_aventador": "vortex"
+ }
+}

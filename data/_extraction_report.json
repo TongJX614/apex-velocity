@@ -1,0 +1,38 @@
+{
+  "legacy_root": "/Users/tong/Desktop/windows电脑备份/赛车游戏/赛车游戏",
+  "outputs": {
+    "cars.json": 63273,
+    "tracks.json": 19037,
+    "garage.json": 3604,
+    "ai.json": 735,
+    "records.json": 488,
+    "car_manifest.json": 32190,
+    "bgm_manifest.json": 5495
+  },
+  "checks": {
+    "cars": 45,
+    "palettes": 45,
+    "engine_profiles": 45,
+    "tracks": 8,
+    "track_ids": [
+      "coast",
+      "city",
+      "alpine",
+      "canyon",
+      "harbor",
+      "skyline",
+      "glacier",
+      "magma"
+    ],
+    "ai": 3,
+    "parts_style_tables": {
+      "wheel_styles": 9,
+      "tire_styles": 4,
+      "rim_finishes": 4,
+      "calipers": 4,
+      "wing_styles": 7,
+      "liveries": 6
+    },
+    "errors": []
+  }
+}

@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>APEX VELOCITY · 赛道编辑器</title>
+<style>
+  :root{
+    --bg:#0b1115; --panel:#121a20; --panel2:#0e151a; --line:#1e2b34;
+    --fg:#dce7ec; --dim:#7e94a1; --accent:#4fe9ff; --warn:#ffb454; --bad:#ff5d5d; --ok:#57d98a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--fg);
+    font:13px/1.5 -apple-system,"PingFang SC","Helvetica Neue",sans-serif;
+    display:flex; overflow:hidden; user-select:none;
+  }
+  /* ---------- 左栏 ---------- */
+  .rail{
+    width:188px; flex:0 0 188px; background:var(--panel); border-right:1px solid var(--line);
+    display:flex; flex-direction:column;
+  }
+  .brand{padding:16px 16px 12px; border-bottom:1px solid var(--line)}
+  .brand h1{font-size:13px; letter-spacing:.14em; font-weight:600}
+  .brand p{font-size:10px; color:var(--dim); letter-spacing:.12em; margin-top:3px}
+  .tl-label{padding:14px 16px 6px; font-size:10px; color:var(--dim); letter-spacing:.16em}
+  .tlist{flex:1; overflow-y:auto}
+  .titem{
+    padding:8px 16px; cursor:pointer; border-left:2px solid transparent;
+    display:flex; justify-content:space-between; align-items:center; gap:8px;
+  }
+  .titem:hover{background:#16212a}
+  .titem.on{background:#16242e; border-left-color:var(--accent)}
+  .titem .nm{font-size:12px}
+  .titem .idd{font-size:9px; color:var(--dim); letter-spacing:.06em}
+  .titem .ln{font-size:10px; color:var(--dim); font-variant-numeric:tabular-nums}
+  .rail-foot{padding:12px 16px; border-top:1px solid var(--line); font-size:10px; color:var(--dim)}
+  /* ---------- 中区 ---------- */
+  main{flex:1; display:flex; flex-direction:column; min-width:0}
+  header{
+    height:46px; flex:0 0 46px; border-bottom:1px solid var(--line);
+    display:flex; align-items:center; padding:0 14px; gap:10px; background:var(--panel2);
+  }
+  .btn{
+    background:#182430; color:var(--fg); border:1px solid var(--line);
+    border-radius:5px; padding:6px 12px; font-size:12px; cursor:pointer;
+    font-family:inherit; transition:.12s;
+  }
+  .btn:hover{background:#1f2f3c; border-color:#2a4050}
+  .btn.primary{background:#0f3b45; border-color:#1c6b7d; color:#9ff0ff}
+  .btn.primary:hover{background:#134d5a}
+  .btn.danger:hover{background:#3a1616; border-color:#6d3030; color:#ff9b9b}
+  .spacer{flex:1}
+  .hint{font-size:11px; color:var(--dim)}
+  .hint b{color:#a9c0cc; font-weight:500}
+  #stage{flex:1; position:relative; overflow:hidden; background:
+    radial-gradient(circle at 50% 40%, #101a21 0%, #0a0f13 100%);}
+  canvas{position:absolute; inset:0; width:100%; height:100%; display:block; cursor:crosshair}
+  .stat{
+    position:absolute; left:14px; bottom:12px; font-size:11px; color:var(--dim);
+    background:rgba(10,15,19,.82); border:1px solid var(--line); border-radius:6px;
+    padding:7px 11px; font-variant-numeric:tabular-nums; line-height:1.7; pointer-events:none;
+  }
+  .stat b{color:var(--fg); font-weight:600}
+  .legend{
+    position:absolute; right:14px; bottom:12px; font-size:10px; color:var(--dim);
+    background:rgba(10,15,19,.82); border:1px solid var(--line); border-radius:6px;
+    padding:8px 11px; line-height:1.9; pointer-events:none;
+  }
+  .legend i{display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:6px; vertical-align:-1px}
+  /* ---------- 右栏 ---------- */
+  .inspector{
+    width:244px; flex:0 0 244px; background:var(--panel); border-left:1px solid var(--line);
+    overflow-y:auto; padding:0 0 20px;
+  }
+  .sec{padding:14px 16px; border-bottom:1px solid var(--line)}
+  .sec h2{font-size:10px; letter-spacing:.16em; color:var(--dim); font-weight:500; margin-bottom:10px}
+  .row{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px}
+  .row label{font-size:12px; color:#a9c0cc; flex:1}
+  .row input[type=number], .row input[type=text]{
+    width:84px; background:#0b1216; border:1px solid var(--line); color:var(--fg);
+    border-radius:4px; padding:4px 7px; font-size:12px; font-family:inherit;
+    font-variant-numeric:tabular-nums; text-align:right;
+  }
+  .row input:focus{outline:none; border-color:var(--accent)}
+  .row input[type=color]{
+    width:44px; height:24px; padding:0; border:1px solid var(--line);
+    border-radius:4px; background:#0b1216; cursor:pointer;
+  }
+  .val{font-size:12px; color:var(--fg); font-variant-numeric:tabular-nums}
+  .muted{font-size:11px; color:var(--dim); line-height:1.7}
+  .tag{
+    display:inline-block; font-size:10px; padding:2px 7px; border-radius:3px;
+    background:#16242e; color:#8fb6c4; margin-right:5px;
+  }
+  .warnbox{
+    background:#2a1f10; border:1px solid #5a3f1a; color:#ffcf8a;
+    border-radius:5px; padding:8px 10px; font-size:11px; line-height:1.6; margin-top:8px;
+  }
+  .okbox{background:#0f2419; border:1px solid #204d34; color:#8fe0ae}
+  .ptlist{max-height:190px; overflow-y:auto; font-size:11px; font-variant-numeric:tabular-nums}
+  .ptrow{
+    display:flex; gap:6px; padding:3px 6px; border-radius:3px; cursor:pointer;
+    color:var(--dim);
+  }
+  .ptrow:hover{background:#16212a}
+  .ptrow.on{background:#173038; color:var(--accent)}
+  .ptrow span:first-child{width:26px; color:#5e7583}
+  /* ---------- toast ---------- */
+  #toast{
+    position:fixed; left:50%; bottom:34px; transform:translateX(-50%) translateY(12px);
+    background:#12323b; border:1px solid #1f5f70; color:#a7f2ff;
+    padding:9px 18px; border-radius:6px; font-size:12px; opacity:0;
+    transition:.25s; pointer-events:none; z-index:99;
+  }
+  #toast.on{opacity:1; transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<aside class="rail">
+  <div class="brand">
+    <h1>APEX / VELOCITY</h1>
+    <p>赛道编辑器 · TRACK EDITOR</p>
+  </div>
+  <div class="tl-label">赛道 TRACKS</div>
+  <div class="tlist" id="tlist"></div>
+  <div class="rail-foot" id="footinfo">—</div>
+</aside>
+
+<main>
+  <header>
+    <button class="btn primary" id="btnSave">保存 tracks.json</button>
+    <button class="btn" id="btnRevert">还原此条</button>
+    <button class="btn danger" id="btnDelete">删除选中点</button>
+    <div class="spacer"></div>
+    <span class="hint"><b>拖拽</b> 移动控制点 · <b>双击</b> 加点 · <b>滚轮</b> 缩放 · <b>空格拖拽</b> 平移 · <b>F</b> 适应窗口</span>
+  </header>
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div class="stat" id="stat"></div>
+    <div class="legend">
+      <div><i style="background:#57d98a"></i>高速弯 &gt;60m</div>
+      <div><i style="background:#ffb454"></i>中速弯 25-60m</div>
+      <div><i style="background:#ff5d5d"></i>急弯 &lt;25m</div>
+      <div><i style="background:#4fe9ff"></i>起跑线</div>
+    </div>
+  </div>
+</main>
+
+<aside class="inspector">
+  <div class="sec">
+    <h2>赛道 TRACK</h2>
+    <div class="row"><label>名称</label><input type="text" id="fName"></div>
+    <div class="row"><label>路宽 (m)</label><input type="number" id="fWidth" min="6" max="40" step="1"></div>
+    <div class="row"><label>圈数</label><input type="number" id="fLaps" min="1" max="20" step="1"></div>
+    <div class="row"><label>难度 1-5</label><input type="number" id="fDiff" min="1" max="5" step="1"></div>
+  </div>
+
+  <div class="sec">
+    <h2>实时统计</h2>
+    <div class="row"><label>赛道长度</label><span class="val" id="sLen">—</span></div>
+    <div class="row"><label>控制点</label><span class="val" id="sPts">—</span></div>
+    <div class="row"><label>最急弯半径</label><span class="val" id="sMinR">—</span></div>
+    <div class="row"><label>包围盒</label><span class="val" id="sBox">—</span></div>
+    <div id="diag"></div>
+  </div>
+
+  <div class="sec">
+    <h2>选中控制点</h2>
+    <div class="row"><label>X</label><input type="number" id="fPX" step="1"></div>
+    <div class="row"><label>Z</label><input type="number" id="fPZ" step="1"></div>
+    <div class="muted" id="selInfo">未选中</div>
+  </div>
+
+  <div class="sec">
+    <h2>控制点列表</h2>
+    <div class="ptlist" id="ptlist"></div>
+  </div>
+
+  <div class="sec">
+    <h2>主题色（可选）</h2>
+    <div class="row"><label>天空</label><input type="color" id="cSky"></div>
+    <div class="row"><label>雾</label><input type="color" id="cFog"></div>
+    <div class="row"><label>地面</label><input type="color" id="cGround"></div>
+    <div class="muted" style="margin-top:6px">只改这三项，其余配色保持原样</div>
+  </div>
+</aside>
+
+<div id="toast"></div>
+
+<script>
+/* =========================================================
+   1. 数据层
+   ========================================================= */
+let DOC = null;          // 原始 tracks.json 结构
+let CUR = null;          // 当前赛道对象（引用）
+let SEL = -1;            // 选中控制点索引
+let DIRTY = new Set();   // 被改过的赛道 id
+
+const $ = id => document.getElementById(id);
+
+function catmull(p0,p1,p2,p3,t){
+  const t2=t*t, t3=t2*t;
+  return {
+    x: 0.5*(2*p1.x + (-p0.x+p2.x)*t + (2*p0.x-5*p1.x+4*p2.x-p3.x)*t2 + (-p0.x+3*p1.x-3*p2.x+p3.x)*t3),
+    z: 0.5*(2*p1.z + (-p0.z+p2.z)*t + (2*p0.z-5*p1.z+4*p2.z-p3.z)*t2 + (-p0.z+3*p1.z-3*p2.z+p3.z)*t3)
+  };
+}
+
+/* 与 TrackPath.build_from_def 完全一致的采样步长 */
+function sampleTrack(track){
+  const pts = track.points.map(p=>({x:+p[0], z:+p[1]}));
+  const n = pts.length;
+  if(n<4) return [];
+  const out=[];
+  for(let i=0;i<n;i++){
+    const p0=pts[(i-1+n)%n], p1=pts[i], p2=pts[(i+1)%n], p3=pts[(i+2)%n];
+    const d = Math.hypot(p1.x-p2.x, p1.z-p2.z);
+    const steps = Math.max(4, Math.min(64, Math.ceil(d/2.0)));
+    for(let k=0;k<steps;k++) out.push(catmull(p0,p1,p2,p3,k/steps));
+  }
+  if(out.length===0) return [];
+  out.push({...out[0]});   // 闭合
+  return out;
+}
+
+function trackLength(smp){
+  let L=0;
+  for(let i=1;i<smp.length;i++) L+=Math.hypot(smp[i].x-smp[i-1].x, smp[i].z-smp[i-1].z);
+  return L;
+}
+
+/* 每段曲率半径：用前后 3 个采样点做外接圆 */
+function radii(smp){
+  const r=[];
+  const w=3;
+  for(let i=0;i<smp.length;i++){
+    const a=smp[(i-w+smp.length)%smp.length], b=smp[i], c=smp[(i+w)%smp.length];
+    const ab=Math.hypot(b.x-a.x,b.z-a.z), bc=Math.hypot(c.x-b.x,c.z-b.z), ca=Math.hypot(a.x-c.x,a.z-c.z);
+    const cross=Math.abs((b.x-a.x)*(c.z-a.z)-(b.z-a.z)*(c.x-a.x));
+    r.push(cross<1e-6 ? 1e6 : (ab*bc*ca)/(2*cross));
+  }
+  return r;
+}
+
+/* =========================================================
+   2. 视图（世界 ↔ 屏幕）
+   ========================================================= */
+const cv = $('cv'), ctx = cv.getContext('2d');
+let view = {ox:0, oz:0, k:1};   // 世界原点映射到屏幕中心，k=像素/米
+let vw=0, vh=0, dpr=1;
+
+function resize(){
+  const r = cv.parentElement.getBoundingClientRect();
+  dpr = window.devicePixelRatio || 1;
+  vw = r.width; vh = r.height;
+  cv.width = Math.round(vw*dpr); cv.height = Math.round(vh*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  draw();
+}
+window.addEventListener('resize', resize);
+
+const toScreen = (x,z)=>({ x: vw/2 + (x-view.ox)*view.k, y: vh/2 + (z-view.oz)*view.k });
+const toWorld  = (px,py)=>({ x: (px-vw/2)/view.k + view.ox, z: (py-vh/2)/view.k + view.oz });
+
+function fitView(){
+  if(!CUR) return;
+  const pts = CUR.points.map(p=>({x:+p[0], z:+p[1]}));
+  if(pts.length===0) return;
+  let mnx=1e9,mxx=-1e9,mnz=1e9,mxz=-1e9;
+  for(const p of pts){ mnx=Math.min(mnx,p.x); mxx=Math.max(mxx,p.x); mnz=Math.min(mnz,p.z); mxz=Math.max(mxz,p.z); }
+  const cx=(mnx+mxx)/2, cz=(mnz+mxz)/2;
+  const w=Math.max(mxx-mnx, 60), h=Math.max(mxz-mnz, 60);
+  const pad = 0.82;
+  view.ox=cx; view.oz=cz;
+  view.k = Math.min(vw/(w/pad), vh/(h/pad));
+}
+
+/* =========================================================
+   3. 绘制
+   ========================================================= */
+let SMP=[], RAD=[], LEN=0;
+
+function draw(){
+  ctx.clearRect(0,0,vw,vh);
+  // 网格
+  const step = pickGrid();
+  ctx.strokeStyle='#14202a'; ctx.lineWidth=1;
+  const a=toWorld(0,0), b=toWorld(vw,vh);
+  const gx0=Math.floor(a.x/step)*step, gx1=Math.ceil(b.x/step)*step;
+  const gz0=Math.floor(a.z/step)*step, gz1=Math.ceil(b.z/step)*step;
+  ctx.beginPath();
+  for(let x=gx0;x<=gx1;x+=step){ const p=toScreen(x,gz0), q=toScreen(x,gz1); ctx.moveTo(p.x,p.y); ctx.lineTo(q.x,q.y); }
+  for(let z=gz0;z<=gz1;z+=step){ const p=toScreen(gx0,z), q=toScreen(gx1,z); ctx.moveTo(p.x,p.y); ctx.lineTo(q.x,q.y); }
+  ctx.stroke();
+  // 原点十字
+  const o=toScreen(0,0);
+  ctx.strokeStyle='#20323d'; ctx.beginPath();
+  ctx.moveTo(o.x-9,o.y); ctx.lineTo(o.x+9,o.y); ctx.moveTo(o.x,o.y-9); ctx.lineTo(o.x,o.y+9); ctx.stroke();
+
+  if(!CUR || SMP.length<4) return;
+
+  const half = (+CUR.width)/2;
+
+  // 路面带
+  ctx.beginPath();
+  for(let i=0;i<SMP.length;i++){
+    const p=SMP[i], n=SMP[(i+1)%SMP.length];
+    const dx=n.x-p.x, dz=n.z-p.z, l=Math.hypot(dx,dz)||1;
+    const nx=-dz/l, nz=dx/l;
+    const s=toScreen(p.x+nx*half, p.z+nz*half);
+    i===0?ctx.moveTo(s.x,s.y):ctx.lineTo(s.x,s.y);
+  }
+  for(let i=SMP.length-1;i>=0;i--){
+    const p=SMP[i], n=SMP[(i+1)%SMP.length];
+    const dx=n.x-p.x, dz=n.z-p.z, l=Math.hypot(dx,dz)||1;
+    const nx=-dz/l, nz=dx/l;
+    const s=toScreen(p.x-nx*half, p.z-nz*half);
+    ctx.lineTo(s.x,s.y);
+  }
+  ctx.closePath();
+  ctx.fillStyle='#1b262e'; ctx.fill();
+  ctx.strokeStyle='#2b3d48'; ctx.lineWidth=1; ctx.stroke();
+
+  // 中心线（按弯道半径着色）
+  ctx.lineCap='round'; ctx.lineJoin='round';
+  for(let i=1;i<SMP.length;i++){
+    const r=RAD[i]||1e6;
+    ctx.strokeStyle = r<25 ? '#ff5d5d' : r<60 ? '#ffb454' : '#57d98a';
+    ctx.globalAlpha = .55;
+    ctx.lineWidth = 1.6;
+    const a1=toScreen(SMP[i-1].x,SMP[i-1].z), b1=toScreen(SMP[i].x,SMP[i].z);
+    ctx.beginPath(); ctx.moveTo(a1.x,a1.y); ctx.lineTo(b1.x,b1.y); ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+
+  // 起跑线（index 0 处，垂直于切线）
+  const p0=SMP[0], p1=SMP[Math.min(8,SMP.length-1)];
+  const dx=p1.x-p0.x, dz=p1.z-p0.z, l=Math.hypot(dx,dz)||1;
+  const nx=-dz/l, nz=dx/l;
+  const sA=toScreen(p0.x+nx*half, p0.z+nz*half);
+  const sB=toScreen(p0.x-nx*half, p0.z-nz*half);
+  ctx.strokeStyle='#4fe9ff'; ctx.lineWidth=3; ctx.beginPath();
+  ctx.moveTo(sA.x,sA.y); ctx.lineTo(sB.x,sB.y); ctx.stroke();
+
+  // 控制点
+  for(let i=0;i<CUR.points.length;i++){
+    const w={x:+CUR.points[i][0], z:+CUR.points[i][1]};
+    const s=toScreen(w.x,w.z);
+    const on = i===SEL;
+    ctx.beginPath(); ctx.arc(s.x,s.y, on?7:5, 0, Math.PI*2);
+    ctx.fillStyle = on ? '#4fe9ff' : '#14232c';
+    ctx.fill();
+    ctx.strokeStyle = on ? '#bff6ff' : '#3d5765';
+    ctx.lineWidth = on?2.2:1.4;
+    ctx.stroke();
+    if(view.k > 0.28 || on){
+      ctx.fillStyle = on ? '#bff6ff' : '#5e7583';
+      ctx.font = '10px -apple-system,sans-serif';
+      ctx.fillText(String(i), s.x+9, s.y-8);
+    }
+  }
+}
+
+function pickGrid(){
+  const target = 90/view.k;              // 目标屏幕间距 ~90px
+  const pow = Math.pow(10, Math.floor(Math.log10(target)));
+  for(const m of [1,2,5,10]) if(pow*m >= target*0.5) return pow*m;
+  return pow*10;
+}
+
+/* =========================================================
+   4. 重算 & 面板刷新
+   ========================================================= */
+function recompute(){
+  if(!CUR){ SMP=[]; RAD=[]; LEN=0; return; }
+  SMP = sampleTrack(CUR);
+  RAD = radii(SMP);
+  LEN = trackLength(SMP);
+
+  // 统计
+  $('sLen').textContent = LEN.toFixed(0)+' m';
+  $('sPts').textContent = CUR.points.length;
+  const minR = RAD.length ? Math.min(...RAD) : 0;
+  $('sMinR').textContent = minR>1e5 ? '—' : minR.toFixed(0)+' m';
+  $('sMinR').style.color = minR<25 ? '#ff5d5d' : minR<60 ? '#ffb454' : '#57d98a';
+
+  let mnx=1e9,mxx=-1e9,mnz=1e9,mxz=-1e9;
+  for(const p of SMP){ mnx=Math.min(mnx,p.x); mxx=Math.max(mxx,p.x); mnz=Math.min(mnz,p.z); mxz=Math.max(mxz,p.z); }
+  $('sBox').textContent = `${(mxx-mnx).toFixed(0)}×${(mxz-mnz).toFixed(0)} m`;
+
+  // 诊断
+  const dg=$('diag'); let msgs=[];
+  if(LEN < 1200) msgs.push(['warn',`赛道仅 ${LEN.toFixed(0)}m，一圈偏短，建议 ≥1500m`]);
+  if(LEN > 5000) msgs.push(['warn',`赛道 ${LEN.toFixed(0)}m 偏长，加载与显存压力会明显上升`]);
+  if(minR < 20) msgs.push(['bad',`最急弯半径 ${minR.toFixed(0)}m，低于路宽 ${CUR.width}m 的两倍，高速必撞墙`]);
+  else if(minR < 30) msgs.push(['warn',`最急弯 ${minR.toFixed(0)}m，属于发夹弯，需要提前刹车`]);
+  if(CUR.points.length < 8) msgs.push(['warn','控制点少于 8 个，弯形会很生硬']);
+  if(msgs.length===0) msgs.push(['ok','形状正常，可以直接跑']);
+  dg.innerHTML = msgs.map(([k,t])=>`<div class="warnbox ${k==='ok'?'okbox':''}" style="${k==='bad'?'background:#2a1212;border-color:#5e2222;color:#ff9b9b':''}">${t}</div>`).join('');
+
+  // 点列表
+  $('ptlist').innerHTML = CUR.points.map((p,i)=>
+    `<div class="ptrow ${i===SEL?'on':''}" data-i="${i}"><span>${i}</span><span>${(+p[0]).toFixed(0)}</span><span>${(+p[1]).toFixed(0)}</span></div>`
+  ).join('');
+  $('ptlist').querySelectorAll('.ptrow').forEach(el=>{
+    el.onclick = ()=>{ SEL=+el.dataset.i; syncInspector(); draw(); recompute(); };
+  });
+
+  // 左栏长度
+  const li = document.querySelector(`.titem[data-id="${CUR.id}"] .ln`);
+  if(li) li.textContent = LEN.toFixed(0)+'m';
+  $('footinfo').textContent = DIRTY.size ? `${DIRTY.size} 条已修改，未保存` : '无未保存改动';
+}
+
+function syncInspector(){
+  $('fName').value = CUR.name || '';
+  $('fWidth').value = CUR.width;
+  $('fLaps').value = CUR.laps;
+  $('fDiff').value = CUR.difficulty || 1;
+  const th = CUR.theme || {};
+  $('cSky').value  = normHex(th.skyTop || '#000000');
+  $('cFog').value  = normHex(th.fogColor || '#000000');
+  $('cGround').value = normHex((th.ground && th.ground.base) || '#000000');
+
+  if(SEL>=0 && CUR.points[SEL]){
+    $('fPX').value = (+CUR.points[SEL][0]).toFixed(0);
+    $('fPZ').value = (+CUR.points[SEL][1]).toFixed(0);
+    $('selInfo').innerHTML = `第 <b>${SEL}</b> 点 · 拖动移动，Delete 删除`;
+  }else{
+    $('fPX').value=''; $('fPZ').value='';
+    $('selInfo').textContent='未选中（点击画布上的圆点）';
+  }
+}
+function normHex(s){
+  if(typeof s!=='string') return '#000000';
+  s=s.trim();
+  if(/^#[0-9a-fA-F]{6}$/.test(s)) return s.toLowerCase();
+  if(/^#[0-9a-fA-F]{3}$/.test(s)) return '#'+s[1]+s[1]+s[2]+s[2]+s[3]+s[3];
+  return '#000000';
+}
+
+/* =========================================================
+   5. 交互
+   ========================================================= */
+let drag = null;       // {i, offx, offz}
+let panning = null;    // {sx, sy, ox, oz}
+let spaceDown = false;
+
+cv.addEventListener('pointerdown', e=>{
+  cv.setPointerCapture(e.pointerId);
+  const r = cv.getBoundingClientRect();
+  const px = e.clientX-r.left, py = e.clientY-r.top;
+
+  if(spaceDown || e.button===1 || e.button===2){
+    panning = {px, py, ox:view.ox, oz:view.oz};
+    return;
+  }
+  if(!CUR) return;
+
+  // 命中控制点
+  let hit=-1, best=14;
+  for(let i=0;i<CUR.points.length;i++){
+    const s=toScreen(+CUR.points[i][0], +CUR.points[i][1]);
+    const d=Math.hypot(s.x-px, s.y-py);
+    if(d<best){ best=d; hit=i; }
+  }
+  if(hit>=0){
+    SEL=hit;
+    const w=toWorld(px,py);
+    drag={ i:hit, offx: +CUR.points[hit][0]-w.x, offz: +CUR.points[hit][1]-w.z };
+    syncInspector(); recompute(); draw();
+  }else{
+    SEL=-1; syncInspector(); recompute(); draw();
+  }
+});
+
+cv.addEventListener('pointermove', e=>{
+  const r = cv.getBoundingClientRect();
+  const px = e.clientX-r.left, py = e.clientY-r.top;
+
+  if(panning){
+    view.ox = panning.ox - (px-panning.px)/view.k;
+    view.oz = panning.oz - (py-panning.py)/view.k;
+    draw(); return;
+  }
+  if(drag && CUR){
+    const w = toWorld(px,py);
+    let nx = w.x + drag.offx, nz = w.z + drag.offz;
+    if(e.shiftKey){ nx=Math.round(nx/10)*10; nz=Math.round(nz/10)*10; }
+    else { nx=Math.round(nx); nz=Math.round(nz); }
+    CUR.points[drag.i][0]=nx; CUR.points[drag.i][1]=nz;
+    DIRTY.add(CUR.id);
+    syncInspector(); recompute(); draw();
+  }
+});
+
+cv.addEventListener('pointerup', e=>{
+  drag=null; panning=null;
+  try{ cv.releasePointerCapture(e.pointerId); }catch(_){}
+});
+
+cv.addEventListener('dblclick', e=>{
+  if(!CUR) return;
+  const r = cv.getBoundingClientRect();
+  const px=e.clientX-r.left, py=e.clientY-r.top;
+
+  // 找最近的控制点插在它后面
+  let best=-1, bestd=1e9;
+  for(let i=0;i<CUR.points.length;i++){
+    const s=toScreen(+CUR.points[i][0], +CUR.points[i][1]);
+    const d=Math.hypot(s.x-px,s.y-py);
+    if(d<bestd){ bestd=d; best=i; }
+  }
+  const w=toWorld(px,py);
+  const at = best>=0 && bestd<120 ? best+1 : CUR.points.length;
+  CUR.points.splice(at,0,[Math.round(w.x), Math.round(w.z)]);
+  SEL=at; DIRTY.add(CUR.id); syncInspector(); recompute(); draw();
+  toast(`已插入控制点 #${at}`);
+});
+
+cv.addEventListener('wheel', e=>{
+  e.preventDefault();
+  const r=cv.getBoundingClientRect();
+  const px=e.clientX-r.left, py=e.clientY-r.top;
+  const before=toWorld(px,py);
+  const f = Math.exp(-e.deltaY*0.0016);
+  view.k = Math.max(0.05, Math.min(4, view.k*f));
+  const after=toWorld(px,py);
+  view.ox += before.x-after.x; view.oz += before.z-after.z;
+  draw();
+},{passive:false});
+
+window.addEventListener('keydown', e=>{
+  if(e.code==='Space'){ spaceDown=true; cv.style.cursor='grab'; e.preventDefault(); }
+  if(e.key==='f'||e.key==='F'){ fitView(); draw(); }
+  if((e.key==='Delete'||e.key==='Backspace') && SEL>=0 && CUR && document.activeElement.tagName!=='INPUT'){
+    if(CUR.points.length<=4){ toast('至少保留 4 个控制点'); return; }
+    CUR.points.splice(SEL,1); DIRTY.add(CUR.id);
+    SEL=Math.min(SEL, CUR.points.length-1);
+    syncInspector(); recompute(); draw();
+  }
+  if(e.key==='Escape'){ SEL=-1; syncInspector(); recompute(); draw(); }
+});
+window.addEventListener('keyup', e=>{
+  if(e.code==='Space'){ spaceDown=false; cv.style.cursor='crosshair'; }
+});
+
+/* 属性面板 */
+$('fWidth').oninput = ()=>{ if(!CUR) return; CUR.width=+$('fWidth').value||20; DIRTY.add(CUR.id); recompute(); draw(); };
+$('fLaps').oninput  = ()=>{ if(!CUR) return; CUR.laps=+$('fLaps').value||3; DIRTY.add(CUR.id); };
+$('fDiff').oninput  = ()=>{ if(!CUR) return; CUR.difficulty=+$('fDiff').value||1; DIRTY.add(CUR.id); };
+$('fName').oninput  = ()=>{ if(!CUR) return; CUR.name=$('fName').value; DIRTY.add(CUR.id); };
+$('fPX').onchange   = ()=>{ if(!CUR||SEL<0) return; CUR.points[SEL][0]=+$('fPX').value||0; DIRTY.add(CUR.id); recompute(); draw(); };
+$('fPZ').onchange   = ()=>{ if(!CUR||SEL<0) return; CUR.points[SEL][1]=+$('fPZ').value||0; DIRTY.add(CUR.id); recompute(); draw(); };
+$('cSky').oninput   = ()=>{ if(!CUR) return; CUR.theme.skyTop=$('cSky').value; DIRTY.add(CUR.id); };
+$('cFog').oninput   = ()=>{ if(!CUR) return; CUR.theme.fogColor=$('cFog').value; DIRTY.add(CUR.id); };
+$('cGround').oninput= ()=>{ if(!CUR) return; CUR.theme.ground.base=$('cGround').value; DIRTY.add(CUR.id); };
+
+/* =========================================================
+   6. 赛道切换 / 保存
+   ========================================================= */
+function listTracks(){
+  $('tlist').innerHTML = DOC.tracks.map(t=>{
+    const n = t.points.length;
+    return `<div class="titem" data-id="${t.id}">
+      <div><div class="nm">${t.name}</div><div class="idd">${t.id.toUpperCase()}</div></div>
+      <div class="ln">${n}p</div>
+    </div>`;
+  }).join('');
+  $('tlist').querySelectorAll('.titem').forEach(el=>{
+    el.onclick = ()=> selectTrack(el.dataset.id);
+  });
+}
+
+function selectTrack(id){
+  CUR = DOC.tracks.find(t=>t.id===id);
+  SEL = -1;
+  $('tlist').querySelectorAll('.titem').forEach(e=>e.classList.toggle('on', e.dataset.id===id));
+  fitView(); syncInspector(); recompute(); draw();
+}
+
+$('btnSave').onclick = ()=>{
+  const blob = new Blob([JSON.stringify(DOC, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'tracks.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  localStorage.setItem('apex_tracks_draft', JSON.stringify(DOC));
+  toast('已导出 tracks.json —— 替换项目里的 data/tracks.json');
+};
+
+$('btnRevert').onclick = ()=>{
+  fetch('../../data/tracks.json').then(r=>r.json()).then(base=>{
+    const src = base.tracks.find(t=>t.id===CUR.id);
+    if(!src) return;
+    const idx = DOC.tracks.findIndex(t=>t.id===CUR.id);
+    DOC.tracks[idx] = src;
+    CUR = DOC.tracks[idx];
+    DIRTY.delete(CUR.id);
+    SEL=-1; fitView(); syncInspector(); recompute(); draw();
+    toast('已还原 ' + CUR.name);
+  }).catch(()=>toast('读取原文件失败，请用 http 方式打开本页面'));
+};
+
+$('btnDelete').onclick = ()=>{
+  if(!CUR||SEL<0) return;
+  if(CUR.points.length<=4){ toast('至少保留 4 个控制点'); return; }
+  CUR.points.splice(SEL,1); DIRTY.add(CUR.id);
+  SEL=Math.min(SEL, CUR.points.length-1);
+  syncInspector(); recompute(); draw();
+};
+
+function toast(msg){
+  const el=$('toast');
+  el.textContent=msg; el.classList.add('on');
+  clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('on'), 2400);
+}
+
+/* =========================================================
+   7. 启动
+   ========================================================= */
+function boot(doc){
+  DOC = doc;
+  listTracks();
+  selectTrack(DOC.tracks[0].id);
+  $('footinfo').textContent = `读取 ${DOC.tracks.length} 条赛道`;
+}
+
+fetch('../../data/tracks.json')
+  .then(r=>{ if(!r.ok) throw 0; return r.json(); })
+  .then(boot)
+  .catch(()=>{
+    const draft = localStorage.getItem('apex_tracks_draft');
+    if(draft){ boot(JSON.parse(draft)); toast('已载入上次的本地草稿'); }
+    else{
+      document.body.innerHTML =
+        '<div style="margin:80px auto;max-width:520px;color:#dce7ec;font:14px/2 -apple-system,sans-serif">'+
+        '<h2 style="font-size:16px;margin-bottom:12px">需要以本地服务方式打开</h2>'+
+        '<p style="color:#7e94a1">浏览器禁止 file:// 页面读取同目录的 JSON。在项目根目录执行：</p>'+
+        '<pre style="background:#121a20;border:1px solid #1e2b34;padding:12px;border-radius:6px;color:#4fe9ff">python3 -m http.server 8848</pre>'+
+        '<p style="color:#7e94a1">然后访问 http://localhost:8848/tools/track_editor.html</p></div>';
+    }
+  });
+
+resize();
+</script>
+</body>
+</html>

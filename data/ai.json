@@ -1,0 +1,48 @@
+{
+ "source": "src/main.js",
+ "defs": [
+  {
+   "number": 3,
+   "name": "R. VOSS",
+   "color": "#2f6b55",
+   "baseSpeed": 76.5,
+   "variant": "bmw_m4_gt3"
+  },
+  {
+   "number": 21,
+   "name": "A. SANTOS",
+   "color": "#b85a2c",
+   "baseSpeed": 73.6,
+   "variant": "lambo_urus"
+  },
+  {
+   "number": 44,
+   "name": "M. OKADA",
+   "color": "#3f8fa8",
+   "baseSpeed": 70.8,
+   "variant": "byd_yangwang_u7"
+  }
+ ],
+ "rival_offsets": [
+  1,
+  3,
+  5
+ ],
+ "camera_modes": [
+  {
+   "id": "chase",
+   "label": "3RD",
+   "name": "第三人称 · 追尾视角"
+  },
+  {
+   "id": "close",
+   "label": "2ND",
+   "name": "第二人称 · 近身追击"
+  },
+  {
+   "id": "cockpit",
+   "label": "1ST",
+   "name": "第一人称 · 座舱视角"
+  }
+ ]
+}
