@@ -49,11 +49,6 @@
 | --- | --- |
 | ![冰川湖环道](docs/media/tracks/glacier-ring.jpg) | ![都会环线](docs/media/tracks/metro-ring.jpg) |
 
-比赛 HUD：小地图、圈速、名次、转速表、档位与氮气一屏呈现。
-
-![比赛 HUD](docs/m54/hud_compare.jpg)
-
-[![宣传片海报](docs/media/trailer_poster.jpg)](https://github.com/TongJX614/apex-velocity/releases/download/v0.54/apex-velocity-trailer-2026.mp4)
 
 > 《从晨光到霓虹》— 84 秒，全片 100% 游戏内真实渲染，无引擎外 CG。
 > 点击海报下载 1080p 成片。
