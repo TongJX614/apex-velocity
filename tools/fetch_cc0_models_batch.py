@@ -4,7 +4,7 @@
 Source: https://polyhaven.com  |  License: CC0 1.0 Universal (public domain).
 Downloads the 1k-texture glTF variant (geometry is shared across resolutions),
 then drops a .gdignore in each folder so Godot never imports the multi-million
-polygon originals -- only the decimated LOD GLBs in assets/venues/ are imported.
+polygon originals -- only the decimated LOD GLBs in maps/assets/venues/ are imported.
 
 Usage:
     python3 tools/fetch_cc0_models_batch.py grass_bermuda_01 rock_face_01 ...

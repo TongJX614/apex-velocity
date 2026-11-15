@@ -3,7 +3,7 @@
 
 All assets are CC0 1.0 Universal (public domain): https://polyhaven.com/license
 Drops 1k diffuse / OpenGL normal / roughness maps into
-assets/thirdparty/polyhaven/textures/<id>/<id>_{diff,nor,rough}.jpg
+maps/assets/polyhaven/textures/<id>/<id>_{diff,nor,rough}.jpg
 """
 import json
 import os

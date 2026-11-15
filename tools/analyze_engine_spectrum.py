@@ -1445,7 +1445,7 @@ def build_observations(rows, type_summary, harm_summary) -> list:
     lines.append("")
     lines.append("需要注意的口径限制：")
     lines.append("  · 本报告只覆盖**程序化合成**部分。audio_audit.gd 渲染 WAV 时只取")
-    lines.append("    _fill_ice/_fill_ev 的输出缓冲区，真实录音的燃烧质感层（assets/audio/engine/*.ogg）")
+    lines.append("    _fill_ice/_fill_ev 的输出缓冲区，真实录音的燃烧质感层（cars/assets/audio/engine/*.ogg）")
     lines.append("    走的是独立 AudioStreamPlayer 通道，没有混进 WAV。所以 EV 的真实听感高频")
     lines.append("    会比这里的数字更高（录音素材本身是宽频的），0.5% 这条线应留余量。")
     lines.append("  · V8 红区的点火基频最高到 560Hz（8300rpm × 4 缸），已顶到题面给的")

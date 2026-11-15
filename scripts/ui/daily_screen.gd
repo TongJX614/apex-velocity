@@ -78,7 +78,9 @@ func _ready() -> void:
 	close_row.add_child(UIStyle.label("✕", 12, UIStyle.a(UIStyle.GOLD, 0.95)))
 	close_row.add_child(UIStyle.label("关闭  /  CLOSE", 11, UIStyle.TXT_SUB))
 	close_row.add_child(UIStyle.spacer())
-	close_row.add_child(UIStyle.keycap("ESC", UIStyle.GOLD, 9))
+	var esc_key := UIStyle.keycap("ESC", UIStyle.GOLD, 9)
+	esc_key.visible = Settings.key_hints
+	close_row.add_child(esc_key)
 
 	# 日期 + 可领取摘要
 	var date_row := HBoxContainer.new()
@@ -109,6 +111,7 @@ func _ready() -> void:
 	_panel.add_child(foot)
 	foot.add_child(UIStyle.keycap("ENTER", UIStyle.GOLD, 9))
 	foot.add_child(UIStyle.label("检查可领取的合约   ·   每日刷新后重新累计", 10, UIStyle.TXT_DIM))
+	foot.visible = Settings.key_hints
 
 	_refresh()
 	close_btn.grab_focus()

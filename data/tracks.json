@@ -148,7 +148,33 @@
     "weather": "none",
     "cloudsTint": "#fff3e2",
     "glowOpacity": 0.3,
-    "sunSprite": true
+    "sunSprite": true,
+    "gradeContrast": 1.22,
+    "gradeSaturation": 1.24,
+    "gradeBrightness": 1.02,
+    "ambientEnergy": 0.62,
+    "sunSoftness": 0.0,
+    "aerial": 0.26,
+    "fogSunScatter": 0.14,
+    "skyBrightness": 0.78,
+    "volumetric": false,
+    "ssr": false,
+    "gradeTemp": 0.12,
+    "gradeShadow": "#0b3a4a",
+    "gradeHighlight": "#ffe9c4",
+    "gradeMix": 0.55,
+    "filmGrain": 0.01,
+    "shadowDistMul": 0.8,
+    "ssaoRadius": 1.6,
+    "ssaoIntensity": 2.4,
+    "shadowBlur": 2.1,
+    "fillColor": "#bfe4ff",
+    "fillPower": 0.38,
+    "fillDir": [
+     -0.42,
+     0.62,
+     -0.18
+    ]
    }
   },
   {
@@ -311,7 +337,23 @@
     "sunSprite": false,
     "headlight": true,
     "fogNear": 160,
-    "fogFar": 1600
+    "fogFar": 1600,
+    "gradeTemp": -0.06,
+    "gradeShadow": "#2a0b3a",
+    "gradeHighlight": "#bfe9ff",
+    "gradeMix": 0.6,
+    "filmGrain": 0.014,
+    "shadowDistMul": 0.9,
+    "ssaoRadius": 2.0,
+    "ssaoIntensity": 3.1,
+    "shadowBlur": 1.6,
+    "fillColor": "#8fa6ff",
+    "fillPower": 0.12,
+    "fillDir": [
+     -0.25,
+     0.65,
+     0.4
+    ]
    }
   },
   {
@@ -469,7 +511,36 @@
     "cloudsTint": "#ffffff",
     "glowOpacity": 0.4,
     "sunSprite": true,
-    "ambientEnergy": 0.8
+    "ambientEnergy": 0.84,
+    "gradeContrast": 1.2,
+    "gradeSaturation": 1.1,
+    "gradeBrightness": 1.03,
+    "sunSoftness": 0.0,
+    "aerial": 0.3,
+    "fogSunScatter": 0.08,
+    "skyBrightness": 0.8,
+    "fogHeight": 40.0,
+    "fogHeightDensity": -0.015,
+    "volumetric": true,
+    "ssr": false,
+    "volAmbientInject": 0.22,
+    "volDensity": 0.0045,
+    "gradeTemp": -0.08,
+    "gradeShadow": "#1c3550",
+    "gradeHighlight": "#fff6e6",
+    "gradeMix": 0.45,
+    "filmGrain": 0.008,
+    "shadowDistMul": 0.75,
+    "ssaoRadius": 1.5,
+    "ssaoIntensity": 2.2,
+    "shadowBlur": 2.7,
+    "fillColor": "#dceeff",
+    "fillPower": 0.5,
+    "fillDir": [
+     0.48,
+     0.58,
+     0.32
+    ]
    }
   },
   {
@@ -668,7 +739,33 @@
     "glowOpacity": 0.4,
     "sunSprite": true,
     "headlight": true,
-    "headlightIntensity": 95
+    "headlightIntensity": 95,
+    "gradeContrast": 1.27,
+    "gradeSaturation": 1.3,
+    "ambientEnergy": 0.62,
+    "sunSoftness": 0.0,
+    "aerial": 0.34,
+    "fogSunScatter": 0.32,
+    "fogHeight": 3.0,
+    "fogHeightDensity": 0.025,
+    "volumetric": true,
+    "ssr": false,
+    "gradeTemp": 0.2,
+    "gradeShadow": "#3a1b12",
+    "gradeHighlight": "#ffd9a0",
+    "gradeMix": 0.6,
+    "filmGrain": 0.012,
+    "shadowDistMul": 0.85,
+    "ssaoRadius": 2.2,
+    "ssaoIntensity": 3.0,
+    "shadowBlur": 2.4,
+    "fillColor": "#ffc090",
+    "fillPower": 0.4,
+    "fillDir": [
+     0.6,
+     0.52,
+     0.24
+    ]
    }
   },
   {
@@ -797,8 +894,8 @@
      "kind": "coast"
     },
     "roadTint": "#f3e9d8",
-    "roadRoughness": 0.8,
-    "roadMetalness": 0.05,
+    "roadRoughness": 0.86,
+    "roadMetalness": 0.03,
     "lineColor": "#f6ecda",
     "lineEmissive": "#000000",
     "lineEmissiveIntensity": 0,
@@ -817,7 +914,35 @@
     "weather": "none",
     "cloudsTint": "#ffd2ae",
     "glowOpacity": 0.55,
-    "sunSprite": true
+    "sunSprite": true,
+    "gradeContrast": 1.26,
+    "gradeSaturation": 1.3,
+    "gradeBrightness": 1.01,
+    "ambientEnergy": 0.68,
+    "sunSoftness": 0.0,
+    "aerial": 0.36,
+    "fogSunScatter": 0.42,
+    "skyBrightness": 0.78,
+    "fogHeight": 4.0,
+    "fogHeightDensity": 0.02,
+    "volumetric": true,
+    "ssr": false,
+    "gradeTemp": 0.24,
+    "gradeShadow": "#3a1838",
+    "gradeHighlight": "#ffd08a",
+    "gradeMix": 0.65,
+    "filmGrain": 0.01,
+    "shadowDistMul": 0.85,
+    "ssaoRadius": 1.7,
+    "ssaoIntensity": 2.5,
+    "shadowBlur": 2.6,
+    "fillColor": "#ffd6a8",
+    "fillPower": 0.38,
+    "fillDir": [
+     0.7,
+     0.48,
+     0.22
+    ]
    }
   },
   {
@@ -982,7 +1107,33 @@
     "weather": "none",
     "cloudsTint": "#ffc9a2",
     "glowOpacity": 0.45,
-    "sunSprite": true
+    "sunSprite": true,
+    "gradeContrast": 1.24,
+    "gradeSaturation": 1.22,
+    "ambientEnergy": 0.64,
+    "sunSoftness": 0.0,
+    "aerial": 0.32,
+    "fogSunScatter": 0.34,
+    "fogHeight": 4.0,
+    "fogHeightDensity": 0.02,
+    "volumetric": true,
+    "ssr": false,
+    "gradeTemp": 0.16,
+    "gradeShadow": "#2a1830",
+    "gradeHighlight": "#ffcf8f",
+    "gradeMix": 0.55,
+    "filmGrain": 0.01,
+    "shadowDistMul": 0.9,
+    "ssaoRadius": 1.9,
+    "ssaoIntensity": 2.9,
+    "shadowBlur": 2.3,
+    "fillColor": "#ffd2a0",
+    "fillPower": 0.34,
+    "fillDir": [
+     -0.52,
+     0.55,
+     0.3
+    ]
    }
   },
   {
@@ -1101,8 +1252,9 @@
     "sunIntensity": 2.0,
     "hemiSky": "#7fa4d6",
     "hemiGround": "#2c3a4a",
-    "hemiIntensity": 1.05,
-    "exposure": 1.34,
+    "hemiIntensity": 1.0,
+    "exposure": 1.3,
+    "glowHdr": 1.4,
     "ground": {
      "base": "#c8dbe8",
      "inner": "#dbe9f4",
@@ -1130,10 +1282,38 @@
     "accent": "#7fd8ff",
     "weather": "snow",
     "cloudsTint": "#9fb6cc",
-    "glowOpacity": 0.5,
+    "glowOpacity": 0.32,
     "sunSprite": true,
     "headlight": true,
-    "headlightIntensity": 80
+    "headlightIntensity": 80,
+    "gradeContrast": 1.2,
+    "gradeSaturation": 1.18,
+    "ambientEnergy": 0.9,
+    "sunSoftness": 0.0,
+    "aerial": 0.26,
+    "fogSunScatter": 0.1,
+    "skyBrightness": 0.66,
+    "fogHeight": 12.0,
+    "fogHeightDensity": 0.04,
+    "aurora": 0.9,
+    "volumetric": true,
+    "ssr": false,
+    "gradeTemp": -0.18,
+    "gradeShadow": "#0d2236",
+    "gradeHighlight": "#d8f2ff",
+    "gradeMix": 0.6,
+    "filmGrain": 0.008,
+    "shadowDistMul": 0.78,
+    "ssaoRadius": 1.4,
+    "ssaoIntensity": 2.2,
+    "shadowBlur": 2.3,
+    "fillColor": "#b9d8ff",
+    "fillPower": 0.5,
+    "fillDir": [
+     0.34,
+     0.55,
+     0.48
+    ]
    }
   },
   {
@@ -1323,7 +1503,32 @@
     "cloudsTint": "#f2f6f2",
     "glowOpacity": 0.35,
     "sunSprite": true,
-    "ambientEnergy": 0.75
+    "ambientEnergy": 0.78,
+    "gradeContrast": 1.14,
+    "gradeSaturation": 1.1,
+    "sunSoftness": 0.0,
+    "aerial": 0.3,
+    "fogSunScatter": 0.08,
+    "fogHeight": 20.0,
+    "fogHeightDensity": -0.025,
+    "volumetric": false,
+    "ssr": false,
+    "gradeTemp": -0.1,
+    "gradeShadow": "#1e2e26",
+    "gradeHighlight": "#e8f4e4",
+    "gradeMix": 0.4,
+    "filmGrain": 0.01,
+    "shadowDistMul": 0.82,
+    "ssaoRadius": 1.7,
+    "ssaoIntensity": 2.4,
+    "shadowBlur": 2.6,
+    "fillColor": "#d8ece2",
+    "fillPower": 0.42,
+    "fillDir": [
+     0.36,
+     0.55,
+     0.52
+    ]
    }
   },
   {
@@ -1466,8 +1671,9 @@
     "sunIntensity": 2.0,
     "hemiSky": "#6b5a8c",
     "hemiGround": "#3a1c18",
-    "hemiIntensity": 0.85,
-    "exposure": 1.68,
+    "hemiIntensity": 0.82,
+    "exposure": 1.55,
+    "glowHdr": 1.35,
     "ground": {
      "base": "#4a2620",
      "inner": "#5e2e24",
@@ -1495,11 +1701,36 @@
     "accent": "#ff7a3d",
     "weather": "dust",
     "cloudsTint": "#c26a4a",
-    "glowOpacity": 0.75,
+    "glowOpacity": 0.48,
     "sunSprite": true,
     "headlight": true,
     "headlightIntensity": 85,
-    "ambientEnergy": 0.72
+    "ambientEnergy": 0.68,
+    "gradeContrast": 1.3,
+    "gradeSaturation": 1.3,
+    "sunSoftness": 0.0,
+    "aerial": 0.36,
+    "fogSunScatter": 0.36,
+    "fogHeight": 2.0,
+    "fogHeightDensity": 0.025,
+    "volumetric": true,
+    "ssr": false,
+    "gradeTemp": 0.26,
+    "gradeShadow": "#2a0a08",
+    "gradeHighlight": "#ff8a48",
+    "gradeMix": 0.65,
+    "filmGrain": 0.014,
+    "shadowDistMul": 0.85,
+    "ssaoRadius": 2.3,
+    "ssaoIntensity": 3.1,
+    "shadowBlur": 2.4,
+    "fillColor": "#ff7a48",
+    "fillPower": 0.32,
+    "fillDir": [
+     0.66,
+     0.48,
+     0.18
+    ]
    }
   },
   {
@@ -2710,377 +2941,167 @@
     "cloudsTint": "#efe9e2",
     "glowOpacity": 0.4,
     "sunSprite": true,
-    "headlight": false
+    "headlight": false,
+    "gradeContrast": 1.24,
+    "gradeSaturation": 1.2,
+    "sunSoftness": 0.0,
+    "aerial": 0.24,
+    "fogSunScatter": 0.12,
+    "volumetric": false,
+    "ssr": true,
+    "gradeTemp": 0.03,
+    "gradeShadow": "#20262e",
+    "gradeHighlight": "#ffe9cc",
+    "gradeMix": 0.35,
+    "filmGrain": 0.008,
+    "shadowDistMul": 0.95,
+    "ssaoRadius": 1.8,
+    "ssaoIntensity": 2.8,
+    "shadowBlur": 2.0,
+    "fillColor": "#e6efff",
+    "fillPower": 0.32,
+    "fillDir": [
+     -0.36,
+     0.58,
+     0.3
+    ]
    }
   },
   {
-   "id": "open_world",
-   "name": "无界大陆",
-   "en": "OPEN CONTINENT",
-   "themeLine": "BOUNDLESS FREEROAM",
-   "desc": "八张赛道的地貌缝进同一片 9×9 公里的连续大陆。没有护栏，没有边界，只有公路、荒野与海——想开去哪，就开去哪。",
-   "difficulty": 3,
-   "cornerType": "自由漫游",
-   "laps": 0,
-   "width": 17,
-   "cardColor": "#7fd8ff",
+   "id": "drift",
+   "name": "漂移练习",
+   "en": "DRIFT YARD",
+   "themeLine": "OPEN DRIFT FIELD",
+   "desc": "一公里见方的全柏油开放场地：没有护栏、没有标线、没有任何障碍。甩尾、定圆、长弧连漂随便画，冲出场地边界就是草地。自由练习不计圈数，漂移连击照常记分。",
+   "difficulty": 1,
+   "cornerType": "自由漂移 · 无标线",
+   "openField": true,
+   "fieldSize": 1000,
+   "laps": 1,
+   "width": 24,
+   "cardColor": "#ffd23c",
    "points": [
-    [
-     2450,
-     0
-    ],
-    [
-     2403,
-     478
-    ],
-    [
-     2264,
-     938
-    ],
-    [
-     2037,
-     1361
-    ],
-    [
-     1732,
-     1732
-    ],
-    [
-     1361,
-     2037
-    ],
-    [
-     938,
-     2264
-    ],
-    [
-     478,
-     2403
-    ],
-    [
-     0,
-     2450
-    ],
-    [
-     -478,
-     2403
-    ],
-    [
-     -938,
-     2264
-    ],
-    [
-     -1361,
-     2037
-    ],
-    [
-     -1732,
-     1732
-    ],
-    [
-     -2037,
-     1361
-    ],
-    [
-     -2264,
-     938
-    ],
-    [
-     -2403,
-     478
-    ],
-    [
-     -2450,
-     0
-    ],
-    [
-     -2403,
-     -478
-    ],
-    [
-     -2264,
-     -938
-    ],
-    [
-     -2037,
-     -1361
-    ],
-    [
-     -1732,
-     -1732
-    ],
-    [
-     -1361,
-     -2037
-    ],
-    [
-     -938,
-     -2264
-    ],
-    [
-     -478,
-     -2403
-    ],
-    [
-     0,
-     -2450
-    ],
-    [
-     478,
-     -2403
-    ],
-    [
-     938,
-     -2264
-    ],
-    [
-     1361,
-     -2037
-    ],
-    [
-     1732,
-     -1732
-    ],
-    [
-     2037,
-     -1361
-    ],
-    [
-     2264,
-     -938
-    ],
-    [
-     2403,
-     -478
-    ]
+    [-500, -500],
+    [-400, -500],
+    [-300, -500],
+    [-200, -500],
+    [-100, -500],
+    [0, -500],
+    [100, -500],
+    [200, -500],
+    [300, -500],
+    [400, -500],
+    [500, -500],
+    [500, -400],
+    [500, -300],
+    [500, -200],
+    [500, -100],
+    [500, 0],
+    [500, 100],
+    [500, 200],
+    [500, 300],
+    [500, 400],
+    [500, 500],
+    [400, 500],
+    [300, 500],
+    [200, 500],
+    [100, 500],
+    [0, 500],
+    [-100, 500],
+    [-200, 500],
+    [-300, 500],
+    [-400, 500],
+    [-500, 500],
+    [-500, 400],
+    [-500, 300],
+    [-500, 200],
+    [-500, 100],
+    [-500, 0],
+    [-500, -100],
+    [-500, -200],
+    [-500, -300],
+    [-500, -400]
    ],
-   "openWorld": true,
    "theme": {
-    "skyTop": "#2e4f86",
-    "skyHorizon": "#ffb277",
-    "skyBottom": "#5a4a63",
-    "skySunColor": "#ffd6a0",
+    "name": "drift",
+    "skyTop": "#2a6fc2",
+    "skyHorizon": "#e6f1f6",
+    "skyBottom": "#9cc4d4",
+    "skySunColor": "#fff6e0",
     "sunDir": [
-     0.55,
-     0.22,
-     -0.3
+     0.35,
+     1.0,
+     0.24
     ],
-    "sunPower": 6.2,
-    "sunSize": 1500,
-    "stars": 0.05,
-    "cloudColor": "#ffc9a0",
-    "clouds": true,
-    "fogColor": "#c8b7ae",
-    "fogNear": 260,
-    "fogFar": 2600,
-    "sunColor": "#ffbf8a",
-    "sunIntensity": 2.6,
-    "hemiSky": "#9ab4e0",
-    "hemiGround": "#3a3033",
-    "hemiIntensity": 0.8,
-    "exposure": 1.16,
+    "sunPower": 6.5,
+    "sunSize": 1100,
+    "stars": 0,
+    "cloudColor": "#ffffff",
+    "clouds": false,
+    "fogColor": "#dfe9ee",
+    "fogNear": 320,
+    "fogFar": 3400,
+    "sunColor": "#fff3dc",
+    "sunIntensity": 3.2,
+    "hemiSky": "#cfdde4",
+    "hemiGround": "#6a705c",
+    "hemiIntensity": 0.58,
+    "exposure": 1.18,
+    "ambientEnergy": 0.72,
     "ground": {
-     "base": "#4a6b3e",
-     "inner": "#5d8049",
-     "edge": "#c9b184",
-     "radius": 4200,
-     "kind": "coast"
+     "base": "#5d7c42",
+     "inner": "#6f9250",
+     "edge": "#587540",
+     "radius": 4000,
+     "kind": "field"
     },
-    "roadTint": "#e8decf",
-    "roadRoughness": 0.55,
-    "roadMetalness": 0.18,
-    "lineColor": "#fff0d4",
+    "roadTint": "#e8e6e0",
+    "roadRoughness": 0.9,
+    "roadMetalness": 0.04,
+    "lineColor": "#f2f0e4",
     "lineEmissive": "#000000",
     "lineEmissiveIntensity": 0,
     "curb": [
-     "#c8452f",
-     "#efe6d2"
+     "#c03a33",
+     "#e8e2d4"
     ],
-    "shoulder": "#2a2830",
+    "shoulder": "#a98f66",
     "rail": {
-     "color": "#5a6068",
+     "color": "#8e9aa2",
      "emissive": "#000000",
      "emissiveIntensity": 0,
-     "reflector": "#ffb547"
+     "reflector": "#ff3b30"
     },
-    "accent": "#7fd8ff",
+    "accent": "#ffd23c",
     "weather": "none",
-    "cloudsTint": "#ffc9a2",
-    "glowOpacity": 0.45,
+    "cloudsTint": "#fff6ea",
+    "glowOpacity": 0.3,
     "sunSprite": true,
-    "ambientEnergy": 0.78
-   },
-   "zoneThemes": {
-    "neon": {
-     "skyTop": "#03040b",
-     "skyHorizon": "#221d3d",
-     "skyBottom": "#100b1a",
-     "cloudColor": "#1a1a2e",
-     "fogColor": "#080b16",
-     "fogFar": 1500,
-     "sunColor": "#93aede",
-     "hemiSky": "#2c3444",
-     "sunDir": [
-      0.25,
-      0.6,
-      -0.4
-     ],
-     "sunPower": 3.2,
-     "stars": 1.0,
-     "exposure": 1.25,
-     "glowOpacity": 0.75,
-     "ambientEnergy": 0.66,
-     "accent": "#ff4d8d"
-    },
-    "skyline": {
-     "skyTop": "#2e4f86",
-     "skyHorizon": "#ffb277",
-     "skyBottom": "#5a4a63",
-     "cloudColor": "#ffc9a0",
-     "fogColor": "#c8b7ae",
-     "fogFar": 2600,
-     "sunColor": "#ffbf8a",
-     "hemiSky": "#9ab4e0",
-     "sunDir": [
-      0.55,
-      0.22,
-      -0.3
-     ],
-     "sunPower": 6.2,
-     "stars": 0.05,
-     "exposure": 1.16,
-     "glowOpacity": 0.45,
-     "ambientEnergy": 0.78,
-     "accent": "#ffb547"
-    },
-    "harbor": {
-     "skyTop": "#2b3d7a",
-     "skyHorizon": "#ffb066",
-     "skyBottom": "#7d5a6f",
-     "cloudColor": "#ffc9a0",
-     "fogColor": "#c98f72",
-     "fogFar": 3400,
-     "sunColor": "#ffb478",
-     "hemiSky": "#8fa8e0",
-     "sunDir": [
-      -0.72,
-      0.13,
-      -0.26
-     ],
-     "sunPower": 5.6,
-     "stars": 0.08,
-     "exposure": 1.0,
-     "glowOpacity": 0.55,
-     "ambientEnergy": 0.76,
-     "accent": "#ffb45e"
-    },
-    "coast": {
-     "skyTop": "#1c62b4",
-     "skyHorizon": "#d9eef2",
-     "skyBottom": "#8fc8d2",
-     "cloudColor": "#ffffff",
-     "fogColor": "#c8e4ea",
-     "fogFar": 2800,
-     "sunColor": "#fff2da",
-     "hemiSky": "#b4d8f8",
-     "sunDir": [
-      0.42,
-      0.52,
-      0.2
-     ],
-     "sunPower": 3.4,
-     "stars": 0.0,
-     "exposure": 0.72,
-     "glowOpacity": 0.3,
-     "ambientEnergy": 0.62,
-     "accent": "#4fe9ff",
-     "sunIntensity": 2.2
-    },
-    "canyon": {
-     "skyTop": "#382855",
-     "skyHorizon": "#f1a062",
-     "skyBottom": "#673c40",
-     "cloudColor": "#ffb184",
-     "fogColor": "#c08a6c",
-     "fogFar": 1900,
-     "sunColor": "#ffd4a8",
-     "hemiSky": "#a8afd0",
-     "sunDir": [
-      -0.62,
-      0.135,
-      -0.28
-     ],
-     "sunPower": 4.4,
-     "stars": 0.12,
-     "exposure": 1.12,
-     "glowOpacity": 0.4,
-     "ambientEnergy": 0.8,
-     "accent": "#ff7a3d",
-     "sunIntensity": 2.2
-    },
-    "alpine": {
-     "skyTop": "#3d6ea8",
-     "skyHorizon": "#dcecf7",
-     "skyBottom": "#b9d2e4",
-     "cloudColor": "#ffffff",
-     "fogColor": "#b9c9d6",
-     "fogFar": 2200,
-     "sunColor": "#fff4de",
-     "hemiSky": "#b9d6f2",
-     "sunDir": [
-      -0.5,
-      0.17,
-      -0.35
-     ],
-     "sunPower": 3.2,
-     "stars": 0.0,
-     "exposure": 0.8,
-     "glowOpacity": 0.4,
-     "ambientEnergy": 0.7,
-     "accent": "#9fd8ff"
-    },
-    "glacier": {
-     "skyTop": "#0e1c38",
-     "skyHorizon": "#7fb6cf",
-     "skyBottom": "#3f5871",
-     "cloudColor": "#8fa9c4",
-     "fogColor": "#8ba8bf",
-     "fogFar": 2200,
-     "sunColor": "#b9d8ff",
-     "hemiSky": "#7fa4d6",
-     "sunDir": [
-      -0.35,
-      0.12,
-      -0.5
-     ],
-     "sunPower": 4.4,
-     "stars": 0.55,
-     "exposure": 1.05,
-     "glowOpacity": 0.5,
-     "ambientEnergy": 0.74,
-     "accent": "#7fd8ff"
-    },
-    "magma": {
-     "skyTop": "#241733",
-     "skyHorizon": "#ff6a3d",
-     "skyBottom": "#4a1f2a",
-     "cloudColor": "#b65a44",
-     "fogColor": "#8a4c40",
-     "fogFar": 1700,
-     "sunColor": "#ff9a62",
-     "hemiSky": "#6b5a8c",
-     "sunDir": [
-      -0.68,
-      0.1,
-      -0.2
-     ],
-     "sunPower": 5.2,
-     "stars": 0.3,
-     "exposure": 1.68,
-     "glowOpacity": 0.75,
-     "ambientEnergy": 0.62,
-     "accent": "#ff7a3d"
-    }
+    "gradeContrast": 1.2,
+    "gradeSaturation": 1.18,
+    "gradeBrightness": 1.02,
+    "sunSoftness": 0.0,
+    "aerial": 0.22,
+    "fogSunScatter": 0.12,
+    "skyBrightness": 0.8,
+    "volumetric": false,
+    "ssr": false,
+    "gradeTemp": 0.08,
+    "gradeShadow": "#16323e",
+    "gradeHighlight": "#ffedcc",
+    "gradeMix": 0.45,
+    "filmGrain": 0.008,
+    "shadowDistMul": 1.0,
+    "ssaoRadius": 1.6,
+    "ssaoIntensity": 2.2,
+    "shadowBlur": 2.0,
+    "fillColor": "#cfe6ff",
+    "fillPower": 0.36,
+    "fillDir": [
+     -0.35,
+     0.6,
+     -0.24
+    ]
    }
   }
  ]

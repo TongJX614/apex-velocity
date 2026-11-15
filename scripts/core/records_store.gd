@@ -7,31 +7,32 @@ extends RefCounted
 
 const PATH := "user://records.json"
 
+# 菜单每切一次赛道/车就要查 best_total / best_lap / history，
+# 全量读盘+解析没必要：进程内缓存一份，save_all 时同步更新。
+static var _cache: Dictionary = {}
+static var _cache_valid := false
+
 
 static func load_all() -> Dictionary:
-	if not FileAccess.file_exists(PATH):
-		return {"tracks": {}}
-	var f := FileAccess.open(PATH, FileAccess.READ)
-	if f == null:
-		return {"tracks": {}}
-	var text := f.get_as_text()
-	f.close()
-	var parsed = JSON.parse_string(text)
-	if typeof(parsed) != TYPE_DICTIONARY:
+	if _cache_valid:
+		return _cache.duplicate(true)
+	var parsed: Variant = SafeJson.read_dict(PATH)
+	if parsed == null:
 		return {"tracks": {}}
 	var data: Dictionary = parsed
 	if typeof(data.get("tracks")) != TYPE_DICTIONARY:
 		data["tracks"] = {}
+	_cache = data.duplicate(true)
+	_cache_valid = true
 	return data
 
 
 static func save_all(data: Dictionary) -> void:
-	var f := FileAccess.open(PATH, FileAccess.WRITE)
-	if f == null:
+	if not SafeJson.write(PATH, JSON.stringify(data, "  ")):
 		push_error("RecordsStore: cannot write %s" % PATH)
 		return
-	f.store_string(JSON.stringify(data, "  "))
-	f.close()
+	_cache = data.duplicate(true)
+	_cache_valid = true
 
 
 static func for_track(track_id: String) -> Dictionary:
@@ -50,8 +51,24 @@ static func best_lap(track_id: String, mode: String) -> float:
 	return float(entry.get("lap", -1.0))
 
 
-## Submits a finished race. Returns {new_total, best_total, new_lap, best_lap, medal}.
-static func submit(track_id: String, mode: String, total: float, best_lap: float, medal: String) -> Dictionary:
+static func best_sectors(track_id: String, mode: String) -> Array:
+	var entry: Dictionary = for_track(track_id).get(mode, {})
+	return _clean_sectors(entry.get("sectors", []))
+
+
+static func _clean_sectors(raw: Variant) -> Array:
+	var out: Array = []
+	if typeof(raw) != TYPE_ARRAY:
+		return out
+	for v in (raw as Array):
+		if typeof(v) == TYPE_FLOAT or typeof(v) == TYPE_INT:
+			out.append(float(v))
+	return out
+
+
+## Submits a finished race. Returns {new_total, best_total, new_lap, best_lap, medal, best_sectors}.
+static func submit(track_id: String, mode: String, total: float, best_lap: float, medal: String,
+		sectors: Array = []) -> Dictionary:
 	var all := load_all()
 	var tracks: Dictionary = all["tracks"]
 	var entry: Dictionary = tracks.get(track_id, {})
@@ -61,6 +78,7 @@ static func submit(track_id: String, mode: String, total: float, best_lap: float
 		"best_total": float(mode_entry.get("total", -1.0)),
 		"new_lap": false,
 		"best_lap": float(mode_entry.get("lap", -1.0)),
+		"best_sectors": _clean_sectors(mode_entry.get("sectors", [])),
 	}
 	if total > 0.0 and (out["best_total"] < 0.0 or total < float(out["best_total"])):
 		out["new_total"] = true
@@ -71,6 +89,21 @@ static func submit(track_id: String, mode: String, total: float, best_lap: float
 		out["new_lap"] = true
 		out["best_lap"] = best_lap
 		mode_entry["lap"] = best_lap
+	if not sectors.is_empty():
+		var merged: Array = []
+		var old: Array = out["best_sectors"]
+		var count := maxi(old.size(), sectors.size())
+		for i in count:
+			var a := float(old[i]) if i < old.size() else -1.0
+			var b := float(sectors[i]) if i < sectors.size() else -1.0
+			if a > 0.0 and b > 0.0:
+				merged.append(minf(a, b))
+			elif a > 0.0:
+				merged.append(a)
+			else:
+				merged.append(b)
+		mode_entry["sectors"] = merged
+		out["best_sectors"] = merged
 	entry[mode] = mode_entry
 	tracks[track_id] = entry
 	all["tracks"] = tracks

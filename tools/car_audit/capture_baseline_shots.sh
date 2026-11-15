@@ -22,7 +22,7 @@ OUT_DIR="${1:-${OUT_DIR:-/tmp/car_baseline}}"
 TIMEOUT="${TIMEOUT:-120}"
 GARAGE="${GARAGE:-1}"      # 0 = 跳过硬车库截图（只补 menu/race）
 TRACK="${TRACK:-}"         # race 场景追加 --track=<id>（如 coast）
-EXTRAS="${EXTRAS-menu:bmw_m3_e46_gtr,menu:xiaomi_su7,race:bmw_m3_e46_gtr,race:xiaomi_su7}"
+EXTRAS="${EXTRAS-menu:bmw_m3_e46_gtr,menu:lamborghini_aventador,race:bmw_m3_e46_gtr,race:lamborghini_aventador}"
 
 LOG_DIR="${OUT_DIR}/_logs"
 SHOT_LOG="${OUT_DIR}/screenshots.log"

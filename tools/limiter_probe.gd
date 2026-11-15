@@ -25,7 +25,8 @@ extends Node
 ##
 ## 输出：控制台表格 + /tmp/limiter_probe.json
 
-const CAR := preload("res://scripts/cars/car.gd")
+const CAR := preload("res://cars/scripts/car.gd")
+const TRACK_PATH := preload("res://maps/scripts/tracks/track_path.gd")
 const CARS_JSON := "res://data/cars.json"
 
 ## 仿真步长（秒）与总时长
@@ -144,9 +145,16 @@ func _min_max_burst(results: Array) -> int:
 
 ## 驱动真实的 car.gd 跑一段直线加速，返回统计。
 func _simulate(spec: Dictionary, manual: bool) -> Dictionary:
+	var path := TRACK_PATH.new()
+	path.build_from_def({
+		"id": "limiter_probe",
+		"points": [[-20000.0, -20000.0], [20000.0, -20000.0],
+			[20000.0, 20000.0], [-20000.0, 20000.0]],
+		"width": 40000.0,
+	}, 100.0)
 	var car = CAR.new()
 	add_child(car)
-	car.setup_open_world(spec, null, {"pos": Vector3.ZERO, "heading": 0.0})
+	car.setup(spec, path, 10.0, 0.0, Color.TRANSPARENT, {}, false)
 	car.manual = manual
 
 	var total_frames := int(SIM_SECONDS / DT)

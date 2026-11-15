@@ -24,9 +24,9 @@ const MAX_BEST_LAPS := 5
 const XP_BASE := 1000
 const XP_STEP := 250
 
-## 测试期无限积分开关：开启后余额恒为满额、任何消费都成功且不写档。
-## 交付正式经济时改回 false 即可。
-const DEV_INFINITE_CREDITS := true
+## 正式经济：XP 同时是等级经验与可花积分，升级会真实扣款。
+## 调试时如需无限积分，把它临时改回 true（不改玩法代码）。
+const DEV_INFINITE_CREDITS := false
 const INFINITE_CREDIT_DISPLAY := 9999999
 
 ## 单场 XP。名次奖励只在大奖赛（gp）生效，计时赛（ta）固定发车位不参与。
@@ -36,6 +36,8 @@ const XP_GP_OTHER := 40
 const XP_MEDAL := {"gold": 300, "silver": 180, "bronze": 90}
 const XP_NEW_BEST_LAP := 80
 const XP_NEW_TRACK := 120
+const XP_NEW_CAR := 40
+const XP_TUTORIAL := 200
 
 ## 与 scripts/core/race_manager.gd 的 PACE 保持一致（m/s）。
 const PACE := {"gold": 58.0, "silver": 50.0, "bronze": 42.0}
@@ -134,6 +136,18 @@ const ACHIEVEMENTS := [
 		"id": "mastery_allgold", "name": "全赛道宗师", "icon": "star", "xp": 1200,
 		"desc": "在全部 8 条赛道达到金牌精通。",
 	},
+	{
+		"id": "garage_5", "name": "车队新秀", "icon": "grid", "xp": 200,
+		"desc": "驾驶 5 台不同的车辆。",
+	},
+	{
+		"id": "garage_15", "name": "车库常客", "icon": "grid", "xp": 500,
+		"desc": "驾驶 15 台不同的车辆。",
+	},
+	{
+		"id": "garage_all", "name": "全车系收藏", "icon": "trophy", "xp": 1500,
+		"desc": "驾驶车库中的全部车辆。",
+	},
 ]
 
 ## 赛道精通：按最佳单圈评为铜/银/金，升级时发放一次性 XP。
@@ -172,45 +186,47 @@ static func default_profile() -> Dictionary:
 		"total_drift_score": 0,
 		"daily": {"date": "", "progress": {}, "claimed": {}},
 		"mastery": {},
+		"driven_cars": {},
+		"car_total": 45,
+		"tutorial": "",
 	}
 
 
 ## 读档；文件不存在 / 损坏 / 字段缺失时回落到默认值，绝不崩溃。
 static func load_profile() -> Dictionary:
-	if not FileAccess.file_exists(PATH):
+	var parsed: Variant = SafeJson.read_dict(PATH)
+	if parsed == null:
 		return default_profile()
-	var f := FileAccess.open(PATH, FileAccess.READ)
-	if f == null:
-		push_warning("ProfileStore: 无法读取 %s，使用默认档案" % PATH)
-		return default_profile()
-	var text := f.get_as_text()
-	f.close()
-	if text.strip_edges().is_empty():
-		return default_profile()
-	var json := JSON.new()
-	if json.parse(text) != OK or typeof(json.data) != TYPE_DICTIONARY:
-		push_warning("ProfileStore: %s 不是合法档案，使用默认档案" % PATH)
-		return default_profile()
-	return _normalize(json.data)
+	return _normalize(parsed)
 
 
 ## 存档；写入失败只 push_warning，不中断游戏。
 static func save_profile(data: Dictionary) -> void:
 	var clean := _normalize(data)
-	var f := FileAccess.open(PATH, FileAccess.WRITE)
-	if f == null:
-		push_warning("ProfileStore: 无法写入 %s (err=%d)" % [PATH, FileAccess.get_open_error()])
-		return
-	f.store_string(JSON.stringify(clean, "  "))
-	var err := f.get_error()
-	f.close()
-	if err != OK:
-		push_warning("ProfileStore: 写入 %s 失败 (err=%d)" % [PATH, err])
+	SafeJson.write(PATH, JSON.stringify(clean, "  "))
 
 
 ## 清空成长进度（保留一个全零档案，UI 读到的仍是合法字典）。
 static func reset() -> void:
 	save_profile(default_profile())
+
+
+static func tutorial_state() -> String:
+	return String(load_profile().get("tutorial", ""))
+
+
+static func set_tutorial_state(state: String) -> void:
+	var data := load_profile()
+	data["tutorial"] = state
+	save_profile(data)
+
+
+## 新手教程毕业奖励：一次性 +XP（等级/学分余额随 _normalize 自动重算）。
+static func grant_tutorial_bonus() -> int:
+	var data := load_profile()
+	data["xp"] = int(data.get("xp", 0)) + XP_TUTORIAL
+	save_profile(data)
+	return XP_TUTORIAL
 
 
 static func _normalize(raw: Dictionary) -> Dictionary:
@@ -254,6 +270,26 @@ static func _normalize(raw: Dictionary) -> Dictionary:
 			if tier > 0:
 				mastery[String(track_key)] = tier
 	data["mastery"] = mastery
+
+
+	var raw_driven = raw.get("driven_cars", {})
+	var driven := {}
+	if typeof(raw_driven) == TYPE_DICTIONARY:
+		for car_key in (raw_driven as Dictionary):
+			var cid := String(car_key)
+			if not cid.is_empty():
+				driven[cid] = true
+	data["driven_cars"] = driven
+	data["car_total"] = clampi(_as_int(raw.get("car_total"), 45), 1, 128)
+
+	# 教程状态："" 未触发 / "done" 已毕业 / "skipped" 跳过过。
+	# 老存档没有该字段但已经跑过比赛：视为早已学会，不再自动弹教程。
+	var tutorial := String(raw.get("tutorial", ""))
+	if not raw.has("tutorial") and int(data["races"]) > 0:
+		tutorial = "done"
+	if tutorial != "done" and tutorial != "skipped":
+		tutorial = ""
+	data["tutorial"] = tutorial
 
 	var raw_laps = raw.get("best_laps", {})
 	var clean_laps := {}
@@ -378,6 +414,67 @@ static func achievement_defs() -> Array:
 
 static func achievements_total() -> int:
 	return ACHIEVEMENTS.size()
+
+
+static func _achievement_def(id: String) -> Dictionary:
+	for def in ACHIEVEMENTS:
+		if String(def["id"]) == id:
+			return def
+	return {}
+
+
+## 记录驾驶过的车辆：首次 +40 XP，并结算 5 / 15 / 全车系收藏成就。
+static func mark_car_driven(car_id: String, total: int) -> Dictionary:
+	var profile := load_profile()
+	var level_before := int(profile["level"])
+	var key := car_id.strip_edges()
+	if key.is_empty():
+		return _empty_result(level_before)
+	var driven: Dictionary = profile["driven_cars"]
+	var first := not driven.has(key)
+	driven[key] = true
+	profile["driven_cars"] = driven
+	profile["car_total"] = clampi(total, 1, 128)
+
+	var xp_before := int(profile["xp"])
+	var gain := XP_NEW_CAR if first else 0
+	profile["xp"] = xp_before + gain
+	profile["level"] = level_for_xp(int(profile["xp"]))
+
+	var unlocked: Array = []
+	var achievement_xp := 0
+	for id in ["garage_5", "garage_15", "garage_all"]:
+		var ach_id := String(id)
+		if (profile["achievements"] as Dictionary).has(ach_id):
+			continue
+		if not _meets(ach_id, {"profile": profile}):
+			continue
+		var def := _achievement_def(ach_id)
+		if def.is_empty():
+			continue
+		(profile["achievements"] as Dictionary)[ach_id] = true
+		achievement_xp += int(def["xp"])
+		unlocked.append({
+			"id": ach_id,
+			"name": String(def["name"]),
+			"desc": String(def["desc"]),
+			"xp": int(def["xp"]),
+		})
+	profile["xp"] = xp_before + gain + achievement_xp
+	profile["level"] = level_for_xp(int(profile["xp"]))
+	if first or not unlocked.is_empty():
+		save_profile(profile)
+	var level_after := int(profile["level"])
+	return {
+		"xp_gain": int(profile["xp"]) - xp_before,
+		"first": first,
+		"count": driven.size(),
+		"total": int(profile["car_total"]),
+		"level_before": level_before,
+		"level_after": level_after,
+		"level_up": level_after > level_before,
+		"achievements": unlocked,
+	}
 
 
 # ---------------------------------------------------------------------------
@@ -798,6 +895,16 @@ static func _meets(id: String, ctx: Dictionary) -> bool:
 			return mastery_count(profile, 2) >= 3
 		"mastery_allgold":
 			return mastery_count(profile, 3) >= 8
+		"garage_5":
+			var cars5: Dictionary = profile.get("driven_cars", {})
+			return cars5.size() >= 5
+		"garage_15":
+			var cars15: Dictionary = profile.get("driven_cars", {})
+			return cars15.size() >= 15
+		"garage_all":
+			var cars_all: Dictionary = profile.get("driven_cars", {})
+			var car_total := int(profile.get("car_total", 45))
+			return car_total > 0 and cars_all.size() >= car_total
 	return false
 
 

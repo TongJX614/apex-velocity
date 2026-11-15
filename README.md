@@ -2,13 +2,13 @@
 
 # APEX VELOCITY · 极速巅峰
 
-**Godot 4 原生重制 · 46 台可驾驶真车 · 11 条赛道 · 9×9km 无界大陆**
+**Godot 4 原生重制 · 45 台可驾驶真车 · 11 条赛道**
 
 [![Godot](https://img.shields.io/badge/Godot-4.7.2-478cbf?logo=godotengine&logoColor=white)](https://godotengine.org/)
 [![Release](https://img.shields.io/github/v/release/TongJX614/apex-velocity?label=release&color=4fe9ff)](https://github.com/TongJX614/apex-velocity/releases)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Android-2ea44f)](#快速开始)
-[![GDScript](https://img.shields.io/badge/GDScript-37%2C641%20lines-3776ab)](#技术架构)
-[![Docs](https://img.shields.io/badge/docs-56%20%E7%AF%87-8a2be2)](docs/README.md)
+[![GDScript](https://img.shields.io/badge/GDScript-40%2C498%20lines-3776ab)](#技术架构)
+[![Docs](https://img.shields.io/badge/docs-54%20%E7%AF%87-8a2be2)](docs/README.md)
 
 [▶ 观看 84 秒宣传片](https://github.com/TongJX614/apex-velocity/releases/download/v0.54/apex-velocity-trailer-2026.mp4) ·
 [下载游戏资产](https://github.com/TongJX614/apex-velocity/releases/tag/v0.54) ·
@@ -22,14 +22,14 @@
 
 ## 关于
 
-《极速巅峰》最初是一个 three.js 的 WebGL 赛车游戏（约 3.8 万行 JavaScript、45 台车模、8 条 GP 赛道）。本项目是它的 **Godot 4 原生重制版**：复用旧工程的模型、数值、赛道数据与音频，重写渲染、物理、UI、AI 与发布管线，并在此基础上追加了 9×9km 开放世界「无界大陆」。
+《极速巅峰》最初是一个 three.js 的 WebGL 赛车游戏（约 3.8 万行 JavaScript、45 台车模、8 条 GP 赛道）。本项目是它的 **Godot 4 原生重制版**：复用旧工程的模型、数值、赛道数据与音频，重写渲染、物理、UI、AI 与发布管线，并在重写过程中补齐了都会环线实景城市赛道。
 
-整个游戏不依赖手搭场景：路面、地形、植被、建筑、看台、龙门架全部在运行时按 `data/tracks.json` 与主题程序化生成。59 个 GDScript、37,641 行代码，从主菜单、车库改装、比赛 HUD 到结算与成就全部自绘。
+整个游戏不依赖手搭场景：路面、地形、植被、建筑、看台、龙门架全部在运行时按 `data/tracks.json` 与主题程序化生成。63 个 GDScript、40,498 行代码，从主菜单、车库改装、比赛 HUD 到结算与成就全部自绘。
 
 | | |
 | --- | --- |
-| **46 台车** | 按真车标定功率 / 扭矩 / 质量 / 驱动 / 极速 / 0-100，11 类引擎声档，8 类改装 |
-| **11 条赛道** | 10 条主题赛道 + 9×9km 无边界开放世界，每图独立光照、天气与菜单实景 |
+| **45 台车** | 按真车标定功率 / 扭矩 / 质量 / 驱动 / 极速 / 0-100，11 类引擎声档，8 类改装 |
+| **11 条赛道** | 9 条封闭赛道 + 都会环线实景城市 + 漂移练习开放场地，每图独立光照、天气与菜单实景 |
 | **街机物理** | 扭矩负载起步打滑、速度敏感转向、OBB 车-车碰撞、防粘连分离、手动挡 / 氮气 |
 | **画面** | 四档画质、程序化天空与流动云、CC0 真实植被建筑、SSR / SSAO / SSIL / 体积雾 / 速度拉丝 |
 | **声音** | 逐车物理建模引擎声 + 16 首分赛道 BGM + 6 总线混音 |
@@ -49,6 +49,11 @@
 | --- | --- |
 | ![冰川湖环道](docs/media/tracks/glacier-ring.jpg) | ![都会环线](docs/media/tracks/metro-ring.jpg) |
 
+比赛 HUD：小地图、圈速、名次、转速表、档位与氮气一屏呈现。
+
+![比赛 HUD](docs/m54/hud_compare.jpg)
+
+[![宣传片海报](docs/media/trailer_poster.jpg)](https://github.com/TongJX614/apex-velocity/releases/download/v0.54/apex-velocity-trailer-2026.mp4)
 
 > 《从晨光到霓虹》— 84 秒，全片 100% 游戏内真实渲染，无引擎外 CG。
 > 点击海报下载 1080p 成片。
@@ -77,13 +82,14 @@ cd apex-velocity
 | `apex-velocity-assets-venues.zip` | 场地套件与真实树 | ~537MB |
 | `apex-velocity-assets-misc.zip` | 音频 / 启动 CG / 菜单背景 / UI / 远景楼群 | ~251MB |
 
-全部解压到仓库根目录（四个包会合并进 `assets/`）：
+全部解压到仓库根目录（四个包会合并进 `assets/`），随后执行一次归位脚本，把资产迁入 `cars/` 与 `maps/` 模块（可重复执行）：
 
 ```bash
 unzip apex-velocity-assets-cars.zip -d .
 unzip apex-velocity-assets-thirdparty.zip -d .
 unzip apex-velocity-assets-venues.zip -d .
 unzip apex-velocity-assets-misc.zip -d .
+./tools/migrate_assets_layout.sh
 ```
 
 校验和见 Release 中的 `SHA256SUMS.txt`：
@@ -123,7 +129,7 @@ Windows / Linux 用 Godot 打开本目录，或在命令行执行 `Godot --path 
 
 ```bash
 # 跳过菜单直接开一场
-"$GODOT" --path . -- --autostart --track=city --car=xiaomi_su7
+"$GODOT" --path . -- --autostart --track=city --car=byd_yangwang_u9
 
 # 无头验收：9 站生成 + 车辆行驶 + 完整 GP 比赛模拟
 "$GODOT" --headless --path . -- --verify
@@ -174,7 +180,6 @@ Windows / Linux 用 Godot 打开本目录，或在命令行执行 `Godot --path 
 车辆层    car（玩家物理）· ai_car（样条跟随 + 避让 + 橡皮筋）· car_visual（模型/轮组/换色）
 赛道层    track_path（样条/曲率）· track_builder（路面/路肩/护栏）· terrain（起伏）
 场景层    scenery_kit / theme_scenery / real_asset_kit / venue_kit / grass_scatter
-开放世界  open_world（高度场 + 路网 + 八域融合）· open_world_scenery
 比赛层    race_manager（倒计时/圈数/计时/名次/奖牌）· records_store · ghost_store
 改装层    parts_library（零件规则 + 人工偏移）· garage_look（挂装）· garage_store（存档）
 表现层    weather_fx · vfx_library · game_feel（hit-stop/火花/镜头震动）· haptics
@@ -185,9 +190,8 @@ UI 层     menu / race_hud / garage_screen / settings_screen / achievements / da
 几个实现细节：
 
 - **程序化世界**：`scenes/main.tscn` 只挂一个根节点，赛道与场景由 `track_path` + `track_builder` + `scenery_kit` 在启动时生成，换图只换数据；
-- **无界大陆**：8 张赛道缝成 9×9km 高度场，按需求生成布景并分类收紧可见距离，域间长渐变过渡；
 - **车辆物理**：街机手感 + 扭矩负载、速度敏感转向、OBB 碰撞与低速防粘连，AI 按 skill 派生快慢 / 弯道自信 / 车线 / 激进度；
-- **逐车声线**：物理建模合成（点火、缸数、断油、涡轮），46 台车各有独立档案；
+- **逐车声线**：物理建模合成（点火、缸数、断油、涡轮），45 台车各有独立档案；
 - **输入**：键盘 / 手柄 / MCHOSE Ace68-II 磁轴键盘模拟量（按键深度 → 线性油门与转向）。
 
 ---
@@ -202,21 +206,31 @@ apex-velocity/
 ├── 双击编辑地图.command            场景装饰编辑器入口
 ├── 启动尾翼调参.command            零件调参器入口
 ├── scenes/                        main.tscn（世界由脚本生成）· decor_editor.tscn
-├── scripts/                       59 个 GDScript
+├── cars/                          ★ 车辆模块（契约见 cars/README.md）
+│   ├── assets/models/             45 台车 GLB + 同目录贴图（Release 下载）
+│   ├── assets/audio/engine/       引擎声质感层录音（Release 下载）
+│   ├── scripts/                   车辆物理 / AI / 车模 / 零件 / 相机（8）
+│   └── README.md                  车辆资源 / API / 数据契约
+├── maps/                          ★ 地图模块（契约见 maps/README.md）
+│   ├── assets/                    venues / buildings / backdrops / polyhaven / city_ring
+│   ├── audio/bgm/                 赛道 BGM（Release 下载）
+│   ├── scripts/tracks/            样条 / 路面 / 地形 / 植被 / 场景套件（10）
+│   ├── scripts/openworld/         都会环线城市（3）
+│   └── README.md                  地图资源 / API / 碰撞与烘焙契约
+├── scripts/                       共享核心与 UI
 │   ├── core/       (17)           状态机 / 比赛 / 存档 / 设置 / 音频 / 输入 / 分屏 / 天气
-│   ├── cars/       (8)            车辆物理 / AI / 车模 / 零件库 / 相机
-│   ├── tracks/     (10)           样条 / 路面 / 地形 / 植被 / 场景套件 / 场地
-│   ├── openworld/  (3)            无界大陆地形路网 / 场景 / HUD
 │   ├── ui/         (17)           菜单 / 车库 / HUD / 设置 / 成就 / 每日 / 档案
 │   ├── fx/         (2)            Game Feel / VFX 资源库
 │   └── tools/      (2)            装饰编辑器 / 覆盖数据
-├── data/                          数值与配置（cars / tracks / garage / engine_sounds / part_offsets …）
+├── data/                          数值与配置（两者共享：cars / tracks / garage / engine_sounds …）
 ├── shaders/                       5 个着色器
 ├── tools/                         管线脚本（调参器 / 磁轴桥 / Blender / 车模审计 / 一键导出）
 ├── trailer/                       宣传片抓帧 capture.py · 剪辑 edit.py（成片在 Release）
-├── docs/                          56 篇开发文档 + 各期截图
-└── assets/                        ★ 不随 Git 分发，从 Release 下载（见「快速开始」）
+├── docs/                          54 篇开发文档 + 各期截图
+└── assets/                        ★ 共享 UI / 品牌 / 菜单场景 / 视频（Release 下载）
 ```
+
+模块边界与公共接口分别以 [cars/README.md](cars/README.md)、[maps/README.md](maps/README.md) 为准；跨模块改动只需回归对方的契约和实机截图。
 
 `.godot/`（导入缓存，约 1.8GB）首次打开项目时自动重建，不入版本库。
 
@@ -233,7 +247,6 @@ apex-velocity/
 | v0.53 | 紧凑 HUD 仪表卡 + 碰撞防粘连 | [54](docs/54-比赛HUD紧凑仪表卡.md) · [55](docs/55-车辆碰撞防粘连.md) |
 | **v0.54** | 全图光效 + AI 分化 + 改装工厂 + 穿模清零 | [56](docs/56-全图光效_AI分化_改装工厂_穿模清零.md) |
 | — | 宣传片《从晨光到霓虹》剧本 / 分镜 | [58](docs/58-宣传片剧本与分镜表.md) |
-| — | 无界大陆：8 站缝成 9×9km 开放世界 | [59](docs/59-无界大陆_开放世界.md) · [60](docs/60-开放世界过渡与实体碰撞.md) · [63](docs/63-开放世界按需流式与可见距离收紧.md) |
 | — | 逐车个性化引擎声系统 | [61](docs/61-逐车个性化引擎声系统.md) |
 | — | 零件人工调参器 | [62](docs/62-零件人工调参器.md) |
 
@@ -243,12 +256,12 @@ apex-velocity/
 
 | 项目 | 数值 |
 | --- | --- |
-| GDScript | 59 个文件 / 37,641 行 |
+| GDScript | 63 个文件 / 40,498 行 |
 | 着色器 | 5 个 `.gdshader` |
-| 车辆 | 46 台可驾驶（45 套车模 + 真车数值 + 配色 + 声线） |
-| 赛道 | 11 条（10 封闭 + 1 开放世界 9×9km） |
+| 车辆 | 45 台可驾驶（45 套车模 + 真车数值 + 配色 + 声线） |
+| 赛道 | 11 条（9 封闭 + 1 都会环线实景城市 + 1 开放漂移场地） |
 | 资产 | 1.8GB 压缩包（第三方 CC0 / 车模 / 场地 / 音频 / 视频） |
-| 文档 | 56 篇里程碑文档 + 截图 |
+| 文档 | 54 篇里程碑文档 + 截图 |
 | 实测帧率 | 1600×900 关闭垂直同步：城市 120–270fps（M1 Pro） |
 
 ---
@@ -258,7 +271,7 @@ apex-velocity/
 **当前限制**
 
 1. 地形以高度场为主，赛道是 2D 控制点样条，暂不支持隧道与立交；
-2. 车模未做 LOD，46 台车全量加载时 draw call 约 777；
+2. 车模未做 LOD，45 台车全量加载时 draw call 约 777；
 3. 拉花未渲染，涂装仅支持纯色 / 哑光 / 原厂保留；
 4. AI 碰撞是事后修正而非物理响应（粘连/闪现已修，机制未换）；
 5. 调参器保存是覆盖式，无自动备份轮转。
@@ -267,7 +280,7 @@ apex-velocity/
 
 1. **M5 发布**：macOS / Windows / Android 出包；
 2. 画面：PBR 材质三件套、轮胎印 / 磨损贴花、车模 LOD 与网格合并；
-3. 内容：无界大陆任务点与动态事件；
+3. 内容：新增赛道与动态事件；
 4. 工程：调参数据自动备份轮转、P0–P3 性能项分批落地。
 
 ---

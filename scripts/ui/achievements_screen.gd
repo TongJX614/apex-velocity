@@ -92,7 +92,9 @@ func _ready() -> void:
 	close_row.add_child(UIStyle.label("关闭  /  CLOSE", 11, UIStyle.TXT_SUB))
 	var close_fill := UIStyle.spacer()
 	close_row.add_child(close_fill)
-	close_row.add_child(UIStyle.keycap("ESC", ACCENT, 9))
+	var esc_key := UIStyle.keycap("ESC", ACCENT, 9)
+	esc_key.visible = Settings.key_hints
+	close_row.add_child(esc_key)
 
 	# ---- 数据条 -----------------------------------------------------------
 	_build_stats_row()
@@ -123,8 +125,12 @@ func _ready() -> void:
 	foot.add_theme_constant_override("separation", 10)
 	UIStyle.place(foot, 0, 1, 1, 1, 40, -52, -40, -24)
 	_panel.add_child(foot)
-	foot.add_child(UIStyle.keycap("↑↓", ACCENT, 9))
-	foot.add_child(UIStyle.label("滚轮 / 方向键  浏览成就", 10, UIStyle.TXT_DIM))
+	var nav_key := UIStyle.keycap("↑↓", ACCENT, 9)
+	nav_key.visible = Settings.key_hints
+	foot.add_child(nav_key)
+	var nav_lbl := UIStyle.label("滚轮 / 方向键  浏览成就", 10, UIStyle.TXT_DIM)
+	nav_lbl.visible = Settings.key_hints
+	foot.add_child(nav_lbl)
 	var foot_fill := UIStyle.spacer()
 	foot.add_child(foot_fill)
 	foot.add_child(UIStyle.label_tracked("全部 %d 项成就  ·  免费游玩" % ProfileStore.achievements_total(),

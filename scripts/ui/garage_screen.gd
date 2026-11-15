@@ -1,11 +1,12 @@
 class_name GarageScreen
 extends CanvasLayer
-## 车库 / 改装工坊 · v3（大网格选车 + 单条改装横条）。
+## 车库 / 改装工坊 · v3（大网格选车 + 两行改装项）。
 ##
 ## 布局：
 ##   · 左侧：3D 展台 + 左上车辆名称 / 规格（保持原设计）
 ##   · 右上：常驻大网格 —— 45 台车的离屏缩略图 + 名称，点击 / 摇杆直接选车
-##   · 右中：一条突出的改装横条（轮毂 / 轮毂色 / 轮胎 / 尾翼 / 卡钳 / 车漆 / 升级）
+##   · 右中：改装区 —— 7 项按 4+3 两行排布（轮毂 / 轮毂色 / 轮胎 / 尾翼 /
+##     卡钳 / 车漆 / 升级），单项约 130px 宽，标题与数值不再挤压
 ##   · 右中下：性能数据卡（原厂 → 改装后）
 ##   · 右下：8 项性能升级（4×2）+ 积分 + 操作行（上赛道 / 重置 / 返回）
 ## 选车与改装是两类独立区域：TAB / 手柄 Y 在「网格」和「改装条」间切换。
@@ -263,7 +264,7 @@ func _build() -> void:
 
 func _build_car_grid_card() -> void:
 	_grid_card = _make_panel(_root, UIStyle.card_style(UIStyle.ACCENT, false, 0.92))
-	UIStyle.place(_grid_card, 1, 0, 1, 0, RAIL_X0, 56, RAIL_X1, 414)
+	UIStyle.place(_grid_card, 1, 0, 1, 0, RAIL_X0, 56, RAIL_X1, 388)
 	UIStyle.add_top_glow(_grid_card, _accent, 0.9)
 	_kicker(_grid_card, "SELECT MACHINE   /   选车", 7)
 	_grid_count = UIStyle.label_tracked("", 9, Color(0.62, 0.78, 0.86, 1.0),
@@ -291,7 +292,7 @@ func _build_car_grid_card() -> void:
 		var btn := Button.new()
 		btn.name = "Car_%02d" % i
 		btn.focus_mode = Control.FOCUS_ALL
-		btn.custom_minimum_size = Vector2(103, 74)
+		btn.custom_minimum_size = Vector2(100, 68)
 		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		btn.add_theme_stylebox_override("normal", _tile_style(false, false))
 		btn.add_theme_stylebox_override("hover", _tile_style(false, true))
@@ -351,20 +352,23 @@ func _tile_style(selected: bool, hover: bool) -> StyleBoxFlat:
 
 
 # ---------------------------------------------------------------------------
-# 右中：改装横条
+# 右中：改装区（4+3 两行）
 # ---------------------------------------------------------------------------
 
 func _build_tuning_card() -> void:
 	_tuning_card = _make_panel(_root, UIStyle.card_style(UIStyle.ACCENT, false, 0.92))
-	UIStyle.place(_tuning_card, 1, 0, 1, 0, RAIL_X0, 422, RAIL_X1, 514)
+	UIStyle.place(_tuning_card, 1, 0, 1, 0, RAIL_X0, 396, RAIL_X1, 514)
 	UIStyle.add_top_glow(_tuning_card, _accent, 0.9)
-	_kicker(_tuning_card, "TUNING   /   改装", 4)
+	_kicker(_tuning_card, "TUNING   /   改装", 3)
 	_value_flash = UIStyle.label_tracked("", 9, Color(0.62, 0.78, 0.86, 1.0),
 		HORIZONTAL_ALIGNMENT_RIGHT, 1)
 	_value_flash.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	UIStyle.place(_value_flash, 0, 0, 1, 0, 220, 6, -16, 26)
+	UIStyle.place(_value_flash, 0, 0, 1, 0, 220, 5, -16, 23)
 	_tuning_card.add_child(_value_flash)
 
+	# 4 列 × 2 行：第一行 轮毂/轮毂色/轮胎/尾翼，第二行 卡钳/车漆/升级。
+	# 单项约 130px 宽，标题与数值上下两行都有充足空间，不再截断。
+	var seg_w := (RAIL_X1 - RAIL_X0 - 32.0 - 3.0 * 6.0) / 4.0
 	for i in CATEGORIES.size():
 		var seg := Button.new()
 		seg.focus_mode = Control.FOCUS_ALL
@@ -373,32 +377,44 @@ func _build_tuning_card() -> void:
 		seg.add_theme_stylebox_override("hover", _seg_style(false, true))
 		seg.add_theme_stylebox_override("pressed", _seg_style(true, false))
 		seg.add_theme_stylebox_override("focus", _seg_style(false, true))
-		# 横条总长 = 操作行（上赛道 + 返回/重置）总宽，按钮等分铺满
-		var seg_w := (RAIL_X1 - RAIL_X0 - 6.0 * 4.0) / 7.0
-		var seg_x := i * (seg_w + 4.0)
-		UIStyle.place(seg, 0, 0, 0, 0, seg_x, 27, seg_x + seg_w, 67)
+		var col := i % 4
+		var row := i / 4
+		var seg_x := 16.0 + col * (seg_w + 6.0)
+		var seg_y := 24.0 + row * 40.0
+		UIStyle.place(seg, 0, 0, 0, 0, seg_x, seg_y, seg_x + seg_w, seg_y + 36.0)
 		var idx := i
 		seg.pressed.connect(func() -> void: _select_category(idx))
 		_tuning_card.add_child(seg)
 		_tuning_segs.append(seg)
 
-		var title := UIStyle.label(CATEGORY_SHORT[i], 10, Color(0.82, 0.89, 0.95, 1.0),
+		var title := UIStyle.label(CATEGORY_SHORT[i], 11, Color(0.82, 0.89, 0.95, 1.0),
 			HORIZONTAL_ALIGNMENT_CENTER)
-		UIStyle.place(title, 0, 0, 1, 0, 2, 3, -2, 19)
+		UIStyle.place(title, 0, 0, 1, 0, 2, 2, -2, 18)
 		seg.add_child(title)
 		_tuning_titles.append(title)
 
-		var value := UIStyle.label_tech("", 8, UIStyle.GOLD, HORIZONTAL_ALIGNMENT_CENTER)
+		var value := UIStyle.label_tech("", 9, UIStyle.GOLD, HORIZONTAL_ALIGNMENT_CENTER)
 		value.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		UIStyle.place(value, 0, 0, 1, 0, 2, 18, -2, 34)
 		seg.add_child(value)
 		_tuning_values.append(value)
 
-	# 车漆色板：只在「车漆」分类下出现，嵌在横条内
+	# 第二行末位空槽：放一条常驻的视角提示（鼠标拖拽旋转车身）。
+	var hint_x := 16.0 + 3.0 * (seg_w + 6.0)
+	var hint_a := UIStyle.label("拖拽车身", 10, Color(0.52, 0.64, 0.72, 1.0),
+		HORIZONTAL_ALIGNMENT_CENTER)
+	UIStyle.place(hint_a, 0, 0, 0, 0, hint_x, 66, hint_x + seg_w, 82)
+	_tuning_card.add_child(hint_a)
+	var hint_b := UIStyle.label("旋转预览视角", 9, Color(0.42, 0.53, 0.61, 1.0),
+		HORIZONTAL_ALIGNMENT_CENTER)
+	UIStyle.place(hint_b, 0, 0, 0, 0, hint_x, 82, hint_x + seg_w, 98)
+	_tuning_card.add_child(hint_b)
+
+	# 车漆色板：只在「车漆」分类下出现，嵌在改装区底部
 	_paint_row = HBoxContainer.new()
 	_paint_row.add_theme_constant_override("separation", 8)
 	_paint_row.alignment = BoxContainer.ALIGNMENT_BEGIN
-	UIStyle.place(_paint_row, 0, 0, 1, 0, 16, 71, -180, 88)
+	UIStyle.place(_paint_row, 0, 0, 1, 0, 16, 102, -180, 117)
 	_paint_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_tuning_card.add_child(_paint_row)
 	for i in 8:
@@ -416,7 +432,7 @@ func _build_tuning_card() -> void:
 		_paint_chips.append(chip)
 	_paint_label = UIStyle.label("", 9, UIStyle.TXT_DIM, HORIZONTAL_ALIGNMENT_RIGHT)
 	_paint_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	UIStyle.place(_paint_label, 0, 0, 1, 0, 260, 70, -16, 88)
+	UIStyle.place(_paint_label, 0, 0, 1, 0, 320, 102, -16, 117)
 	_tuning_card.add_child(_paint_label)
 
 
@@ -589,7 +605,9 @@ func _build_actions() -> void:
 	race_row.add_theme_constant_override("separation", 10)
 	race_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_race_btn.add_child(race_row)
-	race_row.add_child(UIStyle.keycap("SPACE", UIStyle.ACCENT, 10))
+	var space_key := UIStyle.keycap("SPACE", UIStyle.ACCENT, 10)
+	space_key.visible = Settings.key_hints
+	race_row.add_child(space_key)
 	race_row.add_child(UIStyle.label_display("上赛道   /   START RACE", 14, UIStyle.TXT,
 		HORIZONTAL_ALIGNMENT_LEFT, 2))
 	race_row.add_child(UIStyle.spacer())
@@ -622,6 +640,7 @@ func _build_hint_row() -> void:
 	row.add_theme_constant_override("separation", 12)
 	UIStyle.place(row, 1, 1, 1, 1, RAIL_X0 - 40, -48, RAIL_X1, -22)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.visible = Settings.key_hints
 	_root.add_child(row)
 	for entry in hints:
 		var pair := HBoxContainer.new()
@@ -885,7 +904,11 @@ func refresh() -> void:
 	_index_label.text = "车辆  %02d / %02d   ·   右侧网格直接选车   ·   TAB / Ⓨ 切换改装条   ·   拖拽车身旋转" % [
 		car_index + 1, GameData.cars_specs.size()]
 	if _grid_count != null:
-		_grid_count.text = "%d 台  ·  当前 %02d" % [GameData.cars_specs.size(), car_index + 1]
+		var profile := ProfileStore.load_profile()
+		var driven_map: Dictionary = profile.get("driven_cars", {})
+		var driven := mini(driven_map.size(), GameData.cars_specs.size())
+		_grid_count.text = "%d 台  ·  已驾驶 %d  ·  当前 %02d" % [
+			GameData.cars_specs.size(), driven, car_index + 1]
 
 	_refresh_grid_styles()
 	_refresh_tuning_styles()
@@ -982,7 +1005,15 @@ func _refresh_upgrade_note(car_id: String) -> void:
 	var cost := Garage.upgrade_cost(car_id, key)
 	var balance := ProfileStore.credit_balance()
 	if cost < 0:
-		_upgrade_note.text = "%s 已满级   ·   重置可退还 XP   ·   手柄 A / ENTER 升级" % label
+		var refund := 0
+		var spent: Dictionary = Garage.config(car_id).get("spent", {})
+		for k in Garage.UPGRADE_KEYS:
+			refund += maxi(0, int(spent.get(k, 0)))
+		if refund > 0:
+			_upgrade_note.text = "%s 已满级   ·   重置可退还 %d XP   ·   手柄 A / ENTER 升级" % [
+				label, refund]
+		else:
+			_upgrade_note.text = "%s 已满级   ·   旧存档改装无退款余额" % label
 		_upgrade_note.add_theme_color_override("font_color", UIStyle.TXT_FAINT)
 	elif cost == 0:
 		_upgrade_note.text = "%s  Lv.%d → %d   ·   首档免费   ·   余额 %d XP" % [
@@ -1151,7 +1182,7 @@ func _confirm() -> void:
 		if cost < 0:
 			denied = "已满级"
 		elif cost > 0 and balance < cost:
-			denied = "XP 不足 · 还差 %d XP" % (cost - balance)
+			denied = "XP 不足 · 还差 %d XP · 比赛/成就可赚" % (cost - balance)
 		elif not Garage.add_upgrade_level(car_id, key):
 			denied = "升级失败"
 	else:

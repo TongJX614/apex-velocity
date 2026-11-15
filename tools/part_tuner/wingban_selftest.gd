@@ -58,7 +58,7 @@ func _process(_d: float) -> bool:
 	if not _ready_ok():
 		return _fail_quit("autoload 一直没就绪")
 	if PL == null:
-		PL = load("res://scripts/cars/parts_library.gd")
+		PL = load("res://cars/scripts/parts_library.gd")
 	match _step:
 		0:
 			if _car.is_empty():

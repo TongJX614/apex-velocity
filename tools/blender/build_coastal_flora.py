@@ -4,7 +4,7 @@ Run:
   ~/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup \
       --python tools/blender/build_coastal_flora.py
 
-Outputs assets/venues/tree_*.glb + grass_clump.glb (real metres, origin at base).
+Outputs maps/assets/venues/tree_*.glb + grass_clump.glb (real metres, origin at base).
 """
 import math
 import os

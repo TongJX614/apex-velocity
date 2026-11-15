@@ -8,12 +8,12 @@ extends CanvasLayer
 signal finished
 
 const SHOTS := [
-	{"path": "res://assets/backdrops/coast.png", "cn": "翡翠海岸", "en": "COASTAL RUN", "sub": "碧海蓝天 · 高速海岸线"},
-	{"path": "res://assets/backdrops/alpine.png", "cn": "雪山隘口", "en": "ALPINE PASS", "sub": "连续发卡弯 · 云端之上"},
-	{"path": "res://assets/backdrops/city.png", "cn": "霓虹都市", "en": "NEON CITY", "sub": "霓虹赛道 · 午夜狂飙"},
-	{"path": "res://assets/backdrops/canyon.png", "cn": "赤岩峡谷", "en": "RED CANYON", "sub": "红色岩壁 · 极限贴弯"},
-	{"path": "res://assets/backdrops/skyline.png", "cn": "天际环城", "en": "SKYLINE CIRCUIT", "sub": "黄昏城市 · 天际线冲刺"},
-	{"path": "res://assets/backdrops/glacier.png", "cn": "极地冰川", "en": "GLACIER EDGE", "sub": "冰雪路面 · 低温抓地"},
+	{"path": "res://maps/assets/backdrops/coast.png", "cn": "翡翠海岸", "en": "COASTAL RUN", "sub": "碧海蓝天 · 高速海岸线"},
+	{"path": "res://maps/assets/backdrops/alpine.png", "cn": "雪山隘口", "en": "ALPINE PASS", "sub": "连续发卡弯 · 云端之上"},
+	{"path": "res://maps/assets/backdrops/city.png", "cn": "霓虹都市", "en": "NEON CITY", "sub": "霓虹赛道 · 午夜狂飙"},
+	{"path": "res://maps/assets/backdrops/canyon.png", "cn": "赤岩峡谷", "en": "RED CANYON", "sub": "红色岩壁 · 极限贴弯"},
+	{"path": "res://maps/assets/backdrops/skyline.png", "cn": "天际环城", "en": "SKYLINE CIRCUIT", "sub": "黄昏城市 · 天际线冲刺"},
+	{"path": "res://maps/assets/backdrops/glacier.png", "cn": "极地冰川", "en": "GLACIER EDGE", "sub": "冰雪路面 · 低温抓地"},
 	{"path": "res://docs/m32/menu-car-in-scene-coast.png", "cn": "选择你的赛车", "en": "CHOOSE YOUR MACHINE", "sub": "46 台赛车 · 车库改装 · 生涯大奖赛"},
 ]
 

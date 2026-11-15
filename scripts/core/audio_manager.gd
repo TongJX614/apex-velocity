@@ -3,7 +3,7 @@ extends Node
 ## BGM + 程序化引擎声 + 风噪 / 轮胎 / 碰撞音效，全部走独立 AudioServer Bus，
 ## 方便设置面板分轨调节（Music / Engine / Wind / SFX / UI）。
 
-const AUDIO_ROOT := "res://assets/audio"
+const AUDIO_ROOT := "res://maps/audio"
 const MENU_BGM_ID := "apex"
 const BUS_NAMES := ["Music", "Engine", "Wind", "SFX", "UI"]
 
@@ -230,6 +230,27 @@ func _exit_tree() -> void:
 
 func play_menu_bgm() -> void:
 	_play_bgm_id(MENU_BGM_ID)
+
+
+## 赛道 BGM 的资源路径（主线程预读用；找不到直接返回空）。
+func bgm_path_for(track_id: String) -> String:
+	var entries: Array = GameData.bgm
+	var bgm_id := ""
+	for entry in entries:
+		if typeof(entry) == TYPE_DICTIONARY and String(entry.get("map", "")) == track_id:
+			bgm_id = String(entry.get("id", ""))
+			break
+	if bgm_id.is_empty() and entries.size() > 0 and typeof(entries[0]) == TYPE_DICTIONARY:
+		bgm_id = String(entries[0].get("id", ""))
+	if bgm_id.is_empty():
+		return ""
+	for entry in entries:
+		if typeof(entry) == TYPE_DICTIONARY and String(entry.get("id", "")) == bgm_id:
+			var file := String(entry.get("file", ""))
+			if not file.is_empty():
+				return AUDIO_ROOT.path_join(file)
+			break
+	return AUDIO_ROOT.path_join("bgm/%s.ogg" % bgm_id)
 
 
 func play_race_bgm(track_id: String) -> void:

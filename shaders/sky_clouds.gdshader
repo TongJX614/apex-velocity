@@ -22,6 +22,7 @@ uniform float haze_strength : hint_range(0.0, 1.0) = 0.35;
 uniform int cloud_octaves : hint_range(2, 5) = 5;
 uniform float cloud_detail : hint_range(0.0, 1.0) = 1.0;
 uniform float cirrus_amount : hint_range(0.0, 1.0) = 0.55;
+uniform float aurora_amount : hint_range(0.0, 1.0) = 0.0;
 
 float hash21(vec2 p) {
 	p = fract(p * vec2(123.34, 456.21));
@@ -48,6 +49,18 @@ float fbm(vec2 p) {
 		if (i >= octaves) {
 			break;
 		}
+		value += amplitude * value_noise(p);
+		p = p * 2.03 + vec2(17.1, 9.3);
+		amplitude *= 0.5;
+	}
+	return value;
+}
+
+// 细节层只取 3 个八度：再高的频在当前视距下不足一个像素，纯属走样与白烧 ALU。
+float fbm3(vec2 p) {
+	float value = 0.0;
+	float amplitude = 0.5;
+	for (int i = 0; i < 3; i++) {
 		value += amplitude * value_noise(p);
 		p = p * 2.03 + vec2(17.1, 9.3);
 		amplitude *= 0.5;
@@ -106,7 +119,7 @@ void sky() {
 		float n = fbm(cuv * cloud_scale + drift);
 		float density = n;
 		if (cloud_detail > 0.5) {
-			float n2 = fbm(cuv * cloud_scale * 2.7 - drift * 1.6);
+			float n2 = fbm3(cuv * cloud_scale * 2.7 - drift * 1.6);
 			density = n * 0.68 + n2 * 0.32;
 		}
 		float cover = smoothstep(1.0 - cloud_coverage, 1.0 - cloud_coverage + 0.11, density);
@@ -136,6 +149,19 @@ void sky() {
 			col = mix(col, cir_col, streak * 0.26 * cirrus_amount * gap
 				* smoothstep(0.03, 0.30, y));
 		}
+	}
+
+	// ---- 极光（仅极地主题启用）----
+	if (aurora_amount > 0.001 && y > 0.02) {
+		float az = atan(dir.z, dir.x);
+		float ribbon = 0.27 + 0.10 * sin(az * 2.0 + 0.8) + 0.035 * sin(az * 5.0 - 1.7);
+		float band = exp(-pow((y - ribbon) / 0.105, 2.0));
+		float fold = 0.55 + 0.45 * sin(az * 14.0 + TIME * 0.25 + sin(az * 5.0) * 2.0);
+		float veil = value_noise(vec2(az * 6.0 + TIME * 0.04, y * 9.0));
+		float mask = smoothstep(0.12, 0.62, veil * 0.6 + fold * 0.4);
+		vec3 ac = mix(vec3(0.14, 0.95, 0.55), vec3(0.35, 0.45, 1.0),
+			smoothstep(0.2, 0.9, veil));
+		col += ac * band * mask * aurora_amount * 1.05;
 	}
 
 	COLOR = col;

@@ -14,6 +14,7 @@ signal settings_requested
 signal achievements_requested
 signal daily_requested
 signal archive_requested
+signal tutorial_requested
 signal selection_changed(car_id: String)
 signal track_changed(track_id: String)
 
@@ -50,6 +51,8 @@ var mode_button: Button
 var quality_label: Label
 var station_label: Label
 var footer_label: Label
+## 键位提示节点：跟随 Settings.key_hints 总开关（默认隐藏，教学在新手教程）。
+var _key_hint_nodes: Array[Control] = []
 var preview: Minimap
 var bg_image: TextureRect
 var stage_rect: TextureRect
@@ -86,6 +89,7 @@ var _car_rule: TextureRect
 var _track_rule: TextureRect
 var _track_title_rule: ColorRect
 var _daily_badge: Label
+var _tutorial_badge: Label
 var _mastery_label: Label
 var _history_label: Label
 
@@ -151,12 +155,9 @@ func _refresh_profile_badge() -> void:
 	if profile_badge == null:
 		return
 	var lines: Array[String] = []
-	if ResourceLoader.exists("res://scripts/core/profile_store.gd"):
-		var ps := load("res://scripts/core/profile_store.gd")
-		if ps.has_method("format_summary"):
-			var raw: Array = ps.format_summary()
-			for i in mini(3, raw.size()):
-				lines.append(String(raw[i]))
+	var raw: Array = ProfileStore.format_summary()
+	for i in mini(3, raw.size()):
+		lines.append(String(raw[i]))
 	if lines.is_empty():
 		profile_badge.text = ""
 		return
@@ -263,13 +264,26 @@ func _step_track(delta: int) -> void:
 
 
 func _toggle_mode() -> void:
+	if _selected_is_field():
+		return
 	mode_index = (mode_index + 1) % MODE_IDS.size()
 	refresh()
 
 
 func _start() -> void:
-	Settings.set_selection(selected_track_id(), selected_car_id(), MODE_IDS[mode_index])
-	start_requested.emit(selected_track_id(), selected_car_id(), MODE_IDS[mode_index])
+	var mode: String = MODE_IDS[mode_index]
+	if _selected_is_field():
+		mode = "ta"
+	Settings.set_selection(selected_track_id(), selected_car_id(), mode)
+	start_requested.emit(selected_track_id(), selected_car_id(), mode)
+
+
+## 开放漂移场地只有单人自由练习：锁定计时赛通道，禁用 GP / 本地双人。
+func _selected_is_field() -> bool:
+	if GameData.tracks.is_empty():
+		return false
+	var track: Dictionary = GameData.tracks[posmod(track_index, GameData.tracks.size())]
+	return bool(track.get("openField", false))
 
 
 func _select_station(i: int) -> void:
@@ -350,7 +364,9 @@ func _build() -> void:
 	ach_row.add_child(UIStyle.label("成就  /  ACHIEVEMENTS", 11, UIStyle.TXT_SUB))
 	var ach_fill := UIStyle.spacer()
 	ach_row.add_child(ach_fill)
-	ach_row.add_child(UIStyle.keycap("A", UIStyle.GOLD, 10))
+	var ach_key := UIStyle.keycap("A", UIStyle.GOLD, 10)
+	ach_row.add_child(ach_key)
+	_key_hint_nodes.append(ach_key)
 
 	# 每日合约入口：紧跟成就下方，右侧角标显示今天还有几条可领
 	var daily_btn := Button.new()
@@ -374,7 +390,9 @@ func _build() -> void:
 	daily_row.add_child(daily_fill)
 	_daily_badge = UIStyle.label_tech("", 11, UIStyle.GOLD, HORIZONTAL_ALIGNMENT_RIGHT, 1)
 	daily_row.add_child(_daily_badge)
-	daily_row.add_child(UIStyle.keycap("D", UIStyle.GOLD, 10))
+	var daily_key := UIStyle.keycap("D", UIStyle.GOLD, 10)
+	daily_row.add_child(daily_key)
+	_key_hint_nodes.append(daily_key)
 
 	# 赛道档案入口：8 站精通 / 纪录总览，发车前先看进度
 	var archive_btn := Button.new()
@@ -396,9 +414,38 @@ func _build() -> void:
 	archive_row.add_child(UIStyle.label("赛道档案  /  ARCHIVE", 11, UIStyle.TXT_SUB))
 	var archive_fill := UIStyle.spacer()
 	archive_row.add_child(archive_fill)
-	archive_row.add_child(UIStyle.label_tracked("8 TRACKS", 9, UIStyle.a(ACCENT, 0.72),
-		HORIZONTAL_ALIGNMENT_RIGHT, 1))
-	archive_row.add_child(UIStyle.keycap("P", ACCENT, 10))
+	archive_row.add_child(UIStyle.label_tracked("%d TRACKS" % GameData.tracks.size(), 9,
+		UIStyle.a(ACCENT, 0.72), HORIZONTAL_ALIGNMENT_RIGHT, 1))
+	var archive_key := UIStyle.keycap("P", ACCENT, 10)
+	archive_row.add_child(archive_key)
+	_key_hint_nodes.append(archive_key)
+
+	# 新手教程入口：首次进入会自动开跑，这里供随时重学；绿色标识新手身份
+	var tutorial_btn := Button.new()
+	tutorial_btn.focus_mode = Control.FOCUS_ALL
+	tutorial_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	UIStyle.apply_button(tutorial_btn, UIStyle.GREEN, "ghost", 11)
+	tutorial_btn.custom_minimum_size = Vector2(0, 34)
+	UIStyle.place(tutorial_btn, 0, 0, 0, 0, 58, 258, 328, 294)
+	tutorial_btn.pressed.connect(func() -> void: tutorial_requested.emit())
+	root.add_child(tutorial_btn)
+	var tutorial_row := HBoxContainer.new()
+	tutorial_row.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tutorial_row.offset_left = 12
+	tutorial_row.offset_right = -10
+	tutorial_row.add_theme_constant_override("separation", 8)
+	tutorial_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tutorial_btn.add_child(tutorial_row)
+	tutorial_row.add_child(UIStyle.label("✦", 13, UIStyle.GREEN, HORIZONTAL_ALIGNMENT_CENTER))
+	tutorial_row.add_child(UIStyle.label("新手教程  /  TUTORIAL", 11, UIStyle.TXT_SUB))
+	var tutorial_fill := UIStyle.spacer()
+	tutorial_row.add_child(tutorial_fill)
+	_tutorial_badge = UIStyle.label_tech("", 10, UIStyle.a(UIStyle.GREEN, 0.85),
+		HORIZONTAL_ALIGNMENT_RIGHT, 1)
+	tutorial_row.add_child(_tutorial_badge)
+	var tutorial_key := UIStyle.keycap("N", UIStyle.GREEN, 10)
+	tutorial_row.add_child(tutorial_key)
+	_key_hint_nodes.append(tutorial_key)
 
 	# 车库入口移到右侧车辆卡旁边的大卡片（见 _build_garage_card）
 
@@ -429,7 +476,9 @@ func _build() -> void:
 	st_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	settings_btn.add_child(st_row)
 	st_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	st_row.add_child(UIStyle.keycap("S", ACCENT, 10))
+	var settings_key := UIStyle.keycap("S", ACCENT, 10)
+	st_row.add_child(settings_key)
+	_key_hint_nodes.append(settings_key)
 	st_row.add_child(UIStyle.label("设置  /  SETTINGS", 12, UIStyle.TXT_SUB))
 
 	# ---- 右侧上：车辆卡 + 车库大入口（原卡片一分为二）---------------------
@@ -475,6 +524,7 @@ func _build() -> void:
 	_build_key_hints(root)
 
 	_apply_accent(_track_accent)
+	_apply_key_hints()
 
 
 func _build_key_hints(root: Control) -> void:
@@ -496,6 +546,15 @@ func _build_key_hints(root: Control) -> void:
 		pair.add_child(UIStyle.keycap(String(entry[0]), ACCENT, 9))
 		var lbl := UIStyle.label(String(entry[1]), 10, Color(0.76, 0.85, 0.92, 1.0))
 		pair.add_child(lbl)
+	_key_hint_nodes.append(row)
+
+
+func _apply_key_hints() -> void:
+	for node in _key_hint_nodes:
+		if is_instance_valid(node):
+			node.visible = Settings.key_hints
+	if mode_label != null:
+		mode_label.text = "M   模式  /  MODE" if Settings.key_hints else "模式  /  MODE"
 
 
 func accent_ref() -> Color:
@@ -613,6 +672,7 @@ func _build_garage_card(card: Panel) -> void:
 	btn.add_child(keys)
 	keys.add_child(UIStyle.keycap("G", ACCENT, 10))
 	keys.add_child(UIStyle.keycap("Y", ACCENT, 10))
+	_key_hint_nodes.append(keys)
 
 	var arrow := UIStyle.label("›", 38, UIStyle.a(ACCENT, 0.95), HORIZONTAL_ALIGNMENT_RIGHT)
 	UIStyle.place(arrow, 0, 1, 1, 1, 120, -66, -14, -12)
@@ -840,6 +900,7 @@ func _build_launch(root: Control) -> void:
 	var enter_key := UIStyle.keycap("ENTER  ⏎", ACCENT, 11)
 	UIStyle.place(enter_key, 1, 0.5, 1, 0.5, -174, -16, -26, 20)
 	_launch_btn.add_child(enter_key)
+	_key_hint_nodes.append(enter_key)
 
 	_launch_arrow = UIStyle.label("›", 30, UIStyle.a(ACCENT, 0.0), HORIZONTAL_ALIGNMENT_RIGHT)
 	UIStyle.place(_launch_arrow, 1, 0, 1, 1, -214, 0, -184, 0)
@@ -874,6 +935,8 @@ func _on_launch_hover(hover: bool) -> void:
 
 
 func _on_mode_button(i: int) -> void:
+	if _selected_is_field() and i != 1:
+		return
 	if mode_index == i:
 		return
 	mode_index = i
@@ -932,12 +995,13 @@ func _apply_backdrop() -> void:
 	if id.is_empty():
 		return
 	if not _bg_cache.has(id):
-		var path := "res://assets/backdrops/%s.png" % id
+		var path := "res://maps/assets/backdrops/%s.png" % id
 		_bg_cache[id] = load(path) if ResourceLoader.exists(path) else null
 	bg_image.texture = _bg_cache.get(id, null) as Texture2D
 
 
 func refresh() -> void:
+	_apply_key_hints()
 	_refresh_profile_badge()
 	_refresh_daily_badge()
 	if GameData.tracks.is_empty() or GameData.cars_specs.is_empty():
@@ -948,6 +1012,9 @@ func refresh() -> void:
 	var track_id := String(track.get("id", ""))
 	var car_spec: Dictionary = GameData.cars_specs[car_index]
 	var car_id := String(car_spec.get("id", ""))
+	var is_field := bool(track.get("openField", false))
+	if is_field:
+		mode_index = 1
 	var mode: String = MODE_IDS[mode_index]
 	var accent := Color.from_string(String(track.get("cardColor", "#55e7d2")), UIStyle.ACCENT)
 
@@ -963,20 +1030,18 @@ func refresh() -> void:
 	var length_km := float(track_lengths.get(track_id, 0.0)) / 1000.0
 	track_name_label.text = String(track.get("name", track_id))
 	track_en_label.text = "%s   ·   %s" % [String(track.get("en", "")), String(track.get("cornerType", ""))]
-	track_meta_label.text = "%.2f km   ·   %d 圈   ·   难度 %s   ·   %s" % [
-		length_km, int(track.get("laps", 3)), _difficulty_dots(int(track.get("difficulty", 2))),
-		_weather_cn(String(track.get("weather", "none")))]
 	_station_meta.text = "%02d / %02d" % [track_index + 1, GameData.tracks.size()]
-	if bool(track.get("openWorld", false)):
-		# 开放世界：没有赛道长度与圈数，改成面积 / 区域 / 难度 / 边界
-		var ow_titles := ["面积 AREA", "区域 ZONES", "难度 DIFF", "边界 BORDER"]
+	if is_field:
+		var field_titles := ["场地 FIELD", "标线 LINES", "障碍 OBSTACLES", "模式 MODE"]
 		for i in mini(_track_stat_titles.size(), 4):
-			_track_stat_titles[i].text = ow_titles[i]
-		track_meta_label.text = "81 km²   ·   8 区域   ·   自由漫游   ·   没有边界"
-		_track_stats[0].text = "81 km²"
-		_track_stats[1].text = "8 域"
-		_track_stats[2].text = "●".repeat(clampi(int(track.get("difficulty", 2)), 1, 5))
-		_track_stats[3].text = "∞"
+			_track_stat_titles[i].text = field_titles[i]
+		var side_km := float(track.get("fieldSize", 1000)) / 1000.0
+		track_meta_label.text = "%.1f × %.1f km 开放场地   ·   自由练习   ·   %s" % [
+			side_km, side_km, _weather_cn(String(track.get("weather", "none")))]
+		_track_stats[0].text = "%.1f×%.1f km" % [side_km, side_km]
+		_track_stats[1].text = "无"
+		_track_stats[2].text = "0"
+		_track_stats[3].text = "自由"
 	else:
 		var norm_titles := ["长度 LENGTH", "弯角 CORNERS", "难度 DIFF", "圈数 LAPS"]
 		for i in mini(_track_stat_titles.size(), 4):
@@ -989,13 +1054,16 @@ func refresh() -> void:
 		_track_stats[2].text = "●".repeat(clampi(int(track.get("difficulty", 2)), 1, 5))
 		_track_stats[3].text = str(int(track.get("laps", 3)))
 
-	var best := RecordsStore.best_total(track_id, mode)
-	var best_lap := RecordsStore.best_lap(track_id, mode)
-	if best > 0.0:
-		_record_best.text = "最佳总成绩  %s    ·    最佳单圈  %s" % [
-			RaceManager.format_time(best), RaceManager.format_time(best_lap)]
+	if is_field:
+		_record_best.text = "自由练习不计圈速   ·   漂移连击实时记分"
 	else:
-		_record_best.text = "最佳总成绩  --:--.---    ·    最佳单圈  --:--.---"
+		var best := RecordsStore.best_total(track_id, mode)
+		var best_lap := RecordsStore.best_lap(track_id, mode)
+		if best > 0.0:
+			_record_best.text = "最佳总成绩  %s    ·    最佳单圈  %s" % [
+				RaceManager.format_time(best), RaceManager.format_time(best_lap)]
+		else:
+			_record_best.text = "最佳总成绩  --:--.---    ·    最佳单圈  --:--.---"
 	_record_lap.visible = false
 	_refresh_mastery(track_id, float(track_lengths.get(track_id, 0.0)),
 		int(track.get("difficulty", 2)))
@@ -1016,11 +1084,20 @@ func refresh() -> void:
 		int(tuned.get("topKph", car_spec.get("topKph", 0))),
 		"改装已应用" if _has_tuning(car_id) else "原厂状态"]
 
-	mode_label.text = "M   模式  /  MODE"
+	mode_label.text = "M   模式  /  MODE" if Settings.key_hints else "模式  /  MODE"
 	for i in _mode_buttons.size():
 		_mode_buttons[i].button_pressed = (i == mode_index)
+		_mode_buttons[i].disabled = is_field and i != 1
 	quality_label.text = "画质  %s" % Settings.detail_name()
 	_display_label.text = "%s   ·   %s" % [Settings.resolution_label(), Settings.fps_text()]
+	if _tutorial_badge != null:
+		match ProfileStore.tutorial_state():
+			"done":
+				_tutorial_badge.text = "已毕业 ✓"
+			"skipped":
+				_tutorial_badge.text = "可重学"
+			_:
+				_tutorial_badge.text = "未完成"
 
 	for i in station_buttons.size():
 		station_buttons[i].button_pressed = (i == track_index)
@@ -1241,6 +1318,9 @@ func _input(event: InputEvent) -> void:
 			return
 		KEY_P:
 			archive_requested.emit()
+			return
+		KEY_N:
+			tutorial_requested.emit()
 			return
 		KEY_S, KEY_ESCAPE:
 			settings_requested.emit()

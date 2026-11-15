@@ -326,7 +326,7 @@ def main() -> int:
     dump("records.json", records)
 
     # JSON assets are copied verbatim
-    manifest = json.loads((legacy / "assets/cars/models/manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads((legacy / "cars/assets/models/manifest.json").read_text(encoding="utf-8"))
     dump("car_manifest.json", manifest)
     bgm_manifest = json.loads((legacy / "audio/bgm/manifest.json").read_text(encoding="utf-8"))
     dump("bgm_manifest.json", bgm_manifest)

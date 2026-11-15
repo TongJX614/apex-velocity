@@ -74,15 +74,25 @@ void fragment() {
 	// 但淡出别太快——否则 1km 外就退化成一块无特征的平色墙。
 	float detail = exp(-cam_dist * 0.0006);
 	float bump = mix(0.24, 1.0, detail);
-	float e = 0.18;
-	float h0 = wave(p, t);
-	float hx = wave(p + vec2(e, 0.0), t);
-	float hz = wave(p + vec2(0.0, e), t);
-	vec2 slope = vec2((h0 - hx), (h0 - hz)) * wave_height * bump;
-	// 近处叠一层细碎涟漪：不额外采样 fbm，只加两组高频正弦，便宜但有效。
-	float rip = sin(p.x * 13.0 + p.y * 9.0 + t * 2.6) * sin(p.x * 8.0 - p.y * 15.0 - t * 2.1);
-	slope += vec2(cos(p.x * 13.0 + t * 2.6), cos(p.y * 9.0)) * rip * 0.035 * detail;
-	vec3 n = normalize(vec3(slope.x, 1.0, slope.y));
+	float h0 = 0.0;
+	vec3 n = vec3(0.0, 1.0, 0.0);
+	if (cam_dist > 2000.0) {
+		// 2km 外三次 FBM 扭曲不足一个像素：只留两组低频涌浪，斜率可直接解析。
+		float ph = p.x * 0.55 + p.y * 0.42 + t * 0.5;
+		h0 = sin(ph) * 0.6 + sin((p.x - p.y) * 1.1 - t * 0.9) * 0.3;
+		vec2 slope = vec2(cos(ph) * 0.33, cos(ph) * 0.25) * wave_height;
+		n = normalize(vec3(slope.x, 1.0, slope.y));
+	} else {
+		float e = 0.18;
+		h0 = wave(p, t);
+		float hx = wave(p + vec2(e, 0.0), t);
+		float hz = wave(p + vec2(0.0, e), t);
+		vec2 slope = vec2((h0 - hx), (h0 - hz)) * wave_height * bump;
+		// 近处叠一层细碎涟漪：不额外采样 fbm，只加两组高频正弦，便宜但有效。
+		float rip = sin(p.x * 13.0 + p.y * 9.0 + t * 2.6) * sin(p.x * 8.0 - p.y * 15.0 - t * 2.1);
+		slope += vec2(cos(p.x * 13.0 + t * 2.6), cos(p.y * 9.0)) * rip * 0.035 * detail;
+		n = normalize(vec3(slope.x, 1.0, slope.y));
+	}
 
 	float view_dot = clamp(dot(normalize(VIEW_MATRIX * vec4(n, 0.0)).xyz, VIEW), 0.0, 1.0);
 	float fresnel = pow(1.0 - view_dot, 3.0);
@@ -115,14 +125,16 @@ void fragment() {
 	float depth_raw = texture(depth_tex, SCREEN_UV).r;
 	vec4 vpos = INV_PROJECTION_MATRIX * vec4(vec3(SCREEN_UV, depth_raw) * 2.0 - 1.0, 1.0);
 	float shore = 0.0;
-	if (vpos.w > 0.0001) {
+	float foam = 0.0;
+	// 泡沫 900m 后已完全淡出，远处不必再读深度纹理反投影。
+	if (cam_dist < 1200.0 && vpos.w > 0.0001) {
 		vec3 scene_pos = vpos.xyz / vpos.w;
 		float shore_delta = (-scene_pos.z) - (-VERTEX.z);
 		shore = 1.0 - smoothstep(0.0, 2.6, shore_delta);
+		float foam_noise = vnoise(world_pos.xz * 1.6 + vec2(t * 0.4, 0.0));
+		foam = shore * smoothstep(0.32, 0.68, foam_noise + 0.22) * foam_amount;
+		foam *= 1.0 - smoothstep(300.0, 900.0, cam_dist);
 	}
-	float foam_noise = vnoise(world_pos.xz * 1.6 + vec2(t * 0.4, 0.0));
-	float foam = shore * smoothstep(0.32, 0.68, foam_noise + 0.22) * foam_amount;
-	foam *= 1.0 - smoothstep(300.0, 900.0, cam_dist);
 	col = mix(col, vec3(0.92, 0.95, 0.96), clamp(foam, 0.0, 0.85));
 
 	// 远处接雾色：以前接深水色会在海平线压出一条暗带，和雾天对不上

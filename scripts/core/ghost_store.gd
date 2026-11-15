@@ -52,17 +52,10 @@ static func load_for(track_id: String, car_id: String) -> Dictionary:
 
 
 static func _load_path(path: String, track_id: String) -> Dictionary:
-	if not FileAccess.file_exists(path):
+	var parsed: Variant = SafeJson.read_dict(path)
+	if parsed == null:
 		return {}
-	var f := FileAccess.open(path, FileAccess.READ)
-	if f == null:
-		return {}
-	var text := f.get_as_text()
-	f.close()
-	var json := JSON.new()
-	if json.parse(text) != OK or typeof(json.data) != TYPE_DICTIONARY:
-		return {}
-	var data: Dictionary = json.data
+	var data: Dictionary = parsed
 	var raw = data.get("samples", [])
 	if typeof(raw) != TYPE_ARRAY:
 		return {}
@@ -99,14 +92,7 @@ static func save_for(track_id: String, car_id: String, lap_time: float, samples:
 
 
 static func _write_path(path: String, payload: Dictionary) -> bool:
-	var f := FileAccess.open(path, FileAccess.WRITE)
-	if f == null:
-		push_warning("GhostStore: cannot write %s" % path)
-		return false
-	f.store_string(JSON.stringify(payload))
-	var err := f.get_error()
-	f.close()
-	return err == OK
+	return SafeJson.write(path, JSON.stringify(payload))
 
 
 static func _decimate(samples: Array) -> Array:

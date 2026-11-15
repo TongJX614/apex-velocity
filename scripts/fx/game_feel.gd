@@ -171,6 +171,44 @@ func clear() -> void:
 	_last_scrape_ms = -1000
 
 
+## 进赛预热：在加载遮罩后面把烟雾/碎片/火花/氮气叠加层先画几帧。
+## 否则第一脚油门打滑、第一次撞墙、第一次氮气时才现场编译粒子与叠加层
+## 管线，实测会在倒计时归零那一帧顶上 60~70ms 的长帧。
+func prewarm() -> void:
+	if not is_inside_tree():
+		return
+	var holder := Node3D.new()
+	holder.name = "GameFeelPrewarm"
+	add_child(holder)
+	if car_ref != null and is_instance_valid(car_ref):
+		holder.global_position = car_ref.global_position
+	_add_debris(holder, 0.05)
+	_add_sparks(holder, 0.05)
+	var smoke := _make_smoke("GameFeelPrewarmSmoke", Vector3(0.0, 0.9, 0.0))
+	if smoke != null:
+		smoke.amount = 2
+		smoke.emitting = true
+	var nitro_on := _nitro_layer != null and is_instance_valid(_nitro_layer)
+	if nitro_on:
+		_nitro_layer.visible = true
+		_nitro_glow.modulate.a = 0.01
+		_nitro_streaks.modulate.a = 0.01
+		_nitro_flash.modulate.a = 0.01
+		_nitro_tint.color.a = 0.01
+	for i in 3:
+		await get_tree().process_frame
+	if is_instance_valid(holder):
+		holder.queue_free()
+	if is_instance_valid(smoke):
+		smoke.queue_free()
+	if nitro_on and _nitro_layer != null and is_instance_valid(_nitro_layer):
+		_nitro_layer.visible = false
+		_nitro_glow.modulate.a = 0.0
+		_nitro_streaks.modulate.a = 0.0
+		_nitro_flash.modulate.a = 0.0
+		_nitro_tint.color.a = 0.0
+
+
 # ---------------------------------------------------------------------------
 # hit-stop
 # ---------------------------------------------------------------------------

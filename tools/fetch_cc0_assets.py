@@ -2,8 +2,8 @@
 """Fetch CC0 assets from Poly Haven (skip high-poly originals for trees).
 
 Downloads 1k PBR textures, a 2k HDRI sky and a few glTF props into
-assets/thirdparty/polyhaven/, then optionally decimates the props in Blender.
-All assets are CC0 (public domain); see assets/thirdparty/polyhaven/README.md.
+maps/assets/polyhaven/, then optionally decimates the props in Blender.
+All assets are CC0 (public domain); see maps/assets/polyhaven/README.md.
 """
 import json
 import os

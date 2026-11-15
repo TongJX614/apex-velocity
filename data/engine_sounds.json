@@ -1653,22 +1653,6 @@
    "bov": 0.7,
    "induction": 0.22,
    "tag": "S58 ADRO 套件"
-  },
-  "xiaomi_su7": {
-   "fuel": "ev",
-   "family": "ev",
-   "evTier": "hyper",
-   "maxWhineHz": 2250.0,
-   "harmonic": 0.115,
-   "third": 0.044,
-   "gearWhine": 0.052,
-   "nvh": 0.18,
-   "body": 0.25,
-   "gain": 1.04,
-   "idleRpm": 0.0,
-   "redlineRpm": 0.0,
-   "redlineNorm": 1.0,
-   "tag": "高性能纯电"
   }
  }
 }

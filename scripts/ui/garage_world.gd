@@ -15,30 +15,30 @@ extends Node3D
 # ---------------------------------------------------------------------------
 
 const BG_COLOR := Color(0.010, 0.012, 0.017)   # 背景与雾色（纯黑暗场）
-const SUN_COLOR := Color(1.0, 0.96, 0.90)      # key / 主光色温 ~5600K
+const SUN_COLOR := Color(1.0, 0.90, 0.78)      # key / 主光色温 ~4800K 暖白
 const FILL_COLOR := Color(0.55, 0.70, 1.0)     # fill 冷补光
 const RIM_COLOR := Color(0.72, 0.86, 1.0)      # 轮廓光（偏冷）
 const RING_COLOR := Color(0.22, 0.82, 0.92)    # 展台品牌青
 
 # 影调：白色/亮色车漆多，用 AGX（高光滚降更柔，白漆不发死）配合 exposure。
-# 若个别车漆过曝：先降 TONEMAP_EXPOSURE（1.10~1.20）再动灯；ACES 备选色更饱和。
+# 若个别车漆过曝：先降 TONEMAP_EXPOSURE（0.95~1.10）再动灯；ACES 备选色更饱和。
 const TONEMAP_MODE := Environment.TONE_MAPPER_AGX
-const TONEMAP_EXPOSURE := 1.18
+const TONEMAP_EXPOSURE := 1.06
 
 # 天空环境（只做反射/环境光）
-const AMBIENT_ENERGY := 0.30
+const AMBIENT_ENERGY := 0.22
 const SKY_RADIANCE := Sky.RADIANCE_SIZE_512
-const CEILING_GLOW := 0.10      # 顶部大面积柔光（车顶/机盖上的柔和渐变）
-const FLOOR_BOUNCE := 0.05      # 地面反弹（车身下部补一点暖光）
-const STRIP_HERO_ENERGY := 26.0  # 细长主柔光箱亮度（HDR，车漆上形成白热长高光）
-const STRIP_SOFT_ENERGY := 1.6   # 宽辅柔光箱亮度（软渐变）
+const CEILING_GLOW := 0.085     # 顶部大面积柔光（车顶/机盖上的柔和渐变）
+const FLOOR_BOUNCE := 0.075     # 地面反弹（车身下部补一点暖光）
+const STRIP_HERO_ENERGY := 12.0  # 细长主柔光箱亮度（HDR，车漆上形成长高光）
+const STRIP_SOFT_ENERGY := 1.1  # 宽辅柔光箱亮度（软渐变）
 
 # 实时灯
-const KEY_ENERGY := 1.25
-const FILL_ENERGY := 0.22
+const KEY_ENERGY := 1.10
+const FILL_ENERGY := 0.26
 const RIM_L_ENERGY := 1.10
 const RIM_R_ENERGY := 0.75
-const POOL_ENERGY := 1.0       # 顶部聚光灯地面光池
+const POOL_ENERGY := 3.5       # 顶部聚光灯地面光池
 const KEY_SHADOW_BLUR := 1.6
 const SHADOW_MAX_DISTANCE := 22.0
 
@@ -49,14 +49,14 @@ const FOG_DEPTH_END := 34.0
 
 # 地面 / 展台
 const FLOOR_Y := -0.085
-const FLOOR_ALBEDO := Color(0.030, 0.034, 0.042)
+const FLOOR_ALBEDO := Color(0.045, 0.050, 0.060)
 const FLOOR_ROUGHNESS := 0.75
 const FLOOR_METALLIC := 0.0
 const FLOOR_SPECULAR := 0.18
 const PLINTH_RADIUS := 3.15
-const PLINTH_ALBEDO := Color(0.030, 0.035, 0.045)
-const PLINTH_ROUGHNESS := 0.38
-const PLINTH_METALLIC := 0.30
+const PLINTH_ALBEDO := Color(0.032, 0.036, 0.046)
+const PLINTH_ROUGHNESS := 0.50
+const PLINTH_METALLIC := 0.10
 const RING_EMISSION := 1.2
 
 # 相机（卡片 UI 在右侧，车身占画面左 2/3）。基准尺寸 = M3（4.49m 长），
@@ -116,11 +116,10 @@ func _add_environment() -> void:
 	env.glow_bloom = 0.0
 	env.glow_hdr_threshold = 1.5
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
-	env.ssr_enabled = true
-	env.ssr_max_steps = 64
-	env.ssr_fade_in = 0.12
-	env.ssr_fade_out = 2.0
-	env.ssr_depth_tolerance = 0.4
+	# 黑场影棚不需要 SSR：地面/展台会把 SSR _miss_ 回退的天空柔光箱整片
+	# 反射成灰白圆盘（specular_mode 关不掉这条路径）。车漆的长条高光来自
+	# 软盒天空的环境反射，与 SSR 无关。
+	env.ssr_enabled = false
 	env.ssao_enabled = true
 	env.ssao_radius = 1.0
 	env.ssao_intensity = 1.6
@@ -173,11 +172,11 @@ void sky() {
 
 	// 顶部大面积柔光箱（车顶/机盖上的柔和渐变，不是硬边高光）。
 	float ceiling = smoothstep(0.35, 1.30, elev);
-	col += vec3(0.55, 0.62, 0.74) * CEILING_GLOW_STR;
+	col += vec3(0.60, 0.60, 0.62) * CEILING_GLOW_STR;
 
 	// 地面反射回来的暖色反弹。
 	float bounce = smoothstep(0.02, -0.85, d.y);
-	col += vec3(0.30, 0.24, 0.18) * FLOOR_BOUNCE_STR;
+	col += vec3(0.34, 0.26, 0.18) * FLOOR_BOUNCE_STR;
 
 	// 长条柔光箱：4 条主灯（细而亮，形成车漆长高光）+ 2 条宽辅灯（软渐变）。
 	float hero = 0.0;
@@ -188,7 +187,7 @@ void sky() {
 	float soft = 0.0;
 	soft += strip(az, elev, 1.57, 0.250, 0.03, 0.92) * 1.0;
 	soft += strip(az, elev, 4.71, 0.260, 0.03, 0.92) * 1.2;
-	col += vec3(1.0, 0.985, 0.96) * hero * STRIP_HERO_STR;
+	col += vec3(1.0, 0.94, 0.84) * hero * STRIP_HERO_STR;
 	col += vec3(0.85, 0.90, 1.0) * soft * STRIP_SOFT_STR;
 
 	COLOR = col;
@@ -259,6 +258,9 @@ func _add_floor() -> void:
 	mat.metallic = FLOOR_METALLIC
 	mat.roughness = FLOOR_ROUGHNESS
 	mat.metallic_specular = FLOOR_SPECULAR
+	# 掠射角菲涅尔会把柔光箱整片镜反射到地面上（灰白圆盘、显假）；
+	# 摄影棚地台是哑光黑，直接关镜面只留漫反射。
+	mat.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 	floor_mi.material_override = mat
 	floor_mi.position = Vector3(0.0, FLOOR_Y, 0.0)
 	floor_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -279,6 +281,7 @@ func _add_plinth() -> void:
 	plate.roughness = PLINTH_ROUGHNESS
 	plate.metallic = PLINTH_METALLIC
 	plate.metallic_specular = 0.6
+	plate.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 	plinth.material_override = plate
 	plinth.position = Vector3(0.0, -0.08, 0.0)
 	add_child(plinth)
@@ -317,12 +320,18 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func show_car(car_id: String) -> void:
+	# 同一台车换件重建时保留用户拖拽的朝向与当前机位：
+	# 把车尾拖到镜头前换尾翼，视角不应跳回默认 3/4。换另一台车才重置。
+	var same_car := holder != null and car_id == current_car_id
+	var kept_yaw := holder.rotation.y if same_car else 0.0
 	current_car_id = car_id
 	if holder != null:
+		holder.visible = false   # queue_free 延迟一帧，先隐藏避免新旧车重影
 		holder.queue_free()
 		holder = null
 	holder = Node3D.new()
 	holder.name = "ShowcaseCar"
+	holder.rotation.y = kept_yaw
 	add_child(holder)
 	var spec := Garage.effective_spec(car_id)
 	if spec.is_empty():
@@ -331,11 +340,12 @@ func show_car(car_id: String) -> void:
 	var model := result["model"] as Node3D
 	if model != null:
 		GarageLook.apply(model, car_id, Garage.config(car_id))
-		_frame_camera(model)
+		if not same_car:
+			_frame_camera(model)
 
 
 ## 按当前车模 AABB 自适应机位：车越长→机位同比拉远；瞄准高度取车高 0.55。
-## 保证 M3 / i8 / SU7 / URUS / GL8 这类 4.4~5.24m 的车都不切边、车顶留余量。
+## 保证 M3 / i8 / URUS / GL8 这类 4.4~5.24m 的车都不切边、车顶留余量。
 func _frame_camera(model: Node3D) -> void:
 	if _camera == null:
 		return

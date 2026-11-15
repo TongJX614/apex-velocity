@@ -23,8 +23,8 @@ FF = "/Users/tong/Library/Python/3.9/lib/python/site-packages/imageio_ffmpeg/bin
 PROJ = "/Users/tong/Desktop/极速巅峰"
 SHOTS = "/tmp/apex_shots"
 WORK = "/tmp/apex_edit"
-OUT = os.path.join(PROJ, "trailer", "极速巅峰_宣传片_2026.mp4")
-BGM = os.path.join(PROJ, "assets", "audio", "bgm")
+OUT = os.path.join(PROJ, "trailer", "极速巅峰_宣传片_90s.mp4")
+BGM = os.path.join(PROJ, "maps", "audio", "bgm")
 
 W, H, FPS = 1920, 1080, 30
 BLACK_FRAMES = 12                      # 0.40s 黑场
@@ -53,7 +53,7 @@ def tracking(d, xy, text, font, fill, gap=0):
 
 
 # ---------------------------------------------------------------------------
-# 时间线：全部以「帧」为单位，避免浮点累积误差；总 2534 帧 = 84.47s
+# 时间线：全部以「帧」为单位，避免浮点累积误差；总 2700 帧 = 90.00s
 # ---------------------------------------------------------------------------
 T = []
 
@@ -64,52 +64,52 @@ def add(kind, frames, **kw):
 
 add("logo_intro", 90)
 add("black", BLACK_FRAMES)
-add("video", 80, src="S02_garage.avi", trim=0.0, sub=("45 台真车数据标定", "45 REAL-WORLD SPECS"))
+add("video", 75, src="GARAGE_garage.avi", trim=0.0, sub=("46 台真车数据标定", "46 REAL-WORLD SPECS"))
 add("black", BLACK_FRAMES)
-add("video", 80, src="S03_menu.avi", trim=0.0, sub=("8 条主题赛道", "8 THEMED CIRCUITS"))
+add("video", 75, src="MENU_menu.avi", trim=0.0, sub=None)
 add("black", BLACK_FRAMES)
-add("video", 80, src="S04_grid.avi", trim=0.0, sub=None)          # 3-2-1
-add("video", 90, src="S04_grid.avi", trim=3.0, sub=None)          # GO + 起跑冲出
+add("video", 74, src="GRID_grid.avi", trim=0.0, sub=None)          # 3-2-1
+add("video", 90, src="GRID_grid.avi", trim=3.0, sub=None)          # GO + 起跑冲出
 
-# 审片定稿：逐段从「主用机位 / 备选赛段」中挑构图最好的一条。
-# 统一以能同时看见车与景观的低侧后 hero 为主，穿插 chase 与轻微数字重构图，
-# 避免八段机位完全雷同，也避免 lead/side 机位里车太小、画面过暗的问题。
+# 十站征途：按「光线时间线」从晨雾排到雨夜，每站一台不同座驾。
 # 字段：中文名, 英文名, 光线, 素材, 入点(s), (放大倍数, 裁切偏移x, 裁切偏移y)
 STAGES = [
-    ("翡翠海岸", "COASTAL RUN",     "正午碧海", "A06_coast_alt.avi",   0.15, None),
-    ("雪山隘口", "ALPINE PASS",     "雪线暖阳", "A07_alpine_alt.avi",  0.15, (1.10, 60, 0)),
-    ("天际环城", "SKYLINE CIRCUIT", "黄昏金光", "A08_skyline_alt.avi", 0.15, None),
-    ("落日港湾", "SUNSET HARBOR",   "金色暮光", "A09_harbor_alt.avi",  0.15, (1.10, -70, 0)),
-    ("赤岩峡谷", "EMBER CANYON",    "赤色夕照", "S10_canyon.avi",       2.0, None),
-    ("熔岩盆地", "MAGMA BASIN",     "火山暮色", "S11_magma.avi",        2.0, None),
-    ("冰川湖环道", "GLACIER RING",  "蓝调时刻", "A12_glacier_alt.avi",  0.15, (1.08, 0, -40)),
-    ("霓虹都市", "NEON DISTRICT",   "雨夜霓虹", "A13_city_alt.avi",     0.15, None),
+    ("雾岭山道", "MISTY PASS",      "MISTY VALLEY", "ST01_pass.avi",    2.0, None),
+    ("翡翠海岸", "COASTAL RUN",     "NOON BLUE SEA", "ST02_coast.avi",   2.0, None),
+    ("都会环线", "METRO RING",      "REAL STREETS", "ST03_metro.avi",   2.0, None),
+    ("雪山隘口", "ALPINE PASS",     "ALPINE SUN",   "ST04_alpine.avi",  2.0, (1.10, 60, 0)),
+    ("天际环城", "SKYLINE CIRCUIT", "GOLDEN HOUR",  "ST05_skyline.avi", 2.0, None),
+    ("落日港湾", "SUNSET HARBOR",   "GOLDEN DUSK",  "ST06_harbor.avi",  2.0, (1.10, -70, 0)),
+    ("赤岩峡谷", "EMBER CANYON",    "RED SUNSET",   "ST07_canyon.avi",  2.0, None),
+    ("熔岩盆地", "MAGMA BASIN",     "VOLCANIC DUSK", "ST08_magma.avi",   2.0, None),
+    ("冰川湖环道", "GLACIER RING",  "BLUE HOUR",    "ST09_glacier.avi", 2.0, (1.08, 0, -40)),
+    ("霓虹都市", "NEON DISTRICT",   "NEON RAIN",    "ST10_city.avi",    3.0, None),
 ]
 for i, (cn, en, light, src, trim, zoom) in enumerate(STAGES, 1):
-    add("video", 168, src=src, trim=trim, sub=(cn, en),
+    add("video", 160, src=src, trim=trim, sub=(cn, en),
         stage=(i, len(STAGES), light), zoom=zoom)
     add("black", BLACK_FRAMES)
 
 CLIMAX = [
-    ("漂移", "DRIFT",     "S14_drift.avi",   0.4),
-    ("氮气", "NITRO",     "S15_nitro.avi",   0.4),
-    ("缠斗", "SIDE BY SIDE", "S16_pack.avi", 0.4),
-    ("第一视角", "COCKPIT", "S17_cockpit.avi", 0.3),
-    ("贴地", "LOW ANGLE", "S18_wheel.avi",  0.3),
+    ("烧胎", "BURNOUT",   "CL1_drift.avi",   5.2),
+    ("氮气", "NITRO",     "CL2_nitro.avi",   0.4),
+    ("缠斗", "SIDE BY SIDE", "CL3_pack.avi", 0.4),
+    ("第一视角", "COCKPIT", "CL4_cockpit.avi", 0.3),
+    ("贴地", "LOW ANGLE", "CL5_wheel.avi",  0.3),
 ]
 for cn, en, src, trim in CLIMAX:
-    add("video", 60, src=src, trim=trim, sub=(cn, en), climax=True)
+    add("video", 54, src=src, trim=trim, sub=(cn, en), climax=True)
 
-add("video", 90, src="S19_finish.avi", trim=1.0, sub=None)
+add("video", 60, src="FIN_finish.avi", trim=1.0, sub=None)
 add("black", BLACK_FRAMES)
-add("video", 74, src="S20_results.avi", trim=0.2, sub=("记录你的每一个最快圈", "EVERY LAP COUNTS"))
+add("video", 66, src="RES_results.avi", trim=0.2, sub=("记录你的每一个最快圈", "EVERY LAP COUNTS"))
 add("black", BLACK_FRAMES)
-add("logo_outro", 150)
+add("logo_outro", 120)
 
 TOTAL_FRAMES = sum(e["frames"] for e in T)
 TOTAL_DUR = TOTAL_FRAMES / FPS
 # 霓虹都市段起点 = 光线转夜 + 音乐从 APEX ANTHEM 切到 NEON RUNNER
-_city_idx = next(i for i, e in enumerate(T) if e.get("stage") and e["stage"][0] == 8)
+_city_idx = next(i for i, e in enumerate(T) if e.get("stage") and e["stage"][0] == len(STAGES))
 MUSIC_SWITCH = sum(e["frames"] for e in T[:_city_idx]) / FPS
 
 
@@ -174,12 +174,12 @@ def logo_frame(t, dur, outro=False):
     p.line((bx, cy + 78, bx + 520 * line_a, cy + 78), fill=(79, 233, 255, a(120)), width=2)
     sub_a = ease((t - 1.10) / 0.7)
     if outro:
-        line1 = "45 台车   ·   8 条赛道   ·   改装工厂   ·   本地双人"
+        line1 = "46 台车   ·   10 条赛道   ·   改装工厂   ·   本地双人"
         line2 = "把每一条路，跑成自己的纪录"
         p.text((bx, cy + 100), line1, font=f(26, FONT_CN_LIGHT), fill=(228, 240, 245, a(255 * sub_a)))
         p.text((bx, cy + 148), line2, font=f(24, FONT_CN_LIGHT), fill=(170, 205, 218, a(245 * sub_a)))
     else:
-        p.text((bx, cy + 100), "45 CARS   ·   8 CIRCUITS   ·   ONE LINE TO THE LIMIT",
+        p.text((bx, cy + 100), "46 CARS   ·   10 CIRCUITS   ·   ONE LINE TO THE LIMIT",
                font=f(22, FONT_EN_LIGHT), fill=(185, 210, 220, a(245 * sub_a)))
     return Image.alpha_composite(base, layer).convert("RGB")
 

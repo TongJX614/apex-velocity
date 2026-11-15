@@ -20,10 +20,6 @@ const SIDE_MARGIN := 0.55
 var camera: Camera3D
 var world: Node3D
 var enabled := true
-## 开放世界模式：城市分块的包围盒很大（半经 150~350m），默认的朝向余量
-## 会让「允许角」接近 180°，扇区剔除基本失效（实测常驻 3500 万面/帧）。
-## 收紧侧向余量，让背后的分块真正被关掉。
-var tight_sector := false
 var prefetch_strength := 1.8
 var max_distance := 1500.0
 var visible_count := 0
@@ -116,7 +112,7 @@ func _update_sectors(dt: float) -> void:
 	var cam_pos: Vector3 = camera.global_position
 	var vp_size: Vector2 = Vector2(get_viewport().size)
 	var aspect := maxf(vp_size.x / maxf(vp_size.y, 1.0), 1.0)
-	var margin := 0.22 if tight_sector else SIDE_MARGIN
+	var margin := SIDE_MARGIN
 	var half: float = atan(tan(deg_to_rad(camera.fov) * 0.5) * aspect) + margin
 	var prefetch := clampf(absf(_turn) * 0.19, 0.0, 0.62) * prefetch_strength
 	var turn_side := signf(_turn)

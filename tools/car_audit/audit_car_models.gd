@@ -1,7 +1,7 @@
 extends SceneTree
 ## APEX VELOCITY · 极速巅峰 — 车模升级前基线审计工具
 ##
-## 用途：对 assets/cars/models/*.glb（按 data/car_manifest.json 索引）逐台审计：
+## 用途：对 cars/assets/models/*.glb（按 data/car_manifest.json 索引）逐台审计：
 ##   - 加载/实例化是否成功、rootName 是否符合 manifest
 ##   - 节点层级：Wheel_FL/FR/RL/RR、Spin_Wheel_*、SteerPivot、WingMount 是否存在
 ##   - 轮子：Spin 轴心（相对模型根）与轮子几何中心偏移、轮半径（与 manifest wheelRadius 对比）
@@ -24,7 +24,7 @@ extends SceneTree
 ## 退出码：0 = 审计完成（即使存在异常也继续跑完全部车辆）；2 = manifest 读取失败。
 
 const DEFAULT_MANIFEST := "res://data/car_manifest.json"
-const DEFAULT_CARS_DIR := "res://assets/cars/models"
+const DEFAULT_CARS_DIR := "res://cars/assets/models"
 const DEFAULT_REPORT_PATH := "/tmp/car_audit_report.txt"
 const DEFAULT_JSON_PATH := "/tmp/car_audit.json"
 

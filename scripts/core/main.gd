@@ -19,6 +19,8 @@ const COUNTDOWN_INPUT := {
 const FrustumStreamer := preload("res://scripts/core/frustum_streamer.gd")
 const PlatformProfile := preload("res://scripts/core/platform_profile.gd")
 const GhostStore := preload("res://scripts/core/ghost_store.gd")
+const PhotoModeScript := preload("res://scripts/ui/photo_mode.gd")
+const TutorialScript := preload("res://scripts/ui/tutorial_overlay.gd")
 
 var state := AppState.MENU
 
@@ -41,10 +43,17 @@ var weather: WeatherFX
 var _venue_stats: Dictionary = {}
 var _env: Environment
 var _sun: DirectionalLight3D
+var _sun_glare: Node3D
+var _glow_base := 0.5
+var _glow_restore := 0.0
+var _theme_ssr_allowed := true
+var _theme_sdfgi_allowed := false
 var _volumetric_allowed := false
 var settings_screen: SettingsScreen
 var streamer
 var _last_blur_amount := 0.0
+var _post_grade: Dictionary = {}
+var _post_grade_active := false
 var _base_fog_density := 0.0008
 var _base_vol_density := 0.0016
 var _base_fog_color := Color(0.7, 0.78, 0.85)
@@ -61,6 +70,7 @@ var intro_to_look := Vector3.ZERO
 var last_hit_pos := Vector3.ZERO
 var last_hit_active := false
 var wheel_smoke: CPUParticles3D
+var skid_marks: SkidMarks
 var haptics: Node
 var game_feel: Node
 var split_screen: Node
@@ -76,6 +86,16 @@ var duel_winner := ""
 var duel_total_laps := 3
 var _nitro_use_count := 0
 var _drift_time := 0.0
+var _race_pos_prev := 0
+var _overtake_cd := 0.0
+var _launch_armed := false
+var _prev_race_state := -1
+var _last_player_laps := 0
+var _lap_wall_hits := 0
+var _lap_offroad := 0.0
+var _clean_laps := 0
+var _hud_acc := 0.0
+var _ai_acc := 0.0
 var _top_speed_kph := 0.0
 var _was_nitro := false
 var _last_gear_seen := 1
@@ -107,12 +127,23 @@ var _bake_menu_active := false
 var _menu_preload_started: Dictionary = {}
 var loading_screen: LoadingScreen
 var pause_screen: PauseScreen
+var photo_mode: Node
+var tutorial: CanvasLayer = null
+var _tutorial_session := false
+var _tutorial_test_mode := false
+var _tut_unstick := 0.0
+var _tut_last_step := -1
+## 验收第三程（逆向弹窗）输入接管：0 关闭 1 前进越线 2 倒车 3 恢复前进。
+var _tut_phase3 := 0
 var menu_car_pivot: Node3D
 var menu_car_model: Node3D
 var menu_cam: Camera3D
 var menu_time := 0.0
 var menu_car_angle := 0.0
 var menu_dragging := false
+var _menu_kicker: SpotLight3D
+var _menu_kicker_base := 20.0
+var _menu_sweep_t := 0.0
 var menu_track_id := ""
 var menu_car_id := ""
 var motion_blur_rect: ColorRect
@@ -131,7 +162,20 @@ var _perf_drawcalls: Array[float] = []
 var _perf_triangles: Array[float] = []
 var _perf_proc_us: Array[float] = []
 var _perf_phys_us: Array[float] = []
+var _perf_render_cpu: Array[float] = []
+var _perf_render_gpu: Array[float] = []
 var _perf_sample_timer := 0.0
+var _perf_measure_on := false
+# 动态分辨率守门员与车辆碰撞解算：逻辑已拆到独立类，这里只持引用。
+var governor := PerfGovernor.new()
+var contacts := CarContacts.new()
+# 进赛卡顿诊断：APEX_LOAD_LOG=1 时打印分阶段耗时与入场后长帧。
+var _hitch_log_until := 0
+var _hitch_log_start := 0
+var _frame_log_on := false
+var _frame_log_start := 0
+var _frame_log_intro: Array[float] = []
+var _frame_log_race: Array[float] = []
 var _results_shown := false
 
 var verify_mode := false
@@ -141,7 +185,9 @@ var shot_scene := "race"
 var _shot_frames := 0
 var _backdrop_cam: Camera3D
 var _shot_dist := 0.0
+var _shot_reset_applied := false
 var _shot_delay := 0.0
+var _shot_results_done := false
 var _movie_frames := 0
 var _pano_dist := 0.0
 # 宣传片拍摄通道：仅当 --movie-dir / --trailer-shot 指定时生效，正常游戏零影响
@@ -157,33 +203,33 @@ var _arg_mode := ""
 var _arg_quality := ""
 var _arg_camera := -1
 var _arg_shot_speed := 0.0
-var _openworld_test_mode := false
+## 启动探针：--drive-probe=<秒> 时倒计时结束后自动全油门行驶并打印遥测，
+## 用于复现「某张图起步异常」这类只能在真实比赛流程里出现的问题。
+var _drive_probe_time := -1.0
+var _drive_probe_elapsed := 0.0
+var _drive_probe_log := 0.0
 var _ai_probe := {"n": 0, "gap_sum": 0.0, "gap_min": 9999.0, "close": 0, "cluster": 0,
 	"spread_sum": 0.0, "along_sum": 0.0, "along_close": 0}
 var _ai_probe_t := 0.0
 
-# --- 开放世界（无界大陆）----------------------------------------------------
-var open_world: OpenWorld = null
-var open_world_active := false
-var _open_world_sky_mat: ShaderMaterial = null
-var _open_world_zone_theme := ""
-var _open_world_rescue_cd := 0.0
-## 主题过渡刷新节流：每帧重新混一次域主题会产生大量临时字典，
-## 12Hz 刷新足够顺滑（人眼看不出 80ms 内的渐变差别），GC 压力却小一个量级。
-var _open_world_theme_cd := 0.0
 
 # --- 城市实景（都会环线）-----------------------------------------------------
 ## 真实城市模型没有引擎碰撞体：建筑掩体由离线烘焙的 SDF 提供，
 ## 车可以开进任意街道，只有房屋是实体。
 var _city_world: Node = null
-const CityWorldScript := preload("res://scripts/openworld/city_world.gd")
-const CityFacadesScript := preload("res://scripts/openworld/city_facades.gd")
+const CityWorldScript := preload("res://maps/scripts/openworld/city_world.gd")
+const CityFacadesScript := preload("res://maps/scripts/openworld/city_facades.gd")
+const SunGlareScript := preload("res://scripts/fx/sun_glare.gd")
 
 
 func _ready() -> void:
 	streamer = FrustumStreamer.new()
 	streamer.name = "FrustumStreamer"
 	add_child(streamer)
+	# 太阳/月亮眩光：常驻一个实例，按菜单/赛道主题切方向与强度。
+	_sun_glare = SunGlareScript.new()
+	_sun_glare.name = "SunGlare"
+	add_child(_sun_glare)
 	Settings.changed.connect(_apply_quality)
 	settings_screen = SettingsScreen.new()
 	settings_screen.name = "SettingsScreen"
@@ -205,6 +251,8 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_sync_post_params)
 	_sync_post_params()
 	_parse_args()
+	governor.setup(self)
+	contacts.setup(self)
 	# 测试参数：临时覆盖画质档（不写存档，不影响玩家自己的设置）
 	if not _arg_quality.is_empty():
 		for i in Settings.PRESETS.size():
@@ -230,9 +278,15 @@ func _ready() -> void:
 		if DisplayServer.get_name() != "headless":
 			DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 			var win := get_window()
-			win.mode = Window.MODE_WINDOWED
-			win.borderless = false
-			win.size = Vector2i(1600, 900)
+			if OS.get_environment("APEX_PERF_FULLSCREEN") == "1":
+				win.mode = Window.MODE_FULLSCREEN
+			else:
+				win.mode = Window.MODE_WINDOWED
+				win.borderless = false
+				var win_size := Vector2i(1600, 900)
+				if OS.get_environment("APEX_PERF_W").is_valid_int() and OS.get_environment("APEX_PERF_H").is_valid_int():
+					win_size = Vector2i(int(OS.get_environment("APEX_PERF_W")), int(OS.get_environment("APEX_PERF_H")))
+				win.size = win_size
 		_apply_quality()
 	elif not shot_mode:
 		if Settings.has_method("apply_display"):
@@ -244,8 +298,13 @@ func _ready() -> void:
 	if verify_mode:
 		_run_verification()
 		return
-	if "--bake-menu" in OS.get_cmdline_user_args():
-		_run_bake_menu()
+	var bake_menu_arg := ""
+	for a in OS.get_cmdline_user_args():
+		if a == "--bake-menu" or a.begins_with("--bake-menu="):
+			bake_menu_arg = a
+			break
+	if not bake_menu_arg.is_empty():
+		_run_bake_menu(bake_menu_arg.get_slice("=", 1) if "=" in bake_menu_arg else "")
 		return
 	if "--scenery-debug" in OS.get_cmdline_user_args():
 		_run_scenery_debug()
@@ -277,8 +336,8 @@ func _ready() -> void:
 	if "--autostart" in OS.get_cmdline_user_args():
 		_start_race(_track_or_default(), _car_or_default(), _mode_or_default())
 		return
-	if _openworld_test_mode:
-		_run_open_world_test()
+	if "--tutorial" in OS.get_cmdline_user_args():
+		_start_tutorial()
 		return
 	if shot_mode:
 		if shot_scene == "backdrop":
@@ -293,7 +352,8 @@ func _ready() -> void:
 			_show_menu()
 		elif shot_scene == "garage" or shot_scene == "garage-grid":
 			_open_garage(_car_or_default())
-		elif shot_scene == "settings" or shot_scene == "settings-controls":
+		elif shot_scene == "settings" or shot_scene == "settings-controls" \
+				or shot_scene == "settings-game":
 			_show_menu()
 			_open_settings()
 		elif shot_scene == "achievements":
@@ -333,6 +393,8 @@ func _ready() -> void:
 		_run_drift_test()
 	if "--menu-nav-test" in OS.get_cmdline_user_args():
 		_run_menu_nav_test()
+	if "--tutorial-test" in OS.get_cmdline_user_args():
+		_run_tutorial_test()
 
 
 ## ACE68 磁轴键盘桥：游戏启动时自动拉起（macOS 且 exe 存在时），退出时杀掉并还原键盘开关。
@@ -344,8 +406,9 @@ func _maybe_start_ace68_bridge() -> void:
 	if verify_mode or shot_mode or _perf_mode:
 		return
 	for flag in ["--bake-menu", "--scenery-debug", "--bake-decor", "--audio-test"]:
-		if flag in OS.get_cmdline_user_args():
-			return
+		for a in OS.get_cmdline_user_args():
+			if a == flag or a.begins_with(flag + "="):
+				return
 	if Settings.get("analog_input_enabled") != null and not bool(Settings.get("analog_input_enabled")):
 		print("[ACE68] 模拟输入已关闭，不启动磁轴桥")
 		return
@@ -441,9 +504,13 @@ func _show_boot() -> void:
 	if boot_screen != null:
 		return
 	_start_menu_preload(_preferred_menu_track())
-	# 自动化测试不等开场影片（无窗口焦点时视频会暂停，测试会一直吊住）
-	if _drift_test_mode or "--menu-nav-test" in OS.get_cmdline_user_args() \
-			or "--race-test" in OS.get_cmdline_user_args():
+	# 自动化测试不等开场影片（无窗口焦点时视频会暂停，测试会一直吊住）；
+	# 但 TUT_FRESH 沙箱轮要验首次自动触发，必须走完整 boot → _on_boot_finished 链路。
+	var skip_boot := _drift_test_mode or "--menu-nav-test" in OS.get_cmdline_user_args() \
+		or "--race-test" in OS.get_cmdline_user_args() \
+		or ("--tutorial-test" in OS.get_cmdline_user_args() \
+			and OS.get_environment("TUT_FRESH") != "1")
+	if skip_boot:
 		_show_menu()
 		return
 	boot_screen = BootScreen.new()
@@ -530,6 +597,324 @@ func _drift_test_input() -> Dictionary:
 	return input
 
 
+## 新手教程全流程验收：--tutorial-test。脚本按当前任务项驾驶，
+## 依次触发 8 项判定 → 冲线 → 毕业条 → 返回菜单，截图留档并断言。
+## 测试会写档案/纪录/幽灵，开跑前备份、退出前原样恢复，不污染玩家进度。
+## 环境变量 TUT_FRESH=1（配合沙箱 HOME）时清空存档，改验首次自动触发与奖励发放。
+func _run_tutorial_test() -> void:
+	var ps := ProfileStore
+	var fresh := OS.get_environment("TUT_FRESH") == "1"
+	var shot_prefix := "/tmp/tutorial_fresh" if fresh else "/tmp/tutorial"
+	_tut_log("[TUTORIAL-TEST] harness begin fresh=%s" % fresh)
+	if fresh:
+		# 沙箱 HOME + 清空存档：验证首次进入自动触发与毕业奖励发放。
+		_tut_backup_saves()
+		_tut_wipe_saves()
+		var auto_deadline := Time.get_ticks_msec() + 240000
+		while not _tutorial_session and Time.get_ticks_msec() < auto_deadline:
+			await get_tree().process_frame
+		_tut_log("[TUTORIAL-TEST] fresh profile auto start=%s" % _tutorial_session)
+		if not _tutorial_session:
+			_tut_restore_saves()
+			_tut_log("[TUTORIAL-TEST] -> FAIL")
+			get_tree().quit(1)
+			return
+	else:
+		while menu == null:
+			await get_tree().process_frame
+		await get_tree().create_timer(1.0).timeout
+		_tut_backup_saves()
+		_tut_log("[TUTORIAL-TEST] start tutorial from menu")
+		_start_tutorial()
+	var ready_deadline := Time.get_ticks_msec() + 90000
+	while (race == null or car == null or tutorial == null or loading_screen != null) \
+			and Time.get_ticks_msec() < ready_deadline:
+		await get_tree().process_frame
+	_tut_log("[TUTORIAL-TEST] ready: race=%s car=%s tutorial=%s loading=%s" % [
+		race != null, car != null, tutorial != null, loading_screen != null])
+	if race == null or car == null or tutorial == null or loading_screen != null:
+		_tut_restore_saves()
+		_tut_log("[TUTORIAL-TEST] -> FAIL (race not ready)")
+		get_tree().quit(1)
+		return
+	await get_tree().create_timer(0.8).timeout
+	await RenderingServer.frame_post_draw
+	var img := get_viewport().get_texture().get_image()
+	if img != null:
+		img.save_png("%s_welcome.png" % shot_prefix)
+	race.countdown = 0.0
+	race.state = RaceManager.State.RACING
+	race.race_time = 0.0
+	_tutorial_test_mode = true
+	var deadline := Time.get_ticks_msec() + 300000
+	var last_step := -1
+	var cam_switched := false
+	var drift_shot := false
+	var keys_shot := false
+	var stuck_t := 0.0
+	var reset_count := 0
+	while Time.get_ticks_msec() < deadline:
+		await get_tree().physics_frame
+		if tutorial == null or race == null or car == null:
+			break
+		var step: int = tutorial.step_index()
+		if step != last_step:
+			_tut_log("[TUTORIAL-TEST] enter step %d  t=%.1f  speed=%.0f" % [
+				step, race.race_time, car.speed_kph])
+			last_step = step
+		if step == 6 and not cam_switched:
+			cam_switched = true
+			var ev := InputEventKey.new()
+			ev.keycode = KEY_C
+			ev.physical_keycode = KEY_C
+			ev.pressed = true
+			Input.parse_input_event(ev)
+			var ev_up := InputEventKey.new()
+			ev_up.keycode = KEY_C
+			ev_up.physical_keycode = KEY_C
+			ev_up.pressed = false
+			Input.parse_input_event(ev_up)
+		if _tut_phase3 == 0 and step >= 1 and race.state == RaceManager.State.RACING \
+				and car.speed_kph < 8.0:
+			stuck_t += get_physics_process_delta_time()
+		else:
+			stuck_t = 0.0
+		if stuck_t > 1.5 and reset_count < 8:
+			reset_count += 1
+			stuck_t = 0.0
+			_tut_unstick = 1.1
+			_tut_log("[TUTORIAL-TEST] stuck recovery: reverse #%d at step %d" % [reset_count, step])
+		if not keys_shot and step == 0 and tutorial._key_grid != null and tutorial._key_grid.visible:
+			keys_shot = true
+			await RenderingServer.frame_post_draw
+			var key_img := get_viewport().get_texture().get_image()
+			if key_img != null:
+				key_img.save_png("%s_keys.png" % shot_prefix)
+			_tut_log("[TUTORIAL-TEST] keys grid captured")
+		if not drift_shot and ((step == 4 and car.drift_active and car.speed_kph > 40.0) or step > 4):
+			drift_shot = true
+			await get_tree().create_timer(0.5).timeout
+			await RenderingServer.frame_post_draw
+			var shot := get_viewport().get_texture().get_image()
+			if shot != null:
+				shot.save_png("%s_drift.png" % shot_prefix)
+		if tutorial.is_graduated():
+			break
+	await get_tree().create_timer(0.6).timeout
+	await RenderingServer.frame_post_draw
+	var lap_img := get_viewport().get_texture().get_image()
+	if lap_img != null:
+		lap_img.save_png("%s_lapcard.png" % shot_prefix)
+	var lap_card_ok := hud != null and hud.lap_card_shown()
+	_tut_log("[TUTORIAL-TEST] lap card shown=%s keys grid=%s" % [lap_card_ok, keys_shot])
+	while race != null and race.state != RaceManager.State.RESULTS \
+			and Time.get_ticks_msec() < deadline:
+		await get_tree().physics_frame
+	await get_tree().create_timer(1.6).timeout
+	await RenderingServer.frame_post_draw
+	img = get_viewport().get_texture().get_image()
+	if img != null:
+		img.save_png("%s_graduated.png" % shot_prefix)
+	var ok: bool = tutorial != null and tutorial.is_graduated() \
+		and race != null and race.state == RaceManager.State.RESULTS
+	ok = ok and lap_card_ok
+	ok = ok and keys_shot
+	var profile_done := String(ps.load_profile().get("tutorial", "")) == "done"
+	var grad_text := String(tutorial._grad_sub.text) if tutorial != null else ""
+	_tut_log("[TUTORIAL-TEST] graduated=%s results=%s profile_done=%s" % [
+		tutorial != null and tutorial.is_graduated(),
+		race != null and race.state == RaceManager.State.RESULTS, profile_done])
+	_tut_log("[TUTORIAL-TEST] grad sub: %s" % grad_text)
+	ok = ok and profile_done
+	if fresh:
+		var xp_ok: bool = int(ps.load_profile().get("xp", 0)) >= ps.XP_TUTORIAL \
+			and grad_text.contains("已入账")
+		_tut_log("[TUTORIAL-TEST] fresh xp grant ok=%s" % xp_ok)
+		ok = ok and xp_ok
+	if ok:
+		tutorial._grad_menu_btn.pressed.emit()
+		await get_tree().create_timer(1.2).timeout
+		ok = state == AppState.MENU and tutorial == null
+		_tut_log("[TUTORIAL-TEST] back to menu clean=%s" % ok)
+		await RenderingServer.frame_post_draw
+		img = get_viewport().get_texture().get_image()
+		if img != null:
+			img.save_png("%s_menu.png" % shot_prefix)
+	# 第二程：主菜单 N 键重学入口 + 暂停重开保留进度 + 中途跳过（跳过后比赛继续、浮层卸载）
+	if ok:
+		var ev_n := InputEventKey.new()
+		ev_n.keycode = KEY_N
+		ev_n.physical_keycode = KEY_N
+		ev_n.pressed = true
+		Input.parse_input_event(ev_n)
+		var ev_n_up := InputEventKey.new()
+		ev_n_up.keycode = KEY_N
+		ev_n_up.physical_keycode = KEY_N
+		ev_n_up.pressed = false
+		Input.parse_input_event(ev_n_up)
+		var entry_deadline := Time.get_ticks_msec() + 30000
+		while (tutorial == null or race == null) and Time.get_ticks_msec() < entry_deadline:
+			await get_tree().process_frame
+		var skip_ok := tutorial != null and _tutorial_session
+		_tut_log("[TUTORIAL-TEST] phase2 entry=%s session=%s" % [tutorial != null, _tutorial_session])
+		if skip_ok:
+			# 暂停面板「重新开始」会重 bind 浮层：同一浮层实例、进度不回退、HUD 换新。
+			# 等待期间脚本驾驶会合法推进任务，故只要求 step 不回退而非相等。
+			var step_before: int = tutorial.step_index()
+			var tut_before := tutorial
+			var hud_before := hud
+			_on_pause_restart()
+			await get_tree().create_timer(4.0).timeout
+			skip_ok = tutorial != null and tutorial == tut_before and _tutorial_session \
+				and tutorial.step_index() >= step_before \
+				and hud != null and hud != hud_before and state == AppState.RACE
+			_tut_log("[TUTORIAL-TEST] phase2 pause-restart keeps overlay=%s (step %d->%d hud_new=%s racing=%s)" % [
+				skip_ok, step_before, tutorial.step_index() if tutorial != null else -1,
+				hud != hud_before, state == AppState.RACE])
+		if skip_ok:
+			await get_tree().create_timer(0.4).timeout
+			tutorial._skip_btn.pressed.emit()
+			await get_tree().create_timer(0.5).timeout
+			skip_ok = skip_ok and tutorial == null and not _tutorial_session \
+				and state == AppState.RACE \
+				and String(ps.load_profile().get("tutorial", "")) == "skipped"
+			_tut_log("[TUTORIAL-TEST] phase2 after skip: overlay=%s session=%s state=%s profile=%s" % [
+				tutorial == null, not _tutorial_session, state == AppState.RACE,
+				String(ps.load_profile().get("tutorial", ""))])
+		_tut_log("[TUTORIAL-TEST] menu N entry + skip ok=%s" % skip_ok)
+		ok = ok and skip_ok
+	# 第三程：逆向全屏弹窗。先前进取越起跑线开始计时，再倒车触发警告，
+	# 截图留档后恢复前进，验证警告自动清除。
+	if ok:
+		_tut_phase3 = 1
+		var p3_deadline := Time.get_ticks_msec() + 30000
+		while race != null and not race.race_started and Time.get_ticks_msec() < p3_deadline:
+			await get_tree().physics_frame
+		var started_ok := race != null and race.race_started
+		_tut_log("[TUTORIAL-TEST] phase3 race_started=%s" % started_ok)
+		if started_ok:
+			_tut_phase3 = 2
+			var ww_deadline := Time.get_ticks_msec() + 20000
+			while race != null and not race.wrong_way and Time.get_ticks_msec() < ww_deadline:
+				await get_tree().physics_frame
+			await get_tree().create_timer(0.6).timeout
+			await RenderingServer.frame_post_draw
+			var ww_img := get_viewport().get_texture().get_image()
+			if ww_img != null:
+				ww_img.save_png("%s_wrongway.png" % shot_prefix)
+			var ww_ok := race != null and race.wrong_way and hud != null and hud.wrong_way_shown()
+			_tut_log("[TUTORIAL-TEST] phase3 wrong_way=%s overlay=%s" % [
+				race != null and race.wrong_way, hud != null and hud.wrong_way_shown()])
+			_tut_phase3 = 3
+			var clear_deadline := Time.get_ticks_msec() + 20000
+			while race != null and race.wrong_way and Time.get_ticks_msec() < clear_deadline:
+				await get_tree().physics_frame
+			await get_tree().create_timer(0.5).timeout
+			var cleared := race != null and not race.wrong_way \
+				and hud != null and not hud.wrong_way_shown()
+			_tut_log("[TUTORIAL-TEST] phase3 cleared=%s" % cleared)
+			ok = ok and ww_ok and cleared
+		else:
+			ok = false
+		_tut_phase3 = 0
+	_tut_restore_saves()
+	_tut_log("[TUTORIAL-TEST] -> %s" % ("PASS" if ok else "FAIL"))
+	get_tree().quit(0 if ok else 1)
+
+
+## 教程验收的脚本驾驶：按任务项给输入，其余交给赛道自动驾驶。
+func _tutorial_test_input() -> Dictionary:
+	if _tut_phase3 == 2:
+		return {"throttle": -1.0, "steer": 0.0, "handbrake": false, "nitro": false}
+	if _tut_phase3 == 1 or _tut_phase3 == 3:
+		return {"throttle": 1.0, "steer": 0.0, "handbrake": false, "nitro": false}
+	if _tut_unstick > 0.0:
+		_tut_unstick -= get_physics_process_delta_time()
+		return {"throttle": -1.0, "steer": 0.0, "handbrake": false, "nitro": false}
+	var input := _autopilot_input()
+	var step: int = tutorial.step_index() if tutorial != null else 99
+	if step != _tut_last_step:
+		_tut_last_step = step
+	input["nitro"] = false
+	input["handbrake"] = false
+	match step:
+		0:
+			input["throttle"] = 0.0
+		1:
+			input["throttle"] = 1.0
+		2:
+			input["throttle"] = maxf(float(input.get("throttle", 0.5)), 0.55)
+			var phase := fmod(race.race_time if race != null else 0.0, 2.4)
+			input["steer"] = clampf(float(input.get("steer", 0.0)) \
+				+ (0.45 if phase < 1.2 else -0.45), -1.0, 1.0)
+		3:
+			if car.speed_kph > 60.0:
+				input["throttle"] = -1.0
+			else:
+				input["throttle"] = 0.3
+		4:
+			input["throttle"] = 1.0
+			if car.speed_kph > 35.0:
+				input["handbrake"] = true
+				var phase4 := fmod(race.race_time if race != null else 0.0, 2.4)
+				input["steer"] = clampf(float(input.get("steer", 0.0)) \
+					+ (0.5 if phase4 < 1.2 else -0.5), -1.0, 1.0)
+			else:
+				input["handbrake"] = false
+		5:
+			input["throttle"] = maxf(float(input.get("throttle", 0.5)), 0.85)
+			input["nitro"] = true
+		6:
+			input["throttle"] = maxf(float(input.get("throttle", 0.5)), 0.6)
+		_:
+			input["throttle"] = 1.0
+	return input
+
+
+var _tut_save_backup: Dictionary = {}
+
+
+## 验收日志即时落盘：重定向到文件时 stdout 有缓冲，stderr 无缓冲，卡住也能看到最后一步。
+func _tut_log(msg: String) -> void:
+	printerr(msg)
+
+
+func _tut_backup_saves() -> void:
+	var car_id := menu.selected_car_id() if menu != null else DEFAULT_CAR
+	var paths := ["user://profile.json", "user://records.json", "user://settings.json",
+		"user://ghost_best_coast.json", "user://ghost_coast_%s.json" % car_id]
+	# .bak 一并备份/清空：否则 SafeJson 会从旧备份恢复出已毕业的存档。
+	for base in paths:
+		for p in [base, base + ".bak"]:
+			if FileAccess.file_exists(p):
+				var f := FileAccess.open(p, FileAccess.READ)
+				if f != null:
+					_tut_save_backup[p] = f.get_as_text()
+					f.close()
+			else:
+				_tut_save_backup[p] = null
+
+
+func _tut_wipe_saves() -> void:
+	for p in _tut_save_backup:
+		if FileAccess.file_exists(p):
+			DirAccess.remove_absolute(p)
+
+
+func _tut_restore_saves() -> void:
+	for p in _tut_save_backup:
+		var text = _tut_save_backup[p]
+		if text == null:
+			if FileAccess.file_exists(p):
+				DirAccess.remove_absolute(p)
+		else:
+			var f := FileAccess.open(p, FileAccess.WRITE)
+			if f != null:
+				f.store_string(String(text))
+				f.close()
+	_tut_save_backup.clear()
+
+
 ## 主菜单焦点导航自检：默认聚焦发车按钮，依次推方向，打印每次焦点落点。
 func _run_menu_nav_test() -> void:
 	while menu == null:
@@ -557,346 +942,6 @@ func _focus_desc(ctrl: Control) -> String:
 	return "%s '%s' @%s" % [ctrl.get_class(), txt, str(ctrl.global_position.round())]
 
 
-## 开放世界验收：进大陆 → 逐区截图 → 打印各地形高程 / 地表 / 道路距离。
-func _run_open_world_test() -> void:
-	# 无界大陆自检：世界生成 / 八域地形 / 逐区截图 / 自由驾驶物理。
-	var car_id := _arg_car if not _arg_car.is_empty() else DEFAULT_CAR
-	var t0 := Time.get_ticks_msec()
-	_start_race("open_world", car_id, "gp")
-	while open_world == null:
-		await get_tree().process_frame
-	# 跳过发车倒数和入场电影机位：否则拍到的是倒计时画面 / 过场镜头，
-	# 追尾相机根本没接管，看起来就是「画面黑着 / 车不见了」。
-	# 必须等 _start_race 这个协程把状态设成 COUNTDOWN 之后再跳——
-	# 早一步设置会被它后面的赋值覆盖掉，倒数照常走，入场机位也一直占着画面。
-	for i in 180:
-		await get_tree().process_frame
-		if race != null and race.state == RaceManager.State.COUNTDOWN:
-			break
-	if race != null:
-		race.countdown = 0.0
-		race.state = RaceManager.State.RACING
-		race.race_time = 0.0
-	var t_build := Time.get_ticks_msec() - t0
-	print("[OW-TEST] world built in %d ms" % t_build)
-	# --ow-zones=neon,coast 只跑指定域：整轮 16 张图一次跑完会被系统
-	# 判定为内存压力过大而 SIGTERM，分批跑稳得多。
-	var only := ""
-	for a in OS.get_cmdline_user_args():
-		if String(a).begins_with("--ow-zones="):
-			only = String(a).substr(11)
-	var zone_list: Array = OpenWorld.ZONES
-	if only != "":
-		zone_list = []
-		for z in OpenWorld.ZONES:
-			if String(z["id"]) in only.split(","):
-				zone_list.append(z)
-		print("[OW-TEST] zone filter = ", only)
-	if open_world != null:
-		print("[OW-TEST] roads=%d  grid=%d" % [open_world.roads.size(), OpenWorld.GRID])
-		# 路面贴合：地形网格是三角面，路面画在双线性高度上，
-		# 两者不等时地形会从路下戳出来，把路切成锯齿。这里量一下戳出多深。
-		var fit: Dictionary = open_world.probe_road_fit(0.025)
-		print("[OW-TEST] road fit: poke=%.3f m (地形高出路面)  tri-vs-bilinear=%.3f m  samples=%d" % [
-			float(fit.get("poke", 0.0)), float(fit.get("tri", 0.0)), int(fit.get("samples", 0))])
-		var ov: Array = fit.get("over", [])
-		print("[OW-TEST]   戳穿分布 >0.05/0.2/0.5/1.0/3.0 m : %s" % str(ov))
-		print("[OW-TEST]   worst at %s" % str(fit.get("at", Vector3.ZERO)))
-		for zone in zone_list:
-			var c: Vector2 = zone["center"]
-			print("[OW-TEST]   %-10s %-8s h=%7.1f  surface=%-6s road=%6.1f" % [
-				String(zone["id"]), String(zone["cn"]),
-				open_world.height_at(c.x, c.y),
-				open_world.surface_at(c.x, c.y),
-				open_world.road_distance_at(c.x, c.y)])
-	# 逐区截图（无头模式没有渲染帧，跳过）
-	var can_render := DisplayServer.get_name() != "headless"
-	if can_render:
-		var shot_dir := "/tmp/ow_shots"
-		DirAccess.make_dir_recursive_absolute(shot_dir)
-		# 窗口被其他窗口遮挡时 macOS 会停止 present，get_image() 会一直拿到同一帧。
-		# 置顶保证合成器继续合成，另外用「帧哈希变化」判定真的换了帧再存图。
-		get_window().always_on_top = true
-		for zone in zone_list:
-			if car == null or open_world == null:
-				break
-			var c2: Vector2 = zone["center"]
-			# 取景朝向不能随机：每域都要对准它最有代表性的景物，
-			# 否则海岸域拍出来是一片滩涂、雪山域拍出来是一块白板。
-			var look_at_pt := _ow_shot_target(zone)
-			var look_dir: Vector2 = (look_at_pt - c2)
-			if look_dir.length() < 1.0:
-				look_dir = Vector2(0.0, 1.0)
-			look_dir = look_dir.normalized()
-			# 站位：站在域中心朝目标方向走一段，卡在最近的路面上。
-			# 系数取 0.85 是为了让站位尽量贴近目标（海），
-			# 否则站在域中心往海看，中间隔着几百米陆地，画面里只有地平线。
-			var stand: Vector2 = c2 + look_dir * minf(float(zone["radius"]) * 0.62,
-				(look_at_pt - c2).length() * 0.85)
-			# 用道路切线定朝向：原来直接朝域中心，车会横着扎出路肩滑进野地，
-			# 拍出来的「区域截图」根本不在路上。
-			var rf: Dictionary = open_world.nearest_road_frame(stand.x, stand.y)
-			var sp: Vector3 = rf["pos"]
-			var rdir: Vector3 = rf["dir"]
-			# 切线背对目标时倒过来，保证画面里看的是目标方向
-			if rdir.x * look_dir.x + rdir.z * look_dir.y < 0.0:
-				rdir = -rdir
-			car.pos = sp + rdir * 30.0 + Vector3(0.0, 1.2, 0.0)
-			car.vel = Vector3.ZERO
-			car.heading = atan2(rdir.x, rdir.z)
-			car.speed_kph = 0.0
-			# 布景是流式生成的：传送后同步把周围的单元建出来，截图才有内容。
-			OpenWorldScenery.ensure_units_at(open_world, Vector2(car.pos.x, car.pos.z), 3200.0)
-			# 车是瞬移过去的，但节点变换要等下一次物理同步才更新——
-			# 直接 snap() 会用上一帧的旧坐标，相机就得从两公里外插值追过来，
-			# 30 帧追不上，拍出来的图里车小得像甲虫。先空转几帧让变换同步，再对位。
-			for i in 6:
-				await get_tree().process_frame
-			if cam != null:
-				cam.snap()
-			for i in 12:
-				await get_tree().process_frame
-			var camdist := cam.global_position.distance_to(car.global_position) if cam != null else -1.0
-			print("[OW-TEST] zone=%-9s car=%s ground=%.1f depth=%.2f surface=%s camdist=%.1f" % [
-				String(zone["id"]), str(car.pos.snapped(Vector3(0.1, 0.1, 0.1))),
-				open_world.height_at(car.pos.x, car.pos.z),
-				open_world.depth_at(car.pos.x, car.pos.z),
-				car.world_surface, camdist])
-			if camdist > 9.0:
-				print("[OW-TEST] !! camera not settled in zone ", String(zone["id"]))
-			# 相机停稳后再空转 20 帧把画面缓冲冲掉，然后直接取当前帧。
-			# 不能等「画面稳定」：海面和云是动态的，永远稳定不下来；
-			# 也不能只等哈希变化，那样会抓到相机还在过渡的中间帧。
-			for i in 20:
-				await get_tree().process_frame
-				await RenderingServer.frame_post_draw
-			var img := get_viewport().get_texture().get_image()
-			if img != null:
-				var path := "%s/%s.png" % [shot_dir, String(zone["id"])]
-				img.save_png(path)
-				print("[OW-TEST] shot ", path)
-			# 俯瞰图：拉高相机看整片域的布局与布景密度
-			# 坑：macOS 窗口被遮挡时渲染器会停止 present，get_image() 会一直拿到旧帧。
-			# 必须先把相机挪到位、空转若干帧把追尾旧帧冲掉，再取当前帧，
-			# 否则存下来的八张全是第一帧（看起来每域都长一个样）。
-			if cam != null:
-				var keep := cam.target
-				cam.target = null
-				var g0 := open_world.height_at(c2.x, c2.y)
-				# 航拍机位摆在目标方向的后方高处：画面里同时有域中心与目标（海 / 山 / 火山）
-				# 俯角必须小于 fov 的一半，否则视野全落在地面上，
-				# 海岸域和港湾域就永远拍不到海（只能拍到一地沥青）。
-				# 海域域反过来：相机放到海那一侧朝陆地拍，海在前景、港口在后景，
-				# 构图才对；朝陆地拍的话海在相机身后，怎么都拍不到。
-				var is_sea := String(zone["id"]) in ["harbor", "coast"]
-				var off := Vector3(-look_dir.x * 950.0, 420.0, -look_dir.y * 950.0)
-				var aim := Vector3(c2.x, g0, c2.y).lerp(Vector3(look_at_pt.x, g0, look_at_pt.y), 0.62)
-				if is_sea:
-					off = Vector3(look_dir.x * 820.0, 300.0, look_dir.y * 820.0)
-					aim = Vector3(c2.x, g0, c2.y)
-				cam.global_position = Vector3(c2.x, g0, c2.y) + off
-				cam.look_at(aim, Vector3.UP)
-				cam.fov = 58.0
-				for i in 24:
-					await get_tree().process_frame
-					await RenderingServer.frame_post_draw
-				var aimg := get_viewport().get_texture().get_image()
-				if aimg != null:
-					aimg.save_png("%s/%s_air.png" % [shot_dir, String(zone["id"])])
-					print("[OW-TEST] shot %s/%s_air.png cam=%s" % [shot_dir, String(zone["id"]),
-						str(cam.global_position.snapped(Vector3(1.0, 1.0, 1.0)))])
-				else:
-					print("[OW-TEST] AIR SHOT MISSED ", String(zone["id"]))
-				cam.target = keep
-				cam.fov = 58.5
-		# 域间过渡带验收：站在两条域的中点往一边看。
-		# 这一段是本轮的重点：域与域之间不应该是硬边，
-		# 颜色要渐变、植被也要跟着换，否则九公里的大陆就是八块拼贴板。
-		for pair in [[0, 1], [2, 3], [6, 7]]:
-			if car == null or open_world == null:
-				break
-			var za: Dictionary = OpenWorld.ZONES[int(pair[0])]
-			var zb: Dictionary = OpenWorld.ZONES[int(pair[1])]
-			var mid := (Vector2(za["center"]) + Vector2(zb["center"])) * 0.5
-			var rf2: Dictionary = open_world.nearest_road_frame(mid.x, mid.y)
-			var sp2: Vector3 = rf2["pos"]
-			var rdir2: Vector3 = rf2["dir"]
-			var toward := (Vector2(za["center"]) - mid)
-			if toward.length() < 0.01:
-				toward = Vector2(1.0, 0.0)
-			toward = toward.normalized()
-			if rdir2.x * toward.x + rdir2.z * toward.y < 0.0:
-				rdir2 = -rdir2
-			car.pos = sp2 + rdir2 * 30.0 + Vector3(0.0, 1.2, 0.0)
-			car.vel = Vector3.ZERO
-			car.heading = atan2(rdir2.x, rdir2.z)
-			OpenWorldScenery.ensure_units_at(open_world, Vector2(car.pos.x, car.pos.z), 3200.0)
-			for i in 6:
-				await get_tree().process_frame
-			if cam != null:
-				cam.snap()
-			for i in 12:
-				await get_tree().process_frame
-			for i in 20:
-				await get_tree().process_frame
-				await RenderingServer.frame_post_draw
-			var timg := get_viewport().get_texture().get_image()
-			if timg != null:
-				var tpath := "%s/transition_%s_%s.png" % [shot_dir, String(za["id"]),
-					String(zb["id"])]
-				timg.save_png(tpath)
-				print("[OW-TEST] transition shot ", tpath)
-	# 开一段路，验证驾驶物理（地面跟随 / 坡度 / 速度累积）
-	if car != null:
-		var sp2: Dictionary = open_world.spawn()
-		car.pos = sp2["pos"]
-		car.vel = Vector3.ZERO
-		car.heading = float(sp2.get("heading", 0.0))
-		var ground_h := open_world.height_at(car.pos.x, car.pos.z)
-		var min_gap := 99.0
-		var max_gap := -99.0
-		for i in 300:
-			car.update_car(1.0 / 60.0, {"steer": 0.02, "throttle": 1.0,
-				"handbrake": false, "nitro": false})
-			var gap := car.pos.y - open_world.height_at(car.pos.x, car.pos.z)
-			min_gap = minf(min_gap, gap)
-			max_gap = maxf(max_gap, gap)
-		print("[OW-TEST] drive 5s: pos=%s speed=%.1f kph surface=%s zone=%s" % [
-			str(car.pos.snapped(Vector3(0.1, 0.1, 0.1))), car.speed_kph,
-			car.world_surface, car.world_zone])
-		print("[OW-TEST] ground follow gap: %.3f .. %.3f  (spawn h=%.2f)" % [
-			min_gap, max_gap, ground_h])
-		# 越野：驶离公路后地表应变为非 road
-		car.pos = open_world.spawn()["pos"] + Vector3(0.0, 0.0, -180.0)
-		car.update_car(1.0 / 60.0, {"steer": 0.0, "throttle": 0.6,
-			"handbrake": false, "nitro": false})
-		print("[OW-TEST] offroad surface=%s road_dist=%.1f" % [
-			car.world_surface, open_world.road_distance_at(car.pos.x, car.pos.z)])
-		_ow_test_collisions()
-	get_tree().quit()
-
-
-## 静态实体碰撞自检：
-##   1) 登记了多少碰撞体（树 / 楼 / 墙 / 岩石都必须是实体）
-##   2) 把车直接塞进一栋楼里，看它会不会被推出来
-##   3) 车高速撞向一面墙，看会不会穿过去
-func _ow_test_collisions() -> void:
-	if open_world == null or car == null:
-		return
-	print("[OW-TEST] colliders registered = %d" % open_world.collider_count())
-	# 找一个「足够大的」碰撞体当测试对象：楼比树大
-	var best: Dictionary = {}
-	var best_area := 0.0
-	for ox in range(-14, 15):
-		for oz in range(-14, 15):
-			var qx := 2450.0 + float(ox) * 120.0
-			var qz := float(oz) * 120.0
-			for c in open_world.query_colliders(qx, qz, 130.0):
-				var half: Vector2 = c["half"]
-				var area := half.x * half.y
-				if area > best_area:
-					best_area = area
-					best = c
-	if best.is_empty():
-		print("[OW-TEST] !! no collider found to test with")
-		return
-	var cp: Vector2 = best["pos"]
-	var half2: Vector2 = best["half"]
-	var brot: float = float(best["rot"])
-	print("[OW-TEST] test target at %s half=%s rot=%.2f area=%.1f" % [
-		str(cp), str(half2), brot, best_area])
-	# 1) 塞进楼心：推出后车心到楼体最近边界的距离应 ≥ 车身半径，
-	#    也就是车身完全在楼外，而不是「还差几厘米」。
-	var car_r := 1.45
-	car.pos = Vector3(cp.x, open_world.height_at(cp.x, cp.y), cp.y)
-	car.vel = Vector3.ZERO
-	car.update_car(1.0 / 60.0, {"steer": 0.0, "throttle": 0.0,
-		"handbrake": false, "nitro": false})
-	var cs := cos(brot)
-	var sn := sin(brot)
-	var lx := (car.pos.x - cp.x) * cs - (car.pos.z - cp.y) * sn
-	var lz := (car.pos.x - cp.x) * sn + (car.pos.z - cp.y) * cs
-	var qx := clampf(lx, -half2.x, half2.x)
-	var qz := clampf(lz, -half2.y, half2.y)
-	var edge_dist := Vector2(lx - qx, lz - qz).length()
-	print("[OW-TEST] embedded in building -> edge gap %.2f m (must be >= %.2f)" % [
-		edge_dist, car_r])
-	if edge_dist < car_r - 0.05:
-		print("[OW-TEST] !! FAIL 车身仍在建筑内部（穿模）")
-	else:
-		print("[OW-TEST] OK  车身已被推出建筑体")
-	# 2) 高速撞向建筑：一步最多 0.6m，不可能跨过一面墙
-	var toward := (Vector3(cp.x, 0.0, cp.y) - Vector3(car.pos.x, 0.0, car.pos.z))
-	if toward.length() < 0.01:
-		toward = Vector3(1.0, 0.0, 0.0)
-	toward = toward.normalized()
-	# 车头必须真的朝着墙：update_car 会按 heading 重新算速度，
-	# 光设 vel 不改朝向的话，车其实朝别的方向开，这个测试等于没测。
-	car.heading = atan2(toward.x, toward.z)
-	var before := car.pos.distance_to(Vector3(cp.x, car.pos.y, cp.y))
-	car.vel = toward * 40.0
-	for i in 30:
-		car.update_car(1.0 / 60.0, {"steer": 0.0, "throttle": 1.0,
-			"handbrake": false, "nitro": false})
-	var after := car.pos.distance_to(Vector3(cp.x, car.pos.y, cp.y))
-	print("[OW-TEST] ram building: dist %.2f -> %.2f  speed=%.1f  wall_contact=%s" % [
-		before, after, car.speed_kph, str(car.wall_contact)])
-	# 撞完必须还在楼外：距离不能比撞之前更靠近楼心太多
-	if after < before - 2.0:
-		print("[OW-TEST] !! FAIL 高速撞墙后穿进了建筑（距离 %.2f -> %.2f）" % [before, after])
-	else:
-		print("[OW-TEST] OK  高速撞墙后仍被挡在建筑外（%.2f -> %.2f）" % [before, after])
-
-
-## 每个域的取景目标点：城市看核心，海域看海，野外看最高处。
-## 之前所有域都用同一个「站在域中心附近随便找条路」逻辑，
-## 结果海岸域拍不到海、雪山域拍不到山，看起来八个域都长一个样。
-func _ow_shot_target(zone: Dictionary) -> Vector2:
-	if open_world == null:
-		return Vector2.ZERO
-	var c: Vector2 = zone["center"]
-	var rad := float(zone["radius"])
-	match String(zone["id"]):
-		"neon", "skyline":
-			return c
-		"harbor", "coast":
-			# 这两域的看点就是海：找域内离中心最近的水面点
-			var best := c
-			var best_d := 1.0e20
-			var st := rad / 12.0
-			for j in range(-12, 13):
-				for i in range(-12, 13):
-					var p := c + Vector2(float(i) * st, float(j) * st)
-					if p.distance_to(c) > rad:
-						continue
-					if open_world.height_at(p.x, p.y) < 0.0:
-						var d := p.distance_to(c)
-						if d < best_d:
-							best_d = d
-							best = p
-			if best_d < 1.0e19:
-				return best
-			return c
-		"glacier":
-			return OpenWorld.LAKE_CENTER
-		_:
-			# 野外域看最高处：雪山山脊 / 峡谷台地 / 火山口
-			var top := c
-			var top_h := -1.0e20
-			var st2 := rad / 9.0
-			for j in range(-9, 10):
-				for i in range(-9, 10):
-					var p := c + Vector2(float(i) * st2, float(j) * st2)
-					if p.distance_to(c) > rad:
-						continue
-					var h := open_world.height_at(p.x, p.y)
-					if h > top_h:
-						top_h = h
-						top = p
-			return top
-
-
-
 func _run_switch_test() -> void:
 	while menu == null:
 		await get_tree().process_frame
@@ -913,6 +958,19 @@ func _on_boot_finished() -> void:
 	boot_screen = null
 	print("[BOOT] finished -> menu")
 	_show_menu()
+	_maybe_auto_tutorial()
+
+
+## 首次进入游戏（全新档案且没跑过任何比赛）自动开跑新手教程；
+## 跳过或毕业后不再自动触发，主菜单「新手教程」入口可随时重学。
+func _maybe_auto_tutorial() -> void:
+	if shot_mode or verify_mode or _perf_mode:
+		return
+	var ps := ProfileStore
+	var profile: Dictionary = ps.load_profile()
+	if String(profile.get("tutorial", "")) == "" and int(profile.get("races", 0)) == 0:
+		print("[TUTORIAL] fresh profile -> auto start")
+		_start_tutorial()
 
 
 func _begin_loading(title: String) -> void:
@@ -977,27 +1035,67 @@ func _trim_menu_cache(keep_id: String) -> void:
 
 func _process(dt: float) -> void:
 	_poll_menu_preload()
+	if _hitch_log_until > 0:
+		var now_ms := Time.get_ticks_msec()
+		if now_ms < _hitch_log_until:
+			if dt > 0.045:
+				print("[HITCH] %.0f ms  t=%.2f  state=%d" % [
+					dt * 1000.0, float(now_ms - _hitch_log_start) / 1000.0, state])
+		else:
+			_hitch_log_until = 0
+	if _frame_log_on:
+		if race != null and race.state == RaceManager.State.RACING:
+			_frame_log_race.append(dt)
+		else:
+			_frame_log_intro.append(dt)
+		if Time.get_ticks_msec() - _frame_log_start >= 15000:
+			_frame_log_on = false
+			_print_frame_stats()
 	if intro_cam != null and race != null:
 		intro_t += dt
 		var k := clampf(intro_t / 3.0, 0.0, 1.0)
 		var e := k * k * (3.0 - 2.0 * k)
 		intro_cam.global_position = intro_from_pos.lerp(intro_to_pos, e)
 		intro_cam.look_at(intro_from_look.lerp(intro_to_look, e), Vector3.UP)
+		# 开场镜头会逆光扫过太阳，整屏泛光容易糊成白雾（Windows 上尤其明显）。
+		# 入场期间把泛光压到 30%，切回追车视角后再缓慢恢复。
+		if _env != null:
+			_env.glow_intensity = lerpf(
+				_env.glow_intensity, _glow_base * 0.30, 1.0 - exp(-dt * 3.5))
 		if k >= 1.0 or race.state != RaceManager.State.COUNTDOWN:
 			intro_cam.queue_free()
 			intro_cam = null
+			_glow_restore = 0.8
 			if cam != null:
 				cam.current = true
 				cam.snap()
+	elif _glow_restore > 0.0 and _env != null:
+		_glow_restore = maxf(_glow_restore - dt, 0.0)
+		var gk := 1.0 - _glow_restore / 0.8
+		_env.glow_intensity = _glow_base * lerpf(0.30, 1.0, gk * gk * (3.0 - 2.0 * gk))
+		if _glow_restore <= 0.0:
+			_env.glow_intensity = _glow_base
 	if state == AppState.MENU and menu_world != null:
 		menu_time += dt
-		_animate_menu_showroom()
+		_animate_menu_showroom(dt)
 	if _perf_mode:
 		_perf_tick(dt)
 		return
 	if not shot_mode:
+		governor.tick(dt)
 		return
 	_shot_frames += 1
+	# _start_race 是 async：_ready 里立即 reset 时 car 还没生成。等车真的进树后
+	# 再按 --shot-dist 定位，否则所有赛道截图都会落回起跑线（2026-11 修复）。
+	if _shot_dist > 0.0 and not _shot_reset_applied and car != null and race != null:
+		car.reset(_shot_dist)
+		_shot_reset_applied = true
+	# _start_race 是 async，_ready 里 race 还是 null；结算截图必须等它真的建好再模拟
+	if shot_scene == "results" and not _shot_results_done and car != null and race != null:
+		_shot_results_done = true
+		_simulate_until_results()
+		if hud != null:
+			hud.show_results(race)
 	# 逐帧输出：跳过前置帧后，把每个真实渲染帧写成 JPEG 序列
 	if not _movie_dir.is_empty() and _shot_frames > _movie_skip and not _movie_busy:
 		_movie_busy = true
@@ -1070,6 +1168,10 @@ func _process(dt: float) -> void:
 			if _shot_frames == 30 and settings_screen != null:
 				settings_screen._select_tab(2)
 			ready = _shot_frames >= 45
+		"settings-game":
+			if _shot_frames == 30 and settings_screen != null:
+				settings_screen._select_tab(3)
+			ready = _shot_frames >= 45
 		"archive-detail":
 			if _shot_frames == 24:
 				_open_circuit_archive()
@@ -1132,6 +1234,9 @@ func _process(dt: float) -> void:
 	# 自定义电影机位在内建机位之后接管，保证每帧都按分镜摆位
 	if not _trailer_shot.is_empty():
 		_update_trailer_camera()
+	elif _trailer_hud >= 0 and hud != null:
+		# 内建机位（drift / nitro / pack）也要能隐藏 HUD
+		hud.visible = (_trailer_hud == 1)
 	# 电影模式只按帧数退出，绝不触发静帧截图退出
 	if _movie_frames > 0:
 		return
@@ -1144,11 +1249,14 @@ func _process(dt: float) -> void:
 func _physics_process(dt: float) -> void:
 	if state != AppState.RACE or car == null:
 		return
-	if open_world_active:
-		_physics_process_open_world(dt)
-		return
 	if race == null:
 		return
+	# 完美起步探测：倒计时最后 0.95s 内把油门踩下去，GO 瞬间给奖励。
+	# 读取原始输入而不是 COUNTDOWN_INPUT（后者被强制为 0）。
+	if race.state == RaceManager.State.COUNTDOWN and not verify_mode and not shot_mode:
+		var raw := InputSetup.read_drive_input()
+		if race.countdown <= 0.95 and float(raw.get("throttle", 0.0)) > 0.55:
+			_launch_armed = true
 	var input: Dictionary
 	if race.state == RaceManager.State.COUNTDOWN:
 		input = COUNTDOWN_INPUT
@@ -1156,7 +1264,11 @@ func _physics_process(dt: float) -> void:
 		if shot_scene == "drift":
 			input = _autopilot_input()
 			input["throttle"] = maxf(float(input.get("throttle", 0.0)), 0.7)
-			if race != null and race.race_started and race.race_time < 1.25:
+			var drift_now := race != null and race.race_started and race.race_time < 1.25
+			# 拍片：race_started 在起跑线附近永远不为真，按帧数给一段固定甩尾窗口
+			if _movie_frames > 0:
+				drift_now = _shot_frames >= 150 and _shot_frames <= 195
+			if drift_now:
 				input["steer"] = clampf(float(input.get("steer", 0.0)) + 0.55, -1.0, 1.0)
 				input["handbrake"] = true
 			else:
@@ -1171,6 +1283,8 @@ func _physics_process(dt: float) -> void:
 		input = _autopilot_input()
 	elif _drift_test_mode:
 		input = _drift_test_input()
+	elif _tutorial_test_mode:
+		input = _tutorial_test_input()
 	elif race.state == RaceManager.State.COUNTDOWN:
 		input = COUNTDOWN_INPUT
 	elif race.player_finished or race.state == RaceManager.State.FINISHED or race.state == RaceManager.State.RESULTS:
@@ -1185,6 +1299,22 @@ func _physics_process(dt: float) -> void:
 		if Settings.get("steer_sensitivity") != null:
 			var sens := float(Settings.get("steer_sensitivity"))
 			input["steer"] = clampf(float(input.get("steer", 0.0)) * sens, -1.0, 1.0)
+	_apply_draft_targets()
+	if _drive_probe_time >= 0.0 and race.state != RaceManager.State.COUNTDOWN:
+		input = _autopilot_input()
+		input["throttle"] = 1.0
+		input["nitro"] = false
+		input["handbrake"] = false
+		_drive_probe_elapsed += dt
+		_drive_probe_log += dt
+		if _drive_probe_log >= 0.5:
+			_drive_probe_log = 0.0
+			print("[PROBE] t=%.1f speed=%.1f kph pos=(%.1f,%.1f) gear=%d rpm=%.2f off=%s surf=%s wall=%s prog=%.0f" % [
+				_drive_probe_elapsed, car.speed_kph, car.pos.x, car.pos.z,
+				car.gear, car.rpm, str(car.offroad), car.world_surface,
+				str(car.wall_contact), car.progress_dist])
+		if _drive_probe_elapsed >= _drive_probe_time:
+			get_tree().quit(0)
 	car.update_car(dt, input)
 	_top_speed_kph = maxf(_top_speed_kph, car.speed_kph)
 	if car.nitro_active and not _was_nitro:
@@ -1211,6 +1341,8 @@ func _physics_process(dt: float) -> void:
 			input2 = {"steer": 0.0, "throttle": -0.4, "handbrake": true, "nitro": false, "reverse_pressed": false}
 		else:
 			input2 = InputSetup.read_duel_input(1)
+			# P2 也能吃到 P1 的尾流：双人追逐同样有超车手段。
+			duel_p2.draft_target = _draft_target_for(duel_p2, [car])
 		duel_p2.update_car(dt, input2)
 		_update_duel(dt)
 		# 双人车之间简单防穿模
@@ -1236,9 +1368,16 @@ func _physics_process(dt: float) -> void:
 			game_feel.on_shift()
 	_update_player_pace(dt)
 	if race.state != RaceManager.State.COUNTDOWN:
-		for ai in ais:
-			ai.update_ai(dt, car, race.race_laps, ais, race.player_pace)
-	var impact := _resolve_car_contacts()
+		# AI 决策 60Hz 足够（样条运动学 + 阻尼平滑），物理 120Hz 下省一半脚本开销；
+		# 渲染位置每个物理帧插值，高刷屏上不会看出台阶。
+		_ai_acc += dt
+		if _ai_acc >= 1.0 / 60.0:
+			for ai in ais:
+				ai.update_ai(_ai_acc, car, race.race_laps, ais, race.player_pace)
+			_ai_acc = 0.0
+	for ai in ais:
+		ai.interpolate_visual(_ai_acc)
+	var impact := contacts.resolve()
 	if impact > 0.8:
 		if audio != null:
 			audio.play_impact(clampf(impact / 30.0, 0.08, 1.0))
@@ -1274,7 +1413,14 @@ func _physics_process(dt: float) -> void:
 	if haptics != null and haptics.has_method("update_state"):
 		haptics.update_state(dt, car, race.state)
 	race.update(dt)
+	if _prev_race_state == RaceManager.State.COUNTDOWN \
+			and race.state == RaceManager.State.RACING:
+		_apply_start_bonus()
+	_prev_race_state = race.state
+	_update_lap_cleanliness(dt)
+	_update_overtake_reward(dt)
 	_update_ghost(dt)
+	_update_skid_marks()
 	if audio != null:
 		audio.update_engine(car.rpm, car.throttle, clampf(car.speed_kph / 300.0, 0.0, 1.0), car.gear, (1 if car.limiter_active else 0))
 	if game_feel != null and game_feel.has_method("update_state"):
@@ -1282,8 +1428,13 @@ func _physics_process(dt: float) -> void:
 	if cam != null and intro_cam == null and shot_scene != "venue" and shot_scene != "panorama" \
 			and shot_scene != "rt" and shot_scene != "pack":
 		cam.follow_update(dt)
-	if hud != null:
-		hud.refresh(race, car, track_path)
+	# HUD 以 60Hz 刷新：物理 120Hz 下每帧更新十几组标签/样式是纯浪费，
+	# 60Hz 对速度表/转速表已经足够顺滑。提示计时用累计帧时长补偿。
+	_hud_acc += dt
+	if _hud_acc >= 1.0 / 60.0:
+		if hud != null:
+			hud.refresh(race, car, track_path, _hud_acc)
+		_hud_acc = 0.0
 	if motion_blur_rect != null and car != null:
 		var speed_frac := clampf(car.speed_kph / 270.0, 0.0, 1.0)
 		# 加速时额外加一层拉丝：静止起步/出弯给油、氮气推进都能明显感到速度涌上来；
@@ -1315,11 +1466,9 @@ func _physics_process(dt: float) -> void:
 			hud.show_results(race)
 		if hud != null:
 			var targets := {}
-			if ResourceLoader.exists("res://scripts/core/profile_store.gd") and race != null and race.track != null:
-				var ps := load("res://scripts/core/profile_store.gd")
-				if ps.has_method("medal_targets"):
-					targets = ps.medal_targets(race.track, race.race_laps, race.mode, int(race.track_def.get("difficulty", 2)))
-				var summary: Dictionary = ps.submit_race(race, car, {
+			if race != null and race.track != null:
+				targets = ProfileStore.medal_targets(race.track, race.race_laps, race.mode, int(race.track_def.get("difficulty", 2)))
+				var summary: Dictionary = ProfileStore.submit_race(race, car, {
 					"nitro_uses": _nitro_use_count,
 					"drift_time": _drift_time,
 					"top_speed": _top_speed_kph,
@@ -1331,6 +1480,8 @@ func _physics_process(dt: float) -> void:
 			if hud.has_method("append_result_line") and car != null and car.drift_bank > 0:
 				hud.append_result_line("漂移得分  %d     最高连击  ×%d" % [
 					car.drift_bank, car.drift_max_combo])
+			if hud.has_method("append_result_line") and _clean_laps > 0:
+				hud.append_result_line("干净圈  %d / %d" % [_clean_laps, race.race_laps])
 			if not targets.is_empty() and hud.has_method("append_result_line"):
 				hud.append_result_line("奖牌目标  金 %s / 银 %s / 铜 %s" % [
 					RaceManager.format_time(float(targets.get("gold", 0.0))),
@@ -1350,49 +1501,8 @@ func _physics_process(dt: float) -> void:
 					var runs := RecordsStore.history(current_track_id).size()
 					var line_count := RecordsStore.line_candidates(current_track_id, 6).size()
 					hud.append_result_line("赛道记录  %d / 10 次      AI 路线库  %d 条" % [runs, line_count])
-
-
-## 开放世界的驾驶循环：没有圈数 / AI / 名次，只有车 + 世界 + 反馈。
-func _physics_process_open_world(dt: float) -> void:
-	var input: Dictionary = InputSetup.read_drive_input()
-	if Settings.get("steer_sensitivity") != null:
-		var sens := float(Settings.get("steer_sensitivity"))
-		input["steer"] = clampf(float(input.get("steer", 0.0)) * sens, -1.0, 1.0)
-	car.update_car(dt, input)
-	_top_speed_kph = maxf(_top_speed_kph, car.speed_kph)
-	if car.nitro_active and not _was_nitro:
-		_nitro_use_count += 1
-	_was_nitro = car.nitro_active
-	if absf(car.lat_slip) > 2.2 and car.speed_kph > 25.0:
-		_drift_time += dt
-	if car.gear != _last_gear_seen:
-		var upshift := car.gear > _last_gear_seen
-		_last_gear_seen = car.gear
-		if haptics != null and haptics.has_method("on_shift"):
-			haptics.on_shift(upshift, car.manual)
-		if game_feel != null and game_feel.has_method("on_shift"):
-			game_feel.on_shift()
-	if audio != null:
-		var slip01 := clampf(car.lat_slip / 9.0, 0.0, 1.0)
-		audio.update_ambience(clampf(car.speed_kph / 300.0, 0.0, 1.0), slip01, car.offroad, dt)
-	if audio != null:
-		audio.update_engine(car.rpm, car.throttle, clampf(car.speed_kph / 300.0, 0.0, 1.0), car.gear, (1 if car.limiter_active else 0))
-	if game_feel != null and game_feel.has_method("update_state"):
-		game_feel.update_state(dt, car, -1)
-	_update_open_world(dt)
-
-
-## 把车放回最近的公路（开放世界里的 R 键 / 深水自救）。
-func _respawn_open_world() -> void:
-	if open_world == null or car == null:
-		return
-	var p := open_world.nearest_road_point(car.pos.x, car.pos.z)
-	car.pos = p + Vector3(0.0, 0.5, 0.0)
-	car.vel = Vector3.ZERO
-	car.speed_forward = 0.0
-	car.speed_kph = 0.0
-	if audio != null:
-		audio.play_impact(0.35)
+	if tutorial != null:
+		tutorial.tick(dt, car, race, cam)
 
 
 func _input(event: InputEvent) -> void:
@@ -1413,13 +1523,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if state != AppState.RACE:
 		return
 	if event.is_action_pressed("reset_car"):
-		if open_world_active:
-			_respawn_open_world()
-		else:
-			_start_race(current_track_id, current_car_id, current_mode)
+		_start_race(current_track_id, current_car_id, current_mode)
 		get_viewport().set_input_as_handled()
 		return
-	if event.is_action_pressed("camera_mode") and cam != null and not open_world_active:
+	if event.is_action_pressed("camera_mode") and cam != null:
 		var cam_label := cam.cycle_mode()
 		if hud != null and hud.has_method("set_camera_name"):
 			hud.set_camera_name(cam_label)
@@ -1446,7 +1553,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 	# 手柄 START / Esc：暂停（菜单里 START 由各界面自己处理）
-	if event.is_action_pressed("ui_cancel") and not open_world_active:
+	if event.is_action_pressed("ui_cancel"):
 		_open_pause()
 		get_viewport().set_input_as_handled()
 		return
@@ -1469,8 +1576,10 @@ func _unhandled_input(event: InputEvent) -> void:
 # ---------------------------------------------------------------------------
 
 func _show_menu() -> void:
+	_end_tutorial_session()
 	_clear_race()
 	_sync_post_amount(0.0)
+	_set_post_grade({})
 	state = AppState.MENU
 	if not _arg_car.is_empty():
 		# 截图/拍片时 --car 强制展厅展示指定座驾
@@ -1484,6 +1593,7 @@ func _show_menu() -> void:
 	menu.achievements_requested.connect(_open_achievements)
 	menu.daily_requested.connect(_open_daily)
 	menu.archive_requested.connect(_open_circuit_archive)
+	menu.tutorial_requested.connect(_start_tutorial)
 	menu.selection_changed.connect(_on_menu_selection)
 	menu.track_changed.connect(_on_menu_track_changed)
 	_build_menu_showroom(menu.selected_track_id(), menu.selected_car_id())
@@ -1565,12 +1675,14 @@ func _instantiate_menu_scene(packed: PackedScene, track_id: String, car_id: Stri
 		menu_car_angle = menu_car_pivot.rotation.y
 	_menu_build_car(car_id)
 	_decorate_menu_scene()
+	_apply_menu_camera_attributes()
 	return true
 
 
 func _decorate_menu_scene() -> void:
 	if menu_world == null:
 		return
+	_menu_apply_render_stability()
 	var def := GameData.track(menu_track_id)
 	var theme: Dictionary = def.get("theme", {})
 	var night := SceneryKit.is_night_theme(theme)
@@ -1596,19 +1708,35 @@ func _decorate_menu_scene() -> void:
 				"fog_color": env.fog_light_color, "fog_density": env.fog_density,
 				"glow_intensity": env.glow_intensity, "glow_bloom": env.glow_bloom,
 				"glow_hdr": env.glow_hdr_threshold,
+				"volumetric": env.volumetric_fog_enabled,
 			}
 		var expo_mul := 1.75 if dark_menu else 1.10
 		if menu_track_id == "alpine":
 			expo_mul = 0.88
 		env.tonemap_exposure = minf(env.tonemap_exposure * expo_mul, 2.1)
-		env.ssr_enabled = false
+		# 静态展厅重新开 SSR：车漆/轮胎在湿路面与展台上的倒影是「高级感」的
+		# 主要来源。相机固定 + FXAA，不跑时间重投影，不会出现比赛里的抖动。
+		# 低画质档仍关闭，避免弱机在菜单就吃满预算。
+		env.ssr_enabled = Settings.index >= 2
+		env.ssr_max_steps = 48 if Settings.index >= 3 else 24
+		env.ssr_fade_in = 0.10
+		env.ssr_fade_out = 2.2
+		env.ssr_depth_tolerance = 0.45
 		env.ssil_enabled = false
+		env.sdfgi_enabled = false
+		# 体积雾是半分辨率 + 时间重投影，静态展厅里会随每帧抖动；
+		# 菜单用常规雾 + 天空霾保持空气感，画面稳定优先。
+		env.volumetric_fog_enabled = false
+		# 展厅是静态机位，SSAO 不会像比赛里那样闪；开着让车底/展台接缝有接触阴影。
+		env.ssao_enabled = true
 		env.ssao_intensity = minf(env.ssao_intensity, 2.2)
 		env.adjustment_brightness = maxf(env.adjustment_brightness, 1.06 if not dark_menu else 1.16)
 		# 展台车漆高光收紧：白车/亮色车不再糊成一团发光，暗部保留。
 		env.glow_hdr_threshold = maxf(env.glow_hdr_threshold, 1.42)
 		env.glow_intensity *= 0.78
 		env.glow_bloom = minf(env.glow_bloom, 0.04)
+		env.glow_map = _lens_dirt_texture() if Settings.index >= 2 else null
+		env.glow_map_strength = 0.28 if Settings.index >= 3 else 0.18
 		if dark_menu:
 			env.ambient_light_energy = minf(env.ambient_light_energy + 0.34, 0.95)
 			env.fog_light_color = env.fog_light_color.lightened(0.14)
@@ -1622,14 +1750,42 @@ func _decorate_menu_scene() -> void:
 			env.fog_light_color = env.fog_light_color.lightened(0.10)
 	if menu_car_pivot == null:
 		return
-	# 稳定的展示补光：车在暗色赛道里也能看清；关掉会造成闪动的屏幕空间反射
+	# 展厅的主光必须是场景自己的太阳：补光只负责「暗面读懂车形」。
+	# 旧版 5 盏影棚聚光 + 烘焙遗留聚光把车打得比环境亮一截、高光方向又和
+	# 影子对不上，车像贴上去的。这里把补光压到辅助级，并让主补光顺着太阳方向。
 	var car_pos := menu_car_pivot.global_position
+	var scene_sun := menu_world.find_child("Sun", true, false) as DirectionalLight3D
+	for node in menu_world.find_children("*", "SpotLight3D", true, false):
+		var baked := node as SpotLight3D
+		if menu_decor_lights.has(baked):
+			continue
+		baked.light_energy = minf(baked.light_energy, 1.4)
+		if scene_sun != null:
+			baked.light_color = scene_sun.light_color
+	var toward_sun := Vector3(0.42, 0.62, 0.2).normalized()
+	var key_color := Color(1.0, 0.94, 0.85)
+	if scene_sun != null:
+		toward_sun = scene_sun.global_transform.basis.z.normalized()
+		key_color = scene_sun.light_color
 	var key := SpotLight3D.new()
-	key.position = car_pos + Vector3(4.5, 7.5, 4.5)
-	key.light_color = Color(1.0, 0.94, 0.85)
-	key.light_energy = 11.5 if dark_menu else 5.8
+	var key_from := toward_sun * 9.0 + Vector3(0.0, 4.0, 0.0)
+	# 聚光按平方反比衰减：9m 外能量个位数几乎不可见；但几十的能量会把
+	# 清漆高光打成死白、在地面留下影棚光池。辅助级取「环境光的一小部分」。
+	var key_energy := 26.0 if dark_menu else 12.0
+	if night and menu_cam != null:
+		# 夜景：月光方向往往背着相机，顺月亮打车会让展车正面全黑。
+		# 改从相机侧打一盏暖色「路灯感」主光，和街灯色温一致。
+		var to_cam := menu_cam.global_position - car_pos
+		to_cam.y = 0.0
+		if to_cam.length_squared() > 0.01:
+			key_from = to_cam.normalized() * 8.0 + Vector3(0.0, 5.0, 0.0)
+			key_color = Color(1.0, 0.86, 0.64)
+			key_energy = 22.0
+	key.position = car_pos + key_from
+	key.light_color = key_color
+	key.light_energy = key_energy
 	key.spot_range = 32.0
-	key.spot_angle = 46.0
+	key.spot_angle = 38.0
 	key.shadow_enabled = false
 	menu_world.add_child(key)
 	key.look_at(car_pos + Vector3(0.0, 0.8, 0.0), Vector3.UP)
@@ -1637,7 +1793,7 @@ func _decorate_menu_scene() -> void:
 	var rim := SpotLight3D.new()
 	rim.position = car_pos + Vector3(-6.0, 3.2, -6.0)
 	rim.light_color = Color(0.55, 0.82, 1.0)
-	rim.light_energy = 6.0 if dark_menu else 3.1
+	rim.light_energy = 12.0 if night else (16.0 if dark_menu else 7.0)
 	rim.spot_range = 26.0
 	rim.spot_angle = 42.0
 	rim.shadow_enabled = false
@@ -1648,23 +1804,145 @@ func _decorate_menu_scene() -> void:
 	probe.position = car_pos + Vector3(0.0, 2.5, 0.0)
 	probe.size = Vector3(14.0, 8.0, 14.0)
 	probe.box_projection = true
-	probe.interior = true
+	probe.interior = false
 	probe.update_mode = ReflectionProbe.UPDATE_ONCE
-	probe.max_distance = 40.0
+	probe.enable_shadows = false
+	# 只拍环境层：车体已统一在层 2，避免车漆反射自己的车身/内饰。
+	probe.cull_mask = 1
+	probe.max_distance = 120.0
 	menu_world.add_child(probe)
 	menu_decor_lights.append(probe)
 	var fill := SpotLight3D.new()
 	fill.position = car_pos + Vector3(-5.0, 4.5, -4.5)
 	fill.light_color = accent
-	fill.light_energy = 5.2 if dark_menu else 2.6
+	fill.light_energy = 8.0 if night else (10.0 if dark_menu else 4.0)
 	fill.spot_range = 26.0
 	fill.spot_angle = 50.0
 	fill.shadow_enabled = false
 	menu_world.add_child(fill)
 	fill.look_at(car_pos + Vector3(0.0, 0.8, 0.0), Vector3.UP)
 	menu_decor_lights.append(fill)
-	# 菜单里关掉 TAA，避免静态场景地面高光像素闪烁
-	get_viewport().use_taa = false
+	# 车底氛围灯：夜间保留一圈主色光池；白天只留极弱一点，否则像加装霓虹灯。
+	var under := OmniLight3D.new()
+	under.position = car_pos + Vector3(0.0, 0.30, 0.0)
+	under.light_color = accent
+	under.light_energy = 1.2 if dark_menu else 0.22
+	under.omni_range = 6.0 if not dark_menu else 7.5
+	under.omni_attenuation = 1.7
+	under.shadow_enabled = false
+	menu_world.add_child(under)
+	menu_decor_lights.append(under)
+	# 顶后轮廓光：勾出发动机盖、尾翼和车顶的高光边，车漆更有金属感。
+	var kicker := SpotLight3D.new()
+	kicker.position = car_pos + Vector3(2.5, 8.5, -7.0)
+	kicker.light_color = Color(0.95, 0.97, 1.0)
+	kicker.light_energy = 14.0 if night else (20.0 if dark_menu else 9.0)
+	kicker.spot_range = 32.0
+	kicker.spot_angle = 34.0
+	kicker.shadow_enabled = false
+	menu_world.add_child(kicker)
+	kicker.look_at(car_pos + Vector3(0.0, 0.9, 0.0), Vector3.UP)
+	menu_decor_lights.append(kicker)
+	_menu_kicker = kicker
+	_menu_kicker_base = kicker.light_energy
+	_menu_sweep_t = 0.0
+	_setup_menu_glare(theme, dark_menu)
+	_add_menu_weather(theme)
+
+
+## 菜单展厅沿用赛道主题天气：城市雨夜/雪山飘雪/峡谷扬尘。粒子只跟随展车，
+## 不影响 UI 与静态相机；切换赛道时随 menu_world 一起释放。
+func _add_menu_weather(theme: Dictionary) -> void:
+	if menu_world == null or menu_car_pivot == null:
+		return
+	var kind := String(theme.get("weather", "none"))
+	if kind.is_empty() or kind == "none":
+		return
+	var fx := WeatherFX.new()
+	fx.name = "MenuWeather"
+	menu_world.add_child(fx)
+	fx.setup(kind, theme, menu_car_pivot)
+	# 展厅是近景静态镜头：雨量降到赛道的 ~1/4，雨丝缩短，避免贴脸大雨条。
+	if kind == "rain":
+		if fx.particles != null:
+			fx.particles.amount = int(900 * Settings.particle_scale())
+			var quad := fx.particles.draw_pass_1 as QuadMesh
+			if quad != null:
+				quad.size = Vector2(0.045, 0.5)
+		var splash := menu_car_pivot.find_child("RainSplashes", true, false) as GPUParticles3D
+		if splash != null:
+			splash.amount = int(90 * Settings.particle_scale())
+
+
+## 菜单展厅的太阳眩光：优先用烘焙场景里的 Sun 光方向，没 Sun 时退回主题 sunDir。
+func _setup_menu_glare(theme: Dictionary, dark_menu: bool) -> void:
+	var dir := Vector3(0.42, 0.52, 0.2)
+	var color := Color(1.0, 0.95, 0.86)
+	var sun := menu_world.find_child("Sun", true, false) as DirectionalLight3D if menu_world != null else null
+	if sun != null:
+		dir = sun.global_transform.basis.z.normalized()
+		color = sun.light_color
+	else:
+		var sd: Array = theme.get("sunDir", [0.42, 0.52, 0.2])
+		dir = Vector3(float(sd[0]), float(sd[1]), float(sd[2])).normalized()
+		color = Color.from_string(String(theme.get("sunColor", "#fff2da")), color)
+	_setup_sun_glare(dir, color, 0.55 if not dark_menu else 0.26)
+
+
+func _setup_sun_glare(dir: Vector3, color: Color, strength: float) -> void:
+	if _sun_glare == null:
+		return
+	if dir.length_squared() < 0.0001 or strength <= 0.002:
+		_sun_glare.set("intensity", 0.0)
+		_sun_glare.visible = false
+		return
+	_sun_glare.call("setup", dir, color, strength)
+
+
+## 赛道太阳眩光：方向取真实太阳；夜间压成月光，雨雪天减半。
+func _setup_race_sun_glare() -> void:
+	if _sun == null:
+		_setup_sun_glare(Vector3.ZERO, Color.WHITE, 0.0)
+		return
+	var theme: Dictionary = track_def.get("theme", {}) if not track_def.is_empty() else {}
+	var strength := 0.22 if SceneryKit.is_night_theme(theme) else 1.0
+	if theme.has("sunGlare"):
+		strength = clampf(float(theme["sunGlare"]), 0.0, 2.0)
+	if String(theme.get("weather", "none")) in ["rain", "snow"]:
+		strength *= 0.45
+	_setup_sun_glare(_sun.global_transform.basis.z.normalized(), _sun.light_color, strength)
+
+
+## 菜单是纯静态展厅：4K 下按 0.70 缩放走 MetalFX 时间升频，静止画面里的
+## 远景山脊/栏杆/云边会逐帧抖动（屏幕上看就是背景在闪）。菜单改用原生
+## 分辨率 + FXAA 的空间路径，并关掉体积雾的逐帧抖动；回到比赛/车库时
+## _apply_quality() 会把这些全部恢复成比赛配置。
+func _menu_apply_render_stability() -> void:
+	var vp := get_viewport()
+	if vp == null:
+		return
+	vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
+	vp.scaling_3d_scale = 1.0
+	vp.use_taa = false
+	vp.msaa_3d = Viewport.MSAA_DISABLED
+	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
+	vp.use_debanding = true
+
+
+## 展厅轻景深：车在 9m 左右保持全清晰，远景楼群/山体柔化，把车从背景里推出来。
+## 只在静态菜单开，比赛相机不受影响；低画质档跳过。
+func _apply_menu_camera_attributes() -> void:
+	if menu_cam == null:
+		return
+	if Settings.index < 2:
+		menu_cam.attributes = null
+		return
+	var attrs := CameraAttributesPractical.new()
+	attrs.dof_blur_far_enabled = true
+	attrs.dof_blur_far_distance = 30.0
+	attrs.dof_blur_far_transition = 60.0
+	attrs.dof_blur_amount = 0.02
+	menu_cam.attributes = attrs
 
 
 func _undecorate_menu_world() -> void:
@@ -1691,16 +1969,19 @@ func _undecorate_menu_world() -> void:
 				env.glow_intensity = float(menu_env_backup["glow_intensity"])
 				env.glow_bloom = float(menu_env_backup["glow_bloom"])
 				env.glow_hdr_threshold = float(menu_env_backup["glow_hdr"])
+				env.volumetric_fog_enabled = bool(menu_env_backup.get("volumetric", true))
 	menu_env_backup.clear()
 
 
-func _bake_menu_scenes() -> void:
+func _bake_menu_scenes(only_id: String = "") -> void:
 	_bake_menu_active = true
 	var dir := "res://assets/menu_scenes"
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir))
 	for def in GameData.tracks:
 		var id := String(def.get("id", ""))
 		if id.is_empty():
+			continue
+		if not only_id.is_empty() and id != only_id:
 			continue
 		var t0 := Time.get_ticks_msec()
 		_build_menu_showroom(id, "", true)
@@ -1712,8 +1993,8 @@ func _bake_menu_scenes() -> void:
 	_bake_menu_active = false
 
 
-func _run_bake_menu() -> void:
-	_bake_menu_scenes()
+func _run_bake_menu(only_id: String = "") -> void:
+	_bake_menu_scenes(only_id)
 	get_tree().quit()
 
 
@@ -1737,7 +2018,7 @@ func _convert_multimeshes(node: Node) -> void:
 				if mm.use_colors:
 					for i in mm.instance_count:
 						colors.append(mm.get_instance_color(i))
-				mi.set_script(load("res://scripts/tracks/baked_multimesh.gd"))
+				mi.set_script(load("res://maps/scripts/tracks/baked_multimesh.gd"))
 				mi.set("baked_mesh", mm.mesh)
 				mi.set("baked_material", mi.material_override)
 				mi.set("baked_transforms", xforms)
@@ -1764,10 +2045,6 @@ func _build_menu_showroom(track_id: String, car_id: String, bake_only: bool = fa
 	if def.is_empty():
 		return
 	menu_track_id = track_id
-	# 开放世界没有赛道可预览，改用「大陆沙盘」：圆盘 + 八区微缩建筑 + 环形主干道
-	if bool(def.get("openWorld", false)):
-		_build_open_world_showroom(car_id, bake_only)
-		return
 	# 预烘焙场景：运行时直接实例化，换图不用再现场建世界（3.7s 景物 + 1.3s 场馆）
 	var baked_path := _menu_scene_path(track_id)
 	if not bake_only:
@@ -1795,6 +2072,9 @@ func _build_menu_showroom(track_id: String, car_id: String, bake_only: bool = fa
 
 	if bool(def.get("realCity", false)):
 		_build_city_showroom(car_id, bake_only)
+		return
+	if bool(def.get("openField", false)):
+		_build_field_showroom(car_id, bake_only)
 		return
 
 	var builder := TrackBuilder.new()
@@ -1905,7 +2185,7 @@ func _build_menu_showroom(track_id: String, car_id: String, bake_only: bool = fa
 ## 实景城市展台：直接实例化 Blender 导出的都会模型，车停在环线起跑直道上，
 ## 相机沿长街看出去。模型路面中位高度 z=-0.15m，整体上抬 0.15 → 路面正好 y=0，
 ## 和 TrackPath 的平面完全对齐。
-const CITY_RING_SCENE := "res://assets/thirdparty/city_ring/city_ring.glb"
+const CITY_RING_SCENE := "res://maps/assets/city_ring/city_ring.glb"
 const CITY_RING_RAISE := 0.15
 
 
@@ -1988,366 +2268,62 @@ func _build_city_showroom(car_id: String, bake_only: bool = false) -> void:
 		streamer.setup(menu_cam, menu_world)
 
 
-## 开放世界菜单预览：一座「大陆沙盘」——圆盘代表整片大陆，八簇微缩建筑
-## 按真实方位摆放在环上，中央是枢纽塔与主干道，车停在环道上。
-func _build_open_world_showroom(car_id: String, bake_only: bool = false) -> void:
-	menu_world = Node3D.new()
-	menu_world.name = "MenuShowroom"
-	add_child(menu_world)
-	var def := GameData.track(menu_track_id)
-	_setup_environment(menu_world, def)
-
-	var accent := Color.from_string(String(def.get("theme", {}).get("accent", "#7fd8ff")), Color(0.4, 0.85, 0.95))
-	var cjk: Font = UIStyle.system_cjk_font()
-
-	# 沙盘机位离模型近 900 米，赛道主题的雾会把整块大陆洗成一片橙。
-	# 压掉雾 / 体积雾，八区的配色和轮廓才读得出来。
-	if _env != null:
-		_env.fog_density = 0.00005
-		_env.volumetric_fog_enabled = false
-		_env.fog_aerial_perspective = 0.0
-	# 主光改成高位侧前方：主题默认太阳压得很低，沙盘上全是长影子看不出体积
-	var sun := menu_world.get_node_or_null("Sun") as DirectionalLight3D
-	if sun != null:
-		var sd := Vector3(-0.19, 0.73, -0.65).normalized()
-		sun.transform = Transform3D(Basis.looking_at(-sd, Vector3.UP), Vector3.ZERO)
-
-	# ── 海：沙盘外圈一大片深青，把画面四边压住
-	var sea_mi := MeshInstance3D.new()
-	sea_mi.mesh = _annulus_mesh(294.0, 1500.0, 128)
-	var sea_mat := StandardMaterial3D.new()
-	sea_mat.albedo_color = Color(0.035, 0.092, 0.132)
-	sea_mat.roughness = 0.26
-	sea_mat.metallic = 0.42
-	sea_mat.metallic_specular = 0.62
-	sea_mi.material_override = sea_mat
-	sea_mi.position = Vector3(0.0, -1.6, 0.0)
-	menu_world.add_child(sea_mi)
-
-	# 海岸浪花带（别太宽，不然整块沙盘像只瓷盘）
-	var foam_mi := MeshInstance3D.new()
-	foam_mi.mesh = _annulus_mesh(294.0, 309.0, 128)
-	var foam_mat := StandardMaterial3D.new()
-	foam_mat.albedo_color = Color(0.33, 0.55, 0.59)
-	foam_mat.roughness = 0.78
-	foam_mat.emission_enabled = true
-	foam_mat.emission = Color(0.20, 0.42, 0.50)
-	foam_mat.emission_energy_multiplier = 0.42
-	foam_mi.material_override = foam_mat
-	foam_mi.position = Vector3(0.0, -0.9, 0.0)
-	menu_world.add_child(foam_mi)
-
-	# ── 大陆圆盘
-	var disc := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = 300.0
-	cyl.bottom_radius = 300.0
-	cyl.height = 7.0
-	cyl.radial_segments = 72
-	disc.mesh = cyl
-	var disc_mat := StandardMaterial3D.new()
-	disc_mat.albedo_color = Color(0.055, 0.082, 0.098)
-	disc_mat.roughness = 0.94
-	disc_mat.albedo_texture = UIStyle.grid_texture(Color(0.35, 0.70, 0.85, 0.22), 26)
-	disc_mat.uv1_scale = Vector3(7.0, 7.0, 1.0)
-	disc.material_override = disc_mat
-	disc.position = Vector3(0.0, -3.5, 0.0)
-	menu_world.add_child(disc)
-
-	# 海岸棱线：大陆边缘一圈暖色轮廓
-	var rim_mi := MeshInstance3D.new()
-	rim_mi.mesh = _annulus_mesh(292.0, 300.0, 128)
-	var rim_mat := StandardMaterial3D.new()
-	rim_mat.albedo_color = Color(0.80, 0.68, 0.46)
-	rim_mat.roughness = 0.85
-	rim_mat.emission_enabled = true
-	rim_mat.emission = Color(0.92, 0.66, 0.38)
-	rim_mat.emission_energy_multiplier = 0.55
-	rim_mi.material_override = rim_mat
-	rim_mi.position = Vector3(0.0, 0.05, 0.0)
-	menu_world.add_child(rim_mi)
-
-	# ── 路网：环形主干道 + 八条辐射支线
-	var road_mat := PbrAssets.road()
-	road_mat.albedo_color = Color(0.60, 0.61, 0.63)
-	road_mat.uv1_scale = Vector3(16.0, 5.0, 1.0)
-	var ring := MeshInstance3D.new()
-	ring.mesh = _annulus_mesh(238.0, 256.0, 128)
-	ring.material_override = road_mat
-	ring.position = Vector3(0.0, 0.10, 0.0)
-	menu_world.add_child(ring)
-
-	# 环道两侧的引导线（发光）：一眼就能认出「主干道」
-	var edge_mat := StandardMaterial3D.new()
-	edge_mat.albedo_color = Color(0.92, 0.95, 1.0)
-	edge_mat.emission_enabled = true
-	edge_mat.emission = accent
-	edge_mat.emission_energy_multiplier = 1.50
-	edge_mat.roughness = 0.45
-	for rr in [238.0, 254.0]:
-		var edge := MeshInstance3D.new()
-		edge.mesh = _annulus_mesh(float(rr), float(rr) + 2.0, 128)
-		edge.material_override = edge_mat
-		edge.position = Vector3(0.0, 0.16, 0.0)
-		menu_world.add_child(edge)
-
-	# 辐射支线：把中心枢纽和八座区域城串起来
-	var spoke_mat := StandardMaterial3D.new()
-	spoke_mat.albedo_color = Color(0.21, 0.235, 0.26)
-	spoke_mat.roughness = 0.90
-	for i in 8:
-		var a := TAU * float(i) / 8.0
-		var d := Vector2(cos(a), sin(a))
-		var bar := MeshInstance3D.new()
-		var bm := BoxMesh.new()
-		bm.size = Vector3(200.0, 0.7, 13.0)
-		bar.mesh = bm
-		bar.material_override = spoke_mat
-		bar.position = Vector3(d.x * 136.0, 0.05, d.y * 136.0)
-		bar.rotation.y = -a
-		menu_world.add_child(bar)
-
-	# ── 八座区域城：地台 + 楼群 + 地标塔 + 中英文标牌
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 424242
-	for zone in OpenWorld.ZONES:
-		var zc: Vector2 = zone["center"]
-		var dir := Vector2(zc.x, zc.y).normalized()
-		var zc2 := Color.from_string(String(zone["accent"]), accent)
-		var spoke_ang := dir.angle()
-		var perp := Vector2(-dir.y, dir.x)
-		var base_pos := dir * 206.0
-
-		# 区域地台
-		var pad := MeshInstance3D.new()
-		var pm := CylinderMesh.new()
-		pm.top_radius = 40.0
-		pm.bottom_radius = 40.0
-		pm.height = 1.4
-		pm.radial_segments = 40
-		pad.mesh = pm
-		var pad_mat := StandardMaterial3D.new()
-		pad_mat.albedo_color = zc2.darkened(0.74)
-		pad_mat.roughness = 0.85
-		pad_mat.emission_enabled = true
-		pad_mat.emission = zc2
-		pad_mat.emission_energy_multiplier = 0.30
-		pad.material_override = pad_mat
-		pad.position = Vector3(base_pos.x, 0.7, base_pos.y)
-		menu_world.add_child(pad)
-
-		# 楼群：围着地台排一圈，落在辐条方向 ±22° 内的空着给路让位
-		for i in 14:
-			var ang := TAU * float(i) / 14.0 + rng.randf_range(-0.10, 0.10)
-			if absf(angle_difference(ang, spoke_ang)) < 0.38:
-				continue
-			var rad := rng.randf_range(11.0, 31.0)
-			var p := base_pos + Vector2(cos(ang), sin(ang)) * rad
-			var hgt := rng.randf_range(6.0, 30.0)
-			var box := MeshInstance3D.new()
-			var bm2 := BoxMesh.new()
-			bm2.size = Vector3(rng.randf_range(6.5, 12.0), hgt, rng.randf_range(6.5, 12.0))
-			box.mesh = bm2
-			var m := StandardMaterial3D.new()
-			m.albedo_color = zc2.darkened(0.58).lerp(Color(0.10, 0.11, 0.13), 0.35)
-			m.roughness = 0.70
-			m.emission_enabled = true
-			m.emission = zc2
-			m.emission_energy_multiplier = 0.16
-			box.material_override = m
-			box.position = Vector3(p.x, 1.4 + hgt * 0.5, p.y)
-			box.rotation.y = rng.randf() * TAU
-			menu_world.add_child(box)
-
-		# 地标塔：每区一根发光尖塔，标出「八区域」
-		var beacon_pos := base_pos + perp * 24.0
-		var tower := MeshInstance3D.new()
-		var tm := CylinderMesh.new()
-		tm.top_radius = 1.4
-		tm.bottom_radius = 4.6
-		tm.height = 50.0
-		tm.radial_segments = 8
-		tower.mesh = tm
-		var tm_mat := StandardMaterial3D.new()
-		tm_mat.albedo_color = zc2.darkened(0.42)
-		tm_mat.roughness = 0.45
-		tm_mat.emission_enabled = true
-		tm_mat.emission = zc2
-		tm_mat.emission_energy_multiplier = 0.70
-		tower.material_override = tm_mat
-		tower.position = Vector3(beacon_pos.x, 1.4 + 25.0, beacon_pos.y)
-		menu_world.add_child(tower)
-
-		# 标牌：中文区名 + 英文区名。
-		# 两行要拉到楼群（最高 30）和光柱（50）之上，且两行间距不能小于字高，
-		# 否则英文行会被中文行压住、或者整体压在楼顶上看不清。
-		var cn := _ow_label(String(zone["cn"]), Vector3(beacon_pos.x, 84.0, beacon_pos.y), zc2, 20.0, cjk)
-		menu_world.add_child(cn)
-		var en := _ow_label(String(zone["en"]), Vector3(beacon_pos.x, 70.0, beacon_pos.y), zc2.lightened(0.25), 10.0, cjk)
-		menu_world.add_child(en)
-
-	# ── 中央枢纽：塔 + 基座光环 + 四座卫星塔
-	var hub := MeshInstance3D.new()
-	var hub_mesh := CylinderMesh.new()
-	hub_mesh.top_radius = 4.0
-	hub_mesh.bottom_radius = 14.0
-	hub_mesh.height = 78.0
-	hub_mesh.radial_segments = 8
-	hub.mesh = hub_mesh
-	var hub_mat := StandardMaterial3D.new()
-	# 枢纽塔用银白而不是饱和青蓝：沙盘里八座城是暖色为主，
-	# 一根高饱和蓝塔杵在正中间太扎眼，像没配好色。
-	hub_mat.albedo_color = Color(0.82, 0.84, 0.88)
-	hub_mat.emission_enabled = true
-	hub_mat.emission = Color(0.42, 0.70, 0.76)
-	hub_mat.emission_energy_multiplier = 0.30
-	hub_mat.roughness = 0.32
-	hub.material_override = hub_mat
-	hub.position = Vector3(0.0, 39.0, 0.0)
-	menu_world.add_child(hub)
-
-	# 枢纽基座光环
-	var hub_ring := MeshInstance3D.new()
-	hub_ring.mesh = _annulus_mesh(17.0, 31.0, 64)
-	var hub_ring_mat := StandardMaterial3D.new()
-	hub_ring_mat.albedo_color = accent.darkened(0.35)
-	hub_ring_mat.emission_enabled = true
-	hub_ring_mat.emission = accent
-	hub_ring_mat.emission_energy_multiplier = 0.85
-	hub_ring_mat.roughness = 0.4
-	hub_ring.material_override = hub_ring_mat
-	hub_ring.position = Vector3(0.0, 0.14, 0.0)
-	menu_world.add_child(hub_ring)
-
-	# 四座卫星塔
-	for i in 4:
-		var sa := TAU * float(i) / 4.0 + 0.4
-		var sat := MeshInstance3D.new()
-		var sm := CylinderMesh.new()
-		sm.top_radius = 1.6
-		sm.bottom_radius = 4.0
-		sm.height = 34.0
-		sm.radial_segments = 6
-		sat.mesh = sm
-		var sat_mat := StandardMaterial3D.new()
-		sat_mat.albedo_color = accent.darkened(0.62)
-		sat_mat.emission_enabled = true
-		sat_mat.emission = accent
-		sat_mat.emission_energy_multiplier = 0.32
-		sat_mat.roughness = 0.5
-		sat.material_override = sat_mat
-		sat.position = Vector3(cos(sa) * 44.0, 17.0, sin(sa) * 44.0)
-		menu_world.add_child(sat)
-
-	# 枢纽标牌（浮在塔顶上方，避开对面区域的标牌）
-	# 抬到 100/116：塔高 78，标牌压在 86 那一行会正好糊在塔尖上。
-	var hub_cn := _ow_label("无界大陆", Vector3(0.0, 116.0, 0.0), accent, 22.0, cjk)
-	menu_world.add_child(hub_cn)
-	var hub_en := _ow_label("OPEN CONTINENT", Vector3(0.0, 100.0, 0.0), accent.lightened(0.30), 11.0, cjk)
-	menu_world.add_child(hub_en)
-
-	# ── 玩家车：停在环道上（离机位最近的一段），底下垫一圈高亮
-	var car_ang := TAU * 0.3125
-	var car_pos := Vector3(cos(car_ang) * 247.0, 0.0, sin(car_ang) * 247.0)
-	var car_mark := MeshInstance3D.new()
-	car_mark.mesh = _annulus_mesh(7.0, 15.0, 32)
-	var mark_mat := StandardMaterial3D.new()
-	mark_mat.albedo_color = Color(1.0, 0.95, 0.80)
-	mark_mat.emission_enabled = true
-	mark_mat.emission = Color(1.0, 0.86, 0.55)
-	mark_mat.emission_energy_multiplier = 2.20
-	mark_mat.roughness = 0.4
-	car_mark.material_override = mark_mat
-	car_mark.position = Vector3(car_pos.x, 0.20, car_pos.z)
-	menu_world.add_child(car_mark)
-
+## 漂移练习展台：整片空旷柏油就是背景。车停在场地中心，机位贴地斜看出去，
+## 路面一直铺到地平线，突出「一公里见方、没有障碍随便漂」的开阔感。
+func _build_field_showroom(car_id: String, bake_only: bool = false) -> void:
+	var builder := TrackBuilder.new()
+	builder.name = "MenuTrack"
+	menu_world.add_child(builder)
+	builder.build(GameData.track(menu_track_id))
+	var car_pos := Vector3(0.0, 0.03, 0.0)
+	var car_yaw := 0.42
 	menu_car_pivot = Node3D.new()
 	menu_car_pivot.name = "MenuCarPivot"
-	menu_car_pivot.position = car_pos + Vector3(0.0, 0.1, 0.0)
-	menu_car_pivot.rotation.y = -car_ang
+	menu_car_pivot.position = car_pos
+	menu_car_pivot.rotation.y = car_yaw
 	menu_world.add_child(menu_car_pivot)
-	menu_car_angle = -car_ang
+	menu_car_angle = car_yaw
 	if not bake_only:
 		_menu_build_car(car_id)
 
+	var fwd := Vector3(sin(car_yaw), 0.0, cos(car_yaw))
+	var side := Vector3(-fwd.z, 0.0, fwd.x)
 	var key := SpotLight3D.new()
-	key.position = car_pos + Vector3(5.0, 12.0, 9.0)
+	key.position = car_pos + side * 5.0 - fwd * 4.0 + Vector3(0.0, 7.0, 0.0)
 	key.light_color = Color(1.0, 0.93, 0.82)
-	key.light_energy = 9.0
-	key.spot_range = 44.0
+	key.light_energy = 7.0
+	key.spot_range = 26.0
 	key.spot_angle = 40.0
 	key.shadow_enabled = false
 	menu_world.add_child(key)
 	key.look_at(car_pos + Vector3(0.0, 0.7, 0.0), Vector3.UP)
 
-	# 机位：高机位俯拍整块沙盘；右侧被数据面板压住，所以整体往左偏。
+	var cam_pos := car_pos + side * 7.5 - fwd * 6.0 + Vector3(0.0, 2.05, 0.0)
+	var look := car_pos + fwd * 26.0 + Vector3(0.0, 0.95, 0.0)
 	menu_cam = Camera3D.new()
 	menu_cam.name = "MenuCamera"
-	menu_cam.fov = 40.0
+	menu_cam.fov = 46.0
 	menu_world.add_child(menu_cam)
 	menu_cam.current = true
-	menu_cam.global_position = Vector3(-400.0, 480.0, 700.0)
-	menu_cam.look_at(Vector3(166.0, 24.0, 95.0), Vector3.UP)
+	menu_cam.global_position = cam_pos
+	var vp_size := get_viewport().get_visible_rect().size
+	for it in 5:
+		menu_cam.look_at(look, Vector3.UP)
+		var car_screen := menu_cam.unproject_position(car_pos + Vector3(0.0, 0.85, 0.0))
+		var ndc_x := (car_screen.x / maxf(vp_size.x, 1.0)) * 2.0 - 1.0
+		var diff := ndc_x - (-0.36)
+		if absf(diff) < 0.015:
+			break
+		var cam_right := menu_cam.global_transform.basis.x.normalized()
+		var dist := menu_cam.global_position.distance_to(car_pos)
+		var half_w := tan(deg_to_rad(menu_cam.fov * 0.5)) * dist * (vp_size.x / maxf(vp_size.y, 1.0))
+		look += cam_right * (diff * half_w * 0.45)
+	menu_cam.look_at(look, Vector3.UP)
 	if not _bake_menu_active:
 		_decorate_menu_scene()
 	if streamer != null:
-		streamer.enabled = false
+		streamer.enabled = not (shot_mode and shot_scene in ["panorama", "rt", "venue"])
 		streamer.setup(menu_cam, menu_world)
-
-
-## 沙盘标牌：世界空间的中英文标签，永远正对相机。
-func _ow_label(text: String, pos: Vector3, color: Color, height: float, font: Font) -> Label3D:
-	var l := Label3D.new()
-	l.text = text
-	l.font = font
-	l.font_size = 160
-	l.pixel_size = height / 160.0
-	l.modulate = color
-	l.outline_size = 20
-	l.outline_modulate = Color(0.02, 0.03, 0.05, 0.92)
-	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	l.shaded = false
-	l.double_sided = true
-	l.no_depth_test = true
-	l.render_priority = 2
-	l.position = pos
-	return l
-
-
-
-## 平环带网格（沙盘上的环形主干道）。
-func _annulus_mesh(inner: float, outer: float, segs: int) -> ArrayMesh:
-	var verts := PackedVector3Array()
-	var norms := PackedVector3Array()
-	var uvs := PackedVector2Array()
-	var idxs := PackedInt32Array()
-	for i in segs:
-		var a := TAU * float(i) / float(segs)
-		verts.append(Vector3(cos(a) * inner, 0.0, sin(a) * inner))
-		verts.append(Vector3(cos(a) * outer, 0.0, sin(a) * outer))
-		norms.append(Vector3.UP)
-		norms.append(Vector3.UP)
-		uvs.append(Vector2(float(i) / float(segs) * 12.0, 0.0))
-		uvs.append(Vector2(float(i) / float(segs) * 12.0, 1.0))
-	for i in segs:
-		var a0 := i * 2
-		var a1 := ((i + 1) % segs) * 2
-		# 顺时针绕序才是正面（Godot 正面判定），否则整圈会被背面剔除
-		idxs.append(a0)
-		idxs.append(a0 + 1)
-		idxs.append(a1)
-		idxs.append(a1)
-		idxs.append(a0 + 1)
-		idxs.append(a1 + 1)
-	var arrays := []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = verts
-	arrays[Mesh.ARRAY_NORMAL] = norms
-	arrays[Mesh.ARRAY_TEX_UV] = uvs
-	arrays[Mesh.ARRAY_INDEX] = idxs
-	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
-	return mesh
 
 
 func _contact_shadow_texture() -> Texture2D:
@@ -2382,16 +2358,71 @@ func _menu_build_car(car_id: String) -> void:
 		GarageLook.apply(menu_car_model, car_id, Garage.config(car_id))
 
 
-func _animate_menu_showroom() -> void:
+func _animate_menu_showroom(dt: float) -> void:
 	if menu_car_pivot != null:
 		if not menu_dragging:
-			menu_car_angle += 0.18 * 0.016
+			menu_car_angle += 0.18 * dt
 		menu_car_pivot.rotation.y = menu_car_angle
+	# 顶后轮廓光缓慢左右扫过车身：静止展厅里也能看到一条高光沿车漆流动。
+	if _menu_kicker != null and is_instance_valid(_menu_kicker) and menu_car_pivot != null:
+		_menu_sweep_t += dt
+		var car_pos := menu_car_pivot.global_position
+		var drift := sin(_menu_sweep_t * 0.55)
+		_menu_kicker.global_position = car_pos + Vector3(2.5 + drift * 6.5, 8.5, -7.0 + drift * 2.5)
+		_menu_kicker.light_energy = _menu_kicker_base * (1.0 + drift * 0.28)
+		_menu_kicker.look_at(car_pos + Vector3(0.0, 0.9, 0.0), Vector3.UP)
 	# 相机保持完全静止，避免细微抖动造成地面高光闪烁
 
 
 func _on_menu_start(track_id: String, car_id: String, mode: String) -> void:
 	_start_race(track_id, car_id, mode)
+
+
+## 新手教程：海岸线 1 圈计时赛（无 AI 干扰），浮层任务条全程引导。
+func _start_tutorial() -> void:
+	if shot_mode or verify_mode or _perf_mode:
+		return
+	_tutorial_session = true
+	var car_id := DEFAULT_CAR
+	if menu != null:
+		car_id = menu.selected_car_id()
+	_start_race(DEFAULT_TRACK, car_id, "ta")
+
+
+## 回菜单 / 离开教程比赛时收尾：中途离开记为跳过（不再自动触发），
+## 已毕业则保持 done。浮层卸载时会把 HUD 的避让偏移还原。
+func _end_tutorial_session() -> void:
+	if tutorial != null:
+		if _tutorial_session and not tutorial.is_graduated():
+			var ps := ProfileStore
+			ps.set_tutorial_state("skipped")
+		tutorial.uninstall()
+		tutorial = null
+	_tutorial_session = false
+
+
+func _on_tutorial_skip() -> void:
+	var ps := ProfileStore
+	ps.set_tutorial_state("skipped")
+	_tutorial_session = false
+	if tutorial != null:
+		tutorial.uninstall()
+		tutorial = null
+	if hud != null:
+		hud.show_message("教程已跳过 · 自由驾驶", UIStyle.TXT_SUB, 2.0)
+
+
+func _on_tutorial_completed() -> void:
+	var ps := ProfileStore
+	if String(ps.load_profile().get("tutorial", "")) != "done":
+		ps.grant_tutorial_bonus()
+	ps.set_tutorial_state("done")
+	_tutorial_session = false
+	print("[TUTORIAL] graduated, profile marked done")
+
+
+func _on_tutorial_race_again() -> void:
+	_start_race(current_track_id, current_car_id, "ta")
 
 
 func _on_menu_garage(car_id: String) -> void:
@@ -2405,7 +2436,7 @@ func _free_menu_world() -> void:
 		menu_stage_viewport.queue_free()
 		menu_stage_viewport = null
 	elif menu_world != null:
-		# 同样要立刻摘出场景树：切换赛道时旧沙盘会跟新沙盘叠一帧。
+		# 同样要立刻摘出场景树：切换赛道时旧展台会跟新展台叠一帧。
 		if menu_world.get_parent() != null:
 			menu_world.get_parent().remove_child(menu_world)
 		menu_world.queue_free()
@@ -2413,12 +2444,14 @@ func _free_menu_world() -> void:
 	menu_car_pivot = null
 	menu_car_model = null
 	menu_cam = null
+	_menu_kicker = null
 	menu_car_id = ""
 	menu_track_id = ""
 
 
 func _open_garage(initial_car: String) -> void:
 	_apply_quality()
+	_setup_sun_glare(Vector3.ZERO, Color.WHITE, 0.0)
 	_free_menu_world()
 	_clear_race()
 	state = AppState.GARAGE
@@ -2455,7 +2488,26 @@ func _apply_demo_tune(car_id: String) -> void:
 	print("[TUNE] demo config applied to %s" % car_id)
 
 
+func _load_mark(t0: int, label: String) -> void:
+	if OS.get_environment("APEX_LOAD_LOG") == "1":
+		print("[LOAD] %-14s %5d ms" % [label, Time.get_ticks_msec() - t0])
+
+
+## 驾驶图鉴：正式游玩时记录本场车辆；验证/拍片/性能测试不写玩家档案。
+func _mark_car_driven_if_playing() -> void:
+	if verify_mode or shot_mode or _perf_mode \
+			or _tune_demo or _analog_test_mode or _drift_test_mode:
+		return
+	if _movie_frames > 0 or not _trailer_shot.is_empty():
+		return
+	if current_car_id.is_empty():
+		return
+	var ps := ProfileStore
+	ps.mark_car_driven(current_car_id, GameData.cars_specs.size())
+
+
 func _start_race(track_id: String, car_id: String, mode: String) -> void:
+	var load_t0 := Time.get_ticks_msec()
 	var prev_track := current_track_id
 	var prev_state := state
 	_apply_quality()
@@ -2463,17 +2515,18 @@ func _start_race(track_id: String, car_id: String, mode: String) -> void:
 	current_track_id = track_id
 	current_car_id = car_id
 	current_mode = mode
+	_mark_car_driven_if_playing()
 	track_def = GameData.track(track_id)
 	if track_def.is_empty():
 		track_def = GameData.track(DEFAULT_TRACK)
 		current_track_id = DEFAULT_TRACK
-	# 开放世界：九域合一的自由漫游地图，走完全独立的构建流程
-	if bool(track_def.get("openWorld", false)):
-		# 菜单里的沙盘世界（300m 圆盘 + 8 条辐射支线）必须先拆掉，
-		# 否则它和菜单相机一起留在场景树里，玩家进场看到的就是俯视沙盘。
-		_free_menu_world()
-		_start_open_world(current_track_id, current_car_id, mode)
-		return
+	# 开放漂移场地只有单人自由练习：GP/对决没有圈数可跑，强制计时赛通道。
+	if bool(track_def.get("openField", false)):
+		current_mode = "ta"
+	_set_post_grade(track_def.get("theme", {}))
+	# 阴影预算/效果开关不在这里重算：自建世界由 _setup_environment 末尾统一
+	# 应用，复用菜单/烘焙世界由 _bind_world_environment 应用。少一次画质管线
+	# 重建，进赛加载少一段卡顿。
 
 	# 优先复用菜单里已经显示的那套真实 3D 世界 → 开赛几乎瞬间，不再现场建 5 秒
 	var world: Node3D = null
@@ -2487,6 +2540,10 @@ func _start_race(track_id: String, car_id: String, mode: String) -> void:
 		loading_shown = true
 		loading_start = Time.get_ticks_msec()
 		await get_tree().process_frame
+	# 车模是进赛最重的一次同步加载（玩家 + 三台 AI）：先在线程里读，
+	# 等世界建完再取，加载动画不会被几百毫秒的磁盘/解析卡住。
+	_begin_car_preload()
+	_load_mark(load_t0, "loading-up")
 	if menu_world != null and menu_track_id == track_id:
 		_undecorate_menu_world()
 		if menu_car_model != null:
@@ -2508,6 +2565,7 @@ func _start_race(track_id: String, car_id: String, mode: String) -> void:
 		if packed != null:
 			world = packed.instantiate() as Node3D
 
+	_load_mark(load_t0, "world")
 	_free_menu_world()
 	# 进比赛后菜单场景缓存只留当前图：其余的连同依赖贴图/网格常驻内存，
 	# 8 张全留会触发系统内存交换，表现为进游戏后整体卡顿。
@@ -2534,6 +2592,10 @@ func _start_race(track_id: String, car_id: String, mode: String) -> void:
 		if marker != null:
 			marker.queue_free()
 		race_root.add_child(world)
+		# 菜单世界/烘焙场景里已经带 WorldEnvironment 与 Sun：_env/_sun 必须
+		# 重新指向它们，否则换图后仍会操作上一张图（甚至已释放）的环境对象。
+		_bind_world_environment(world, track_def)
+		_apply_quality()
 		track_path = TrackPath.new()
 		track_path.build_from_def(track_def, 2.0)
 		TrackBuilder.configure_terrain(track_path)
@@ -2566,18 +2628,41 @@ func _start_race(track_id: String, car_id: String, mode: String) -> void:
 				print("[DECOR] applied %d override(s) for %s" % [_decor_applied, current_track_id])
 	if bool(track_def.get("realCity", false)):
 		CityFacadesScript.apply(race_root)
+	_load_mark(load_t0, "world-build")
+	# 关键顺序：_setup_environment / _bind_world_environment 里的 _apply_quality
+	# 会把守门员档位重置回 cap；必须等它们跑完再恢复本赛道上次的稳定比例，
+	# 否则跨会话记住的动态分辨率档位永远不会生效。
+	governor.apply_saved_scale()
 	if track_path == null or track_path.samples.is_empty():
 		push_error("Main: track build failed for %s" % current_track_id)
 		if loading_shown:
 			_end_loading()
 		return
 
+	await _await_car_preload()
+	_load_mark(load_t0, "preload")
 	_spawn_player()
+	_load_mark(load_t0, "player")
+	skid_marks = SkidMarks.new()
+	skid_marks.name = "SkidMarks"
+	race_root.add_child(skid_marks)
+	skid_marks.setup()
+	_maybe_add_car_reflection_probe()
 	if car != null and _city_world != null:
 		car.city = _city_world
 	_spawn_duel_second()
 	_nitro_use_count = 0
 	_drift_time = 0.0
+	_race_pos_prev = 0
+	_overtake_cd = 0.0
+	_launch_armed = false
+	_prev_race_state = -1
+	_last_player_laps = 0
+	_lap_wall_hits = 0
+	_lap_offroad = 0.0
+	_clean_laps = 0
+	_hud_acc = 0.0
+	_ai_acc = 0.0
 	_top_speed_kph = 0.0
 	_was_nitro = false
 	_last_gear_seen = 1
@@ -2586,9 +2671,14 @@ func _start_race(track_id: String, car_id: String, mode: String) -> void:
 	_line_acc = 0.0
 	_run_recorded = false
 	if car != null and SceneryKit.is_night_theme(track_def.get("theme", {})):
-		car.add_headlights()
+		car.add_headlights(_headlight_energy_scale(track_def.get("theme", {})))
+		var rim_col := _c(String(track_def.get("theme", {}).get("fillColor", "")),
+			Color(0.62, 0.78, 1.0)).lerp(Color(0.86, 0.92, 1.0), 0.35)
+		car.add_night_rim(rim_col)
 	_spawn_ai()
+	_load_mark(load_t0, "ai")
 
+	_ensure_fill_light(race_root, track_def)
 	weather = WeatherFX.new()
 	weather.name = "Weather"
 	add_child(weather)
@@ -2610,22 +2700,33 @@ func _start_race(track_id: String, car_id: String, mode: String) -> void:
 	# 全景电影镜头不要赛车 HUD
 	hud.visible = not (shot_mode and shot_scene == "panorama")
 	hud.set_camera_name(cam.mode_label())
-	if loading_shown:
-		# 保证加载动画完整播 1.25s：即使场景已缓存/瞬间建好也不闪一下就没。
-		var elapsed := float(Time.get_ticks_msec() - loading_start) / 1000.0
-		if elapsed < 1.25:
-			await get_tree().create_timer(1.25 - elapsed).timeout
-		_end_loading()
+	_load_mark(load_t0, "view")
 
 	race = RaceManager.new()
 	var laps := int(track_def.get("laps", 3))
 	var laps_override = Settings.get("laps_override")
 	if laps_override != null and int(laps_override) > 0:
 		laps = int(laps_override)
+	if _tutorial_session:
+		laps = 1
 	var race_mode := "ta" if current_mode == "duel" else current_mode
 	race.setup(track_path, track_def, laps, race_mode, car, ais)
 	duel_total_laps = laps
 	hud.bind_race(race, car, track_path)
+	if _tutorial_session:
+		if tutorial == null:
+			tutorial = TutorialScript.new()
+			tutorial.name = "TutorialOverlay"
+			tutorial.skip_requested.connect(_on_tutorial_skip)
+			tutorial.completed.connect(_on_tutorial_completed)
+			tutorial.menu_requested.connect(_show_menu)
+			tutorial.race_requested.connect(_on_tutorial_race_again)
+			add_child(tutorial)
+		tutorial.bind(hud)
+	elif tutorial != null:
+		tutorial.uninstall()
+		tutorial = null
+	_load_mark(load_t0, "race-setup")
 	if current_mode == "duel" and duel_p2 != null:
 		hud.bind_duel(duel_p2)
 		_setup_split_screen()
@@ -2638,304 +2739,42 @@ func _start_race(track_id: String, car_id: String, mode: String) -> void:
 			game_feel.setup(self)
 	if audio != null:
 		audio.play_race_bgm(current_track_id)
+		_load_mark(load_t0, "bgm")
 		audio.start_engine()
+		_load_mark(load_t0, "engine")
 		if audio.has_method("set_engine_profile") and car != null:
 			audio.set_engine_profile(car.spec)
+	_load_mark(load_t0, "audio")
 	if streamer != null:
 		streamer.enabled = not (shot_mode and shot_scene in ["panorama", "rt", "venue"])
 		streamer.setup(cam, race_root)
 	if not shot_mode and not _perf_mode and not verify_mode and current_mode != "duel":
 		_setup_race_intro_camera()
-
-
-# ---------------------------------------------------------------------------
-# 开放世界（无界大陆）
-# ---------------------------------------------------------------------------
-
-## 构建 9km×9km 的连续大地图：八张赛道的地貌缝在一起，没有赛道护栏，
-## 也没有隐形边界——开出海岸线就是海，能开回来就行。
-func _start_open_world(track_id: String, car_id: String, mode: String) -> void:
-	_clear_race()
-	state = AppState.RACE
-	open_world_active = true
-	_open_world_zone_theme = ""
-	_open_world_rescue_cd = 0.0
-
-	race_root = Node3D.new()
-	race_root.name = "OpenWorldRoot"
-	add_child(race_root)
-
-	_begin_loading("正在生成无界大陆   9 × 9 km")
-	await get_tree().process_frame
-
-	open_world = OpenWorld.new()
-	open_world.name = "OpenWorld"
-	race_root.add_child(open_world)
-	var tw := Time.get_ticks_msec()
-	await open_world.build_stepped()
-	var tw1 := Time.get_ticks_msec()
-	# 布景流式生成：开局只建出生点周围，其余单元开车逼近才建、远离整体隐藏。
-	# 全量常驻（17.7k 实例 / 7781 个分块）在 M1 Pro 上每帧 3500 万面、实测 5fps。
-	var ow_stats: Dictionary = OpenWorldScenery.build_initial(open_world, race_root)
-	var tw2 := Time.get_ticks_msec()
-	print("[OW] world=%d ms  scenery(initial)=%d ms  instances=%d nodes=%d" % [
-		tw1 - tw, tw2 - tw1, int(ow_stats.get("instances", 0)), int(ow_stats.get("nodes", 0))])
-
-	_setup_environment(race_root, track_def)
-	_open_world_sky_mat = _env.sky.sky_material as ShaderMaterial
-	# 大平面在掠射角下会整片反射天空，看起来像水面（不是地形没了）。
-	# 开放世界里地面就是大平面，关掉 SSR 才不会整片发亮。
-	if _env != null:
-		_env.ssr_enabled = false
-		_env.ssil_enabled = false
-
-	_spawn_player_open_world()
-	_nitro_use_count = 0
-	_drift_time = 0.0
-	_top_speed_kph = 0.0
-	_was_nitro = false
-	_last_gear_seen = 1
-
-	weather = WeatherFX.new()
-	weather.name = "Weather"
-	add_child(weather)
-	weather.setup("none", track_def.get("theme", {}), car)
-
-	cam = ChaseCamera.new()
-	cam.name = "ChaseCamera"
-	add_child(cam)
-	cam.follow(car, null)
-	cam.world = open_world
-	# 相机接管必须显式指定：Godot 里后加入场景树的 Camera3D 不会自动成为
-	# current，只有旧相机被释放后才会自动提升。菜单相机已经释放，这里手动接管。
-	cam.current = true
-
-	# 开放世界也是一条赛道：HUD 直接用 RaceHUD，和前八条赛道同一套控件，
-	# 唯一多出来的是右上角的「无界大陆」全域图。
-	hud = RaceHUD.new()
-	hud.name = "RaceHUD"
-	add_child(hud)
-	hud.set_camera_name(cam.mode_label())
-	hud.bind_open_world(open_world, car)
-
-	if audio != null:
-		audio.play_race_bgm(current_track_id)
-		audio.start_engine()
-		if audio.has_method("set_engine_profile") and car != null:
-			audio.set_engine_profile(car.spec)
-	if streamer != null:
-		streamer.enabled = true
-		# 开放世界视距收紧：布景可见距离已按树 / 楼 / 地标分类收过一轮，
-		# 分块级远距再压一道；扇区余量也收紧（城市图分块大、余量大等于不剔）。
-		streamer.max_distance = 1600.0
-		streamer.tight_sector = true
-		streamer.setup(cam, race_root)
-	_end_loading()
-
-
-## 开放世界玩家车：直接落在出生路口，没有赛道参照系。
-func _spawn_player_open_world() -> void:
-	var spec := Garage.effective_spec(current_car_id)
-	if spec.is_empty():
-		spec = GameData.car(current_car_id)
-	if spec.is_empty():
-		spec = GameData.car(DEFAULT_CAR)
-	car = Car.new()
-	car.name = "PlayerCar"
-	add_child(car)
-	var spawn: Dictionary = open_world.spawn()
-	car.setup_open_world(spec, open_world, spawn, Color.TRANSPARENT, Garage.config(current_car_id))
-
-
-## 区域切换时同步天空 / 雾 / 阳光，八个区域各有各的天气。
-func _update_open_world_zone_theme() -> void:
-	if open_world == null or car == null:
-		return
-	if _open_world_theme_cd > 0.0:
-		return
-	_open_world_theme_cd = 0.08
-	var themes: Dictionary = track_def.get("zoneThemes", {})
-	var base_theme: Dictionary = track_def.get("theme", {})
-	# 域权重：过渡带里同时挂着两个域，按权重把两套主题混起来。
-	# 这样「白天 → 黑天城市」是太阳一点点沉下去、星星一点点冒出来，
-	# 「白天 → 熔岩盆地」是天空一点点烧红、雾一点点变成铁锈色，
-	# 而不是在域边界上「啪」地一下把整个环境换掉。
-	var ws: Array = open_world.zone_weights_at(car.pos.x, car.pos.z)
-	if ws.is_empty():
-		# 出了所有域（海上 / 荒野）：退回赛道主主题，别把上一域的夜色挂着不放。
-		_blend_and_apply([], themes, base_theme)
-		return
-	_blend_and_apply(ws, themes, base_theme)
-
-
-func _blend_and_apply(ws: Array, themes: Dictionary, base_theme: Dictionary) -> void:
-	if ws.is_empty():
-		var t := base_theme.duplicate(true)
-		t["night01"] = clampf(float(t.get("stars", 0.0)), 0.0, 1.0)
-		_apply_open_world_theme(t)
-		return
-	_apply_open_world_theme(_blend_zone_themes(ws, themes, base_theme))
-
-
-## 域 id → zoneThemes 里的键。中央枢纽没有专属主题，用赛道主主题。
-func _zone_theme_id(id: int) -> String:
-	if id >= 0 and id < OpenWorld.ZONES.size():
-		return String(OpenWorld.ZONES[id]["id"])
-	return "hub"
-
-
-## 把多个域的主题按权重混成一套。
-## 颜色逐通道插值，数值取加权平均，数组（如 sunDir）取权重最大的那个。
-## 额外算出一个 0..1 的 night01：它是「白天→黑夜」这条过渡线上的位置，
-## 用来连续地调太阳亮度、星空和车灯，而不是用布尔值一刀切。
-func _blend_zone_themes(ws: Array, themes: Dictionary, base_theme: Dictionary) -> Dictionary:
-	var items: Array = []
-	var keys: Dictionary = {}
-	var night_acc := 0.0
-	for e in ws:
-		var id := int(e["id"])
-		var zid := _zone_theme_id(id)
-		var t: Dictionary = themes.get(zid, {})
-		if t.is_empty():
-			t = base_theme
-		var w := float(e["w"])
-		items.append({"theme": t, "w": w})
-		# 夜量直接取 stars：它是每个域"有多黑"的作者意图。
-		# neon 1.0 = 深夜，magma 0.3 = 火山黄昏，coast 0.0 = 正午。
-		# 用它做连续量，白天→黑夜城市（0→1）和白天→火山（0→0.3）
-		# 就是一条平滑的插值线。
-		night_acc += clampf(float(t.get("stars", 0.0)), 0.0, 1.0) * w
-		for k in t.keys():
-			keys[k] = true
-	var out: Dictionary = {}
-	for k in keys.keys():
-		var vals: Array = []
-		var total := 0.0
-		for item in items:
-			var t: Dictionary = item["theme"]
-			if not t.has(k):
-				continue
-			var w2 := float(item["w"])
-			vals.append({"v": t[k], "w": w2})
-			total += w2
-		if vals.is_empty() or total <= 0.0001:
-			continue
-		var first = vals[0]["v"]
-		if first is String and String(first).begins_with("#"):
-			var acc := Color(0.0, 0.0, 0.0)
-			for it in vals:
-				acc += _c(it["v"], Color(0.0, 0.0, 0.0)) * (float(it["w"]) / total)
-			out[k] = acc.to_html(false)
-		elif first is Color:
-			var acc2 := Color(0.0, 0.0, 0.0)
-			for it in vals:
-				acc2 += (it["v"] as Color) * (float(it["w"]) / total)
-			out[k] = acc2
-		elif first is float or first is int:
-			var accf := 0.0
-			for it in vals:
-				accf += float(it["v"]) * (float(it["w"]) / total)
-			out[k] = accf
-		else:
-			var best: Dictionary = vals[0]
-			for it in vals:
-				if float(it["w"]) > float(best["w"]):
-					best = it
-			out[k] = best["v"]
-	out["night01"] = clampf(night_acc, 0.0, 1.0)
-	return out
-
-
-## 应用混合后的主题。night01 是连续昼夜量：
-##   0.0 = 正午   0.5 = 黄昏/破晓   1.0 = 深夜
-## 太阳亮度、颜色、星空、车灯全部跟着它连续变化。
-func _apply_open_world_theme(theme: Dictionary) -> void:
-	var night01 := clampf(float(theme.get("night01", 0.0)), 0.0, 1.0)
-	var is_night := night01 > 0.5
-	if _open_world_sky_mat != null:
-		_open_world_sky_mat.set_shader_parameter("top_color",
-			_c(theme.get("skyTop", "#1c62b4"), Color(0.11, 0.38, 0.71)))
-		_open_world_sky_mat.set_shader_parameter("horizon_color",
-			_c(theme.get("skyHorizon", "#d9eef2"), Color(0.85, 0.93, 0.95)))
-		_open_world_sky_mat.set_shader_parameter("ground_color",
-			_c(theme.get("skyBottom", "#8fc8d2"), Color(0.56, 0.78, 0.82)))
-		_open_world_sky_mat.set_shader_parameter("cloud_light",
-			_c(theme.get("cloudColor", "#ffffff"), Color(1.0, 1.0, 1.0)))
-		_open_world_sky_mat.set_shader_parameter("night", night01)
-		_open_world_sky_mat.set_shader_parameter("stars_amount",
-			clampf(float(theme.get("stars", 0.0)) * night01, 0.0, 1.0))
-	if _env != null:
-		var amb := _c(theme.get("hemiSky", "#b4d8f8"), Color(0.70, 0.82, 0.95))
-		# 环境光跟着昼夜连续走：白天是天空色，入夜逐渐转成冷蓝月光。
-		amb = amb.lerp(Color(0.34, 0.42, 0.66), night01)
-		_env.ambient_light_color = amb
-		_env.ambient_light_energy = clampf(
-			float(theme.get("ambientEnergy", 0.85 if is_night else 0.62)), 0.2, 1.2)
-		_env.tonemap_exposure = clampf(float(theme.get("exposure", 1.05)) * 0.63, 0.54, 1.02)
-		_base_fog_color = _c(theme.get("fogColor", "#c8e4ea"), Color(0.78, 0.89, 0.92)).darkened(0.34)
-		_env.fog_light_color = _base_fog_color
-		var fog_far := maxf(float(theme.get("fogFar", 3600.0)), 900.0)
-		_base_fog_density = clampf(0.72 / fog_far, 0.00010, 0.00065)
-		_env.fog_density = _base_fog_density
-		_env.glow_intensity = clampf(float(theme.get("glowOpacity", 0.4)) * 1.1, 0.25, 1.4)
-	if _sun != null:
-		var sun_dir: Array = theme.get("sunDir", [0.42, 0.52, 0.2])
-		var dir := Vector3(float(sun_dir[0]), float(sun_dir[1]), float(sun_dir[2])).normalized()
-		if night01 < 0.5:
-			# 太阳压得太低（<20°）时，几十米高的楼会把整片城区地面盖进阴影里，
-			# 地面只剩冷色天光，看起来像结了一层蓝冰。这里保留下 1/3 但抬到 ~48°。
-			dir = Vector3(dir.x, clampf(dir.y * 1.05, 0.28, 0.78), dir.z).normalized()
-		_sun.transform = Transform3D(Basis.looking_at(-dir, Vector3.UP), Vector3.ZERO)
-		# 太阳亮度在昼夜之间连续插值：黄昏时太阳沉到半亮、车灯还没开，
-		# 这段正是「白天进入黑夜」最有质感的一段。
-		var power := float(theme.get("sunPower", 5.0))
-		var e_day := clampf(power * 0.46, 1.9, 3.2)
-		var e_night := clampf(power * 0.30, 0.9, 2.0)
-		_sun.light_energy = lerpf(e_day, e_night, night01)
-		var c_day := _c(theme.get("sunColor", "#fff2da"), Color(1.0, 0.95, 0.86)).lerp(
-			Color(1.0, 0.82, 0.58), 0.45)
-		var c_night := _c(theme.get("sunColor", "#cdd8ff"), Color(0.8, 0.85, 1.0))
-		_sun.light_color = c_day.lerp(c_night, night01)
-	if car != null:
-		if is_night:
-			car.add_headlights()
-		else:
-			car.remove_headlights()
-
-
-## 开放世界每帧更新：没有圈数、没有 AI、没有名次，只有车 + 世界。
-func _update_open_world(dt: float) -> void:
-	if car == null:
-		return
-	_open_world_theme_cd = maxf(0.0, _open_world_theme_cd - dt)
-	_update_open_world_zone_theme()
-	# 布景流式生成：逼近才建、远离隐藏；建了新单元就刷新扇区剔除器，
-	# 让新分块立刻参与视野剔除而不是常开。
-	if open_world != null and OpenWorldScenery.stream_tick(
-			open_world, Vector2(car.pos.x, car.pos.z), dt):
-		if streamer != null:
-			streamer.collect()
-	# 深水自救：开到海里泡太久就送回最近的道路
-	_open_world_rescue_cd = maxf(0.0, _open_world_rescue_cd - dt)
-	if car.world_depth > 2.4 and car.speed_kph < 6.0:
-		_open_world_rescue_cd += dt
-		if _open_world_rescue_cd > 4.0:
-			_open_world_rescue_cd = 0.0
-			var p := open_world.nearest_road_point(car.pos.x, car.pos.z)
-			car.pos = p + Vector3(0.0, 0.4, 0.0)
-			car.vel = Vector3.ZERO
-			if audio != null:
-				audio.play_impact(0.4)
-	# 熔岩灼烧：持续减速
-	if car.world_surface == "lava" and car.speed_kph > 20.0:
-		if audio != null and fmod(_top_speed_kph, 1.0) < 0.02:
-			pass
-	# 相机跟随
-	if cam != null:
-		cam.follow_update(dt)
-	# HUD：和赛道同一套控件，开放世界走 refresh_open_world 分支
-	if hud != null:
-		hud.refresh_open_world(open_world, car, dt)
+	_setup_race_sun_glare()
+	if loading_shown:
+		# 上一场全程宽裕（<13ms）说明档位保守了：借加载遮罩升一小档，
+		# 换档引起的管线重建卡顿被遮罩吃掉，几场内收敛到真正需要的分辨率。
+		governor.apply_saved_scale(true)
+		# 加载动画至少 1.25s；淡出前先在遮罩后面渲染几帧，把管线/着色器
+		# 编译和首批纹理上传吃掉，避免比赛第一秒的 60ms 长帧。
+		if game_feel != null and game_feel.has_method("prewarm"):
+			game_feel.prewarm()
+		var elapsed := float(Time.get_ticks_msec() - loading_start) / 1000.0
+		if elapsed < 1.25:
+			await get_tree().create_timer(1.25 - elapsed).timeout
+		for i in 3:
+			await get_tree().process_frame
+		_end_loading()
+		_load_mark(load_t0, "end-loading")
+	_load_mark(load_t0, "race-ready")
+	if OS.get_environment("APEX_LOAD_LOG") == "1":
+		_hitch_log_start = Time.get_ticks_msec()
+		_hitch_log_until = _hitch_log_start + 8000
+	if OS.get_environment("APEX_FRAME_LOG") == "1":
+		_frame_log_start = Time.get_ticks_msec()
+		_frame_log_intro.clear()
+		_frame_log_race.clear()
+		_frame_log_on = true
 
 
 func _setup_split_screen() -> void:
@@ -3025,23 +2864,28 @@ func _spawn_impact_sparks(pos: Vector3, strength: float) -> void:
 func _setup_race_intro_camera() -> void:
 	if track_path == null or car == null or cam == null:
 		return
-	var frame := track_path.frame_at(0.0)
-	if frame.is_empty():
-		return
 	if intro_cam != null:
 		intro_cam.queue_free()
 		intro_cam = null
 	cam.current = false
-	var line_pos: Vector3 = frame["pos"]
-	var side: Vector3 = frame["side"]
-	var tangent: Vector3 = frame["tangent"]
-	# 机位从起点线右侧高一点开始，越过前方车群看向最后一位的玩家车
-	intro_from_pos = line_pos + side * (track_path.half_width + 16.0) - tangent * 6.0 + Vector3(0.0, 6.2, 0.0)
+	if track_path.open_field:
+		# 场地没有起跑线：从斜前方低空掠过整片柏油，看向场地中心的车。
+		intro_from_pos = car.global_position + Vector3(24.0, 6.5, 30.0)
+	else:
+		var frame := track_path.frame_at(0.0)
+		if frame.is_empty():
+			return
+		var line_pos: Vector3 = frame["pos"]
+		var side: Vector3 = frame["side"]
+		var tangent: Vector3 = frame["tangent"]
+		# 机位从起点线右侧高一点开始，越过前方车群看向最后一位的玩家车
+		intro_from_pos = line_pos + side * (track_path.half_width + 16.0) - tangent * 6.0 + Vector3(0.0, 6.2, 0.0)
 	intro_from_look = car.global_position + Vector3(0.0, 1.0, 0.0)
 	var fwd := car.forward()
 	intro_to_pos = car.global_position - fwd * 5.2 + Vector3(0.0, 1.55, 0.0)
 	intro_to_look = car.global_position + fwd * 6.0 + Vector3(0.0, 0.85, 0.0)
 	intro_t = 0.0
+	_glow_restore = 0.0
 	intro_cam = Camera3D.new()
 	intro_cam.name = "RaceIntroCamera"
 	intro_cam.fov = 50.0
@@ -3067,6 +2911,9 @@ func _setup_ghost() -> void:
 	if race == null or car == null or track_path == null:
 		return
 	if current_mode != "ta" or race.mode != "ta":
+		return
+	# 自由练习没有「圈」可回放，也不录幽灵（无圈完赛会无限累积采样）。
+	if track_path.open_field:
 		return
 	# 刷圈模式导入「本赛道最快幽灵」：无论当前开哪台车，都由最快那圈领跑。
 	_ghost_data = GhostStore.load_best(track_path.id)
@@ -3098,7 +2945,8 @@ func _ensure_ghost_visual() -> void:
 	ghost_root.name = "GhostCar"
 	ghost_root.visible = false
 	race_root.add_child(ghost_root)
-	var result := CarVisual.build(spec, ghost_root)
+	# 幽灵是半透明叠加层，只看轮廓：用低模省加载与 alpha overdraw，删掉的内饰/引擎本来就看不见。
+	var result := CarVisual.build(spec, ghost_root, Color.TRANSPARENT, true)
 	_ghost_visual_car = ghost_car_id
 	var model := result["model"] as Node3D
 	if model == null:
@@ -3118,10 +2966,41 @@ func _ensure_ghost_visual() -> void:
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
+## 跟随式环境反射探针：车漆反射街道/霓虹/建筑而不是只反射天空。
+## 高/超高默认开启；静止时不重绘，行驶中每 3s 重绘一次 6 面 cubemap。
+## APEX_Q_CAR_PROBE=0/1 可强制关/开做 A/B。
+func _maybe_add_car_reflection_probe() -> void:
+	if car == null:
+		return
+	var override := OS.get_environment("APEX_Q_CAR_PROBE")
+	if override == "0":
+		return
+	if override != "1" and Settings.index < 2:
+		return
+	var probe := CarReflectionProbe.new()
+	probe.name = "CarReflectionProbe"
+	probe.setup()
+	car.add_child(probe)
+
+
+func _update_skid_marks() -> void:
+	if skid_marks == null or car == null:
+		return
+	if not is_instance_valid(skid_marks):
+		skid_marks = null
+		return
+	if car.offroad or car.speed_kph < 8.0:
+		return
+	var skidding := car.drift_active or car.handbrake \
+		or (car.braking and car.speed_kph > 35.0)
+	if skidding:
+		skid_marks.emit_from_car(car)
+
+
 func _update_ghost(dt: float) -> void:
 	if race == null or car == null or track_path == null:
 		return
-	if race.mode == "ta" and race.state == RaceManager.State.RACING:
+	if race.mode == "ta" and race.state == RaceManager.State.RACING and not track_path.open_field:
 		if race.race_started and not _ghost_was_started:
 			_ghost_was_started = true
 			_ghost_samples.clear()
@@ -3248,6 +3127,13 @@ func _set_ghost_delta(value: float) -> void:
 
 
 func _clear_race() -> void:
+	if photo_mode != null:
+		if is_instance_valid(photo_mode):
+			photo_mode.queue_free()
+		photo_mode = null
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		if hud != null:
+			hud.visible = true
 	ghost_root = null
 	_ghost_data = {}
 	_ghost_samples.clear()
@@ -3255,11 +3141,7 @@ func _clear_race() -> void:
 	_line_samples.clear()
 	_line_acc = 0.0
 	_run_recorded = false
-	open_world = null
-	open_world_active = false
 	_city_world = null
-	_open_world_sky_mat = null
-	_open_world_zone_theme = ""
 	if streamer != null:
 		streamer.clear()
 	if audio != null:
@@ -3281,14 +3163,13 @@ func _clear_race() -> void:
 		game_feel = null
 	if race_root != null:
 		# 立刻从场景树摘掉再 queue_free。
-		# queue_free 要到帧末才真正删除，这一帧里 race_root 还会照常渲染：
-		# 从开放世界返回菜单时，同一帧已经建好了菜单沙盘，
-		# 于是画面上会同时出现「近处的沙盘标牌」和「2450m 外的真实雪山/熔岩」，
-		# 看起来像两个世界叠在一起。摘出场景树可让这一帧干净。
+		# queue_free 要到帧末才真正删除，这一帧里 race_root 还会照常渲染，
+		# 切换世界时可能叠在新建的菜单世界上。摘出场景树可让这一帧干净。
 		if race_root.get_parent() != null:
 			race_root.get_parent().remove_child(race_root)
 		race_root.queue_free()
 		race_root = null
+		skid_marks = null
 	if intro_cam != null:
 		intro_cam.queue_free()
 		intro_cam = null
@@ -3354,6 +3235,8 @@ func _spawn_duel_second() -> void:
 	duel_p2.name = "Player2Car"
 	add_child(duel_p2)
 	duel_p2.setup(spec, track_path, -33.0, 2.6, Color(0.95, 0.24, 0.18), Garage.config(current_car_id))
+	if SceneryKit.is_night_theme(track_def.get("theme", {})):
+		duel_p2.add_headlights(_headlight_energy_scale(track_def.get("theme", {})))
 	if _city_world != null:
 		duel_p2.city = _city_world
 	duel_p2_laps = 0
@@ -3364,23 +3247,102 @@ func _spawn_duel_second() -> void:
 	duel_winner = ""
 
 
+var _car_preload_paths: Array[String] = []
+
+
+## 选车和 AI 配色在开赛前就确定，可提前把车模与 BGM 丢给后台线程读。
+func _begin_car_preload() -> void:
+	_car_preload_paths.clear()
+	var paths: Array[String] = []
+	var seen := {}
+	var player_spec := GameData.car(current_car_id)
+	if not player_spec.is_empty():
+		paths.append("res://cars/assets/models/" + String(player_spec.get("model", current_car_id + ".glb")))
+	for id in _ai_variant_ids():
+		var spec := GameData.car(id)
+		if spec.is_empty():
+			continue
+		var model_file := String(spec.get("model", id + ".glb"))
+		var lod_path := "res://cars/assets/models_lod/" + model_file
+		paths.append(lod_path if ResourceLoader.exists(lod_path)
+			else "res://cars/assets/models/" + model_file)
+	if audio != null and audio.has_method("bgm_path_for"):
+		var bgm := String(audio.call("bgm_path_for", current_track_id))
+		if not bgm.is_empty():
+			paths.append(bgm)
+	for p in paths:
+		if seen.has(p) or not ResourceLoader.exists(p):
+			continue
+		seen[p] = true
+		_car_preload_paths.append(p)
+		ResourceLoader.load_threaded_request(p, "", true)
+	if OS.get_environment("APEX_LOAD_LOG") == "1":
+		print("[LOAD] preload-queue %d files" % _car_preload_paths.size())
+
+
+## 世界建完、刷车前把后台加载收尾：每帧只轮询一次，加载动画照常播。
+## verify 专用：_start_race 是 async（车模线程预载），调用后必须等车/赛管进树，
+## 否则紧接着的 car/race 断言全落在 null 上（M2 曾因此直接崩在 car.max_speed）。
+func _await_race_ready() -> void:
+	for i in 900:
+		if car != null and race != null and track_path != null:
+			return
+		await get_tree().process_frame
+
+
+func _await_car_preload() -> void:
+	if _car_preload_paths.is_empty():
+		return
+	var finalized := {}
+	while true:
+		var pending := false
+		for p in _car_preload_paths:
+			if finalized.has(p):
+				continue
+			match ResourceLoader.load_threaded_get_status(p):
+				ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+					pending = true
+				ResourceLoader.THREAD_LOAD_LOADED:
+					ResourceLoader.load_threaded_get(p)
+					finalized[p] = true
+					pending = true
+				_:
+					finalized[p] = true
+		if not pending:
+			break
+		await get_tree().process_frame
+	_car_preload_paths.clear()
+
+
+func _ai_variant_ids() -> Array[String]:
+	var ids: Array[String] = []
+	var defs: Array = GameData.ai.get("defs", [])
+	var offsets: Array = GameData.ai.get("rival_offsets", [1, 3, 5])
+	if defs.is_empty() or GameData.cars_specs.is_empty():
+		return ids
+	var player_index := _car_index(current_car_id)
+	for i in defs.size():
+		var variant_id := current_car_id
+		if not offsets.is_empty():
+			var idx := posmod(player_index + int(offsets[i % offsets.size()]), GameData.cars_specs.size())
+			variant_id = String(GameData.cars_specs[idx].get("id", variant_id))
+		ids.append(variant_id)
+	return ids
+
+
 func _spawn_ai() -> void:
 	ais.clear()
 	if current_mode != "gp":
 		return
 	var defs: Array = GameData.ai.get("defs", [])
-	var offsets: Array = GameData.ai.get("rival_offsets", [1, 3, 5])
-	if defs.is_empty() or GameData.cars_specs.is_empty():
+	var ids := _ai_variant_ids()
+	if defs.is_empty() or ids.is_empty():
 		return
-	var player_index := _car_index(current_car_id)
+	var night_scale := _headlight_energy_scale(track_def.get("theme", {}))
 	var routes := _pick_ai_routes(defs.size())
-	for i in defs.size():
+	for i in ids.size():
 		var ai_def: Dictionary = defs[i]
-		var variant_id := current_car_id
-		if not offsets.is_empty():
-			var idx := posmod(player_index + int(offsets[i % offsets.size()]), GameData.cars_specs.size())
-			variant_id = String(GameData.cars_specs[idx].get("id", variant_id))
-		var ai_spec := GameData.car(variant_id)
+		var ai_spec := GameData.car(ids[i])
 		if ai_spec.is_empty():
 			ai_spec = GameData.car(DEFAULT_CAR)
 		var ai := AICar.new()
@@ -3390,11 +3352,22 @@ func _spawn_ai() -> void:
 		ai.setup(track_path, ai_spec, -9.0 - i * 8.0, 2.6 if i % 2 == 0 else -2.6,
 			float(ai_def.get("baseSpeed", 72.0)), color,
 			String(ai_def.get("name", "")), int(ai_def.get("number", 0)))
+		if night_scale > 0.0:
+			ai.add_headlights(night_scale)
 		if i < routes.size():
 			var entry: Dictionary = routes[i]
 			ai.set_route(entry.get("line", {}), "%s %.2f" % [
 				String(entry.get("car", "")), float(entry.get("lap", 0.0))])
 		ais.append(ai)
+
+
+## 赛道主题 → 车灯亮度系数；白天返回 0。manifest 里 headlightIntensity
+## 是旧版网页的百分比口径（80 左右为基准），这里换算成灯能量倍率。
+func _headlight_energy_scale(theme: Dictionary) -> float:
+	if not SceneryKit.is_night_theme(theme):
+		return 0.0
+	var raw := float(theme.get("headlightIntensity", 80.0))
+	return clampf(raw / 80.0, 0.55, 1.5)
 
 
 ## 每场随机抽一批玩家历史走线，三台 AI 各走一条；抽完再循环但顺序已洗牌，
@@ -3669,6 +3642,107 @@ func _autopilot_for(target_car: Car, path: TrackPath) -> Dictionary:
 
 
 # ---------------------------------------------------------------------------
+# 尾流 / 超车
+# ---------------------------------------------------------------------------
+
+## 玩家 / 双人 P2 的尾流目标：正前方 2~34m、横向 <4m、同向行驶才吃得到。
+## 强度按距离与横向偏移衰减，交给 Car 内部平滑，避免并线瞬间抖动。
+func _draft_target_for(viewer: Car, others: Array) -> float:
+	if viewer == null or not is_instance_valid(viewer):
+		return 0.0
+	if viewer.speed_kph < 55.0 or viewer.wall_contact:
+		return 0.0
+	var fwd := viewer.forward()
+	var side := viewer.right()
+	var best := 0.0
+	for other in others:
+		if other == null or not is_instance_valid(other) or other == viewer:
+			continue
+		var other_pos: Vector3 = other.pos
+		var rel: Vector3 = other_pos - viewer.pos
+		rel.y = 0.0
+		var ahead := rel.dot(fwd)
+		if ahead < 2.0 or ahead > 34.0:
+			continue
+		var lat := absf(rel.dot(side))
+		if lat > 4.0:
+			continue
+		var other_heading := float(other.heading)
+		if absf(wrapf(other_heading - viewer.heading, -PI, PI)) > 1.05:
+			continue
+		var gap01 := clampf((34.0 - ahead) / 30.0, 0.0, 1.0)
+		var lat01 := clampf(1.0 - lat / 4.2, 0.0, 1.0)
+		best = maxf(best, gap01 * lat01)
+	return best
+
+
+func _apply_draft_targets() -> void:
+	if car == null:
+		return
+	var others: Array = []
+	for ai in ais:
+		if ai != null and is_instance_valid(ai):
+			others.append(ai)
+	if current_mode == "duel" and duel_p2 != null:
+		others.append(duel_p2)
+	car.draft_target = _draft_target_for(car, others)
+
+
+## 完美起步：GO 瞬间给一次短促推力 + 四分之一管氮气，HUD 弹提示。
+func _apply_start_bonus() -> void:
+	if not _launch_armed:
+		return
+	_launch_armed = false
+	if car == null:
+		return
+	car.grant_start_boost()
+	car.add_nitro(0.25)
+	if hud != null and hud.has_method("show_message"):
+		hud.show_message("PERFECT START  ·  完美起步   +25% NITRO", UIStyle.GOLD, 2.0)
+
+
+## 干净圈奖励：整圈不撞墙、离开路面不超过 1.5s，过线时补 18% 氮气。
+## 让玩家在“拼圈速”之外多一个可追求的操作目标，也强化走线与刹车点练习。
+func _update_lap_cleanliness(dt: float) -> void:
+	if race == null or car == null:
+		return
+	if race.state != RaceManager.State.RACING:
+		_last_player_laps = race.player_laps
+		return
+	if car.wall_impact > 2.2:
+		_lap_wall_hits += 1
+	if car.offroad:
+		_lap_offroad += dt
+	if race.player_laps <= _last_player_laps:
+		return
+	if _lap_wall_hits == 0 and _lap_offroad < 1.5:
+		_clean_laps += 1
+		car.add_nitro(0.18)
+		if hud != null and hud.has_method("show_message"):
+			hud.show_message("CLEAN LAP  ·  干净圈   +18% NITRO", UIStyle.GREEN, 1.8)
+	_lap_wall_hits = 0
+	_lap_offroad = 0.0
+	_last_player_laps = race.player_laps
+
+
+## 干净超车奖励氮气：提升名次时一次性充能，1.4s 冷却防止名次抖动刷分。
+func _update_overtake_reward(dt: float) -> void:
+	_overtake_cd = maxf(0.0, _overtake_cd - dt)
+	if race == null or car == null:
+		return
+	if race.state == RaceManager.State.RACING and race.total_cars > 1 \
+			and not race.player_finished:
+		if _race_pos_prev > 0 and race.player_position < _race_pos_prev \
+				and _overtake_cd <= 0.0:
+			var gained := clampi(_race_pos_prev - race.player_position, 1, 3)
+			car.add_nitro(0.055 * float(gained))
+			_overtake_cd = 1.4
+		_race_pos_prev = race.player_position
+	else:
+		_race_pos_prev = race.player_position
+
+
+# ---------------------------------------------------------------------------
 # world dressing
 # ---------------------------------------------------------------------------
 
@@ -3705,10 +3779,13 @@ func _setup_environment(parent: Node3D, def: Dictionary) -> void:
 	sky_material.set_shader_parameter("cloud_speed", cloud_speed)
 	sky_material.set_shader_parameter("night", 1.0 if night else 0.0)
 	sky_material.set_shader_parameter("stars_amount", clampf(float(theme.get("stars", 0.0)), 0.0, 1.0))
-	sky_material.set_shader_parameter("sun_size", 0.04 if not night else 0.022)
-	sky_material.set_shader_parameter("sun_glow", 0.75 if not night else 0.3)
+	# 白天太阳盘收小、光晕收弱：进场逆光时不再把天空和路面一起洗白。
+	sky_material.set_shader_parameter("sun_size", 0.032 if not night else 0.022)
+	sky_material.set_shader_parameter("sun_glow", 0.45 if not night else 0.3)
 	sky_material.set_shader_parameter("haze_strength", 0.24)
 	sky_material.set_shader_parameter("horizon_softness", 0.38)
+	sky_material.set_shader_parameter("aurora_amount",
+		clampf(float(theme.get("aurora", 0.0)), 0.0, 1.0))
 
 	var hdri_used := false
 	var sky := Sky.new()
@@ -3718,11 +3795,13 @@ func _setup_environment(parent: Node3D, def: Dictionary) -> void:
 	var hdri_path := ""
 	match String(def.get("id", "")):
 		"coast":
-			hdri_path = "res://assets/thirdparty/polyhaven/hdri/kloofendal_48d_partly_cloudy_puresky_2k.hdr"
+			hdri_path = "res://maps/assets/polyhaven/hdri/kloofendal_48d_partly_cloudy_puresky_2k.hdr"
 		"alpine":
-			hdri_path = "res://assets/thirdparty/polyhaven/hdri/kloofendal_43d_clear_puresky_2k.hdr"
+			hdri_path = "res://maps/assets/polyhaven/hdri/kloofendal_43d_clear_puresky_2k.hdr"
 		"glacier":
-			hdri_path = "res://assets/thirdparty/polyhaven/hdri/kloofendal_38d_partly_cloudy_puresky_2k.hdr"
+			hdri_path = "res://maps/assets/polyhaven/hdri/kloofendal_38d_partly_cloudy_puresky_2k.hdr"
+		"drift":
+			hdri_path = "res://maps/assets/polyhaven/hdri/kloofendal_43d_clear_puresky_2k.hdr"
 	if not hdri_path.is_empty():
 		if ResourceLoader.exists(hdri_path):
 			var pano_mat := ShaderMaterial.new()
@@ -3735,7 +3814,9 @@ func _setup_environment(parent: Node3D, def: Dictionary) -> void:
 			pano_mat.set_shader_parameter("cloud_scale", 0.5)
 			pano_mat.set_shader_parameter("cloud_speed", 0.014)
 			pano_mat.set_shader_parameter("horizon_softness", 0.12)
-			pano_mat.set_shader_parameter("sky_brightness", 0.72)
+			pano_mat.set_shader_parameter("sky_brightness", clampf(float(theme.get("skyBrightness", 0.72)), 0.3, 1.2))
+			pano_mat.set_shader_parameter("aurora_amount",
+				clampf(float(theme.get("aurora", 0.0)), 0.0, 1.0))
 			# HDRI 天空也要吃主题的夜色/星空/雾色，否则极夜雪原会挂一张白昼全景
 			pano_mat.set_shader_parameter("night", 1.0 if night else 0.0)
 			pano_mat.set_shader_parameter("stars_amount",
@@ -3759,6 +3840,12 @@ func _setup_environment(parent: Node3D, def: Dictionary) -> void:
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
 	env.tonemap_exposure = clampf(float(theme.get("exposure", 1.05)) * 0.63, 0.54, 1.02)
 	env.tonemap_white = 3.4
+	# A/B：AgX 高光滚降更柔，白车/雪面不容易发死；默认仍用主题调好的 ACES。
+	if OS.get_environment("APEX_Q_AGX") == "1":
+		env.tonemap_mode = Environment.TONE_MAPPER_AGX
+		env.tonemap_agx_contrast = clampf(float(theme.get("agxContrast", 1.12)), 1.0, 1.5)
+		env.tonemap_agx_white = 8.0
+		env.tonemap_exposure = clampf(float(theme.get("exposure", 1.05)) * 0.82, 0.55, 1.15)
 	# 环境光统一用「主题天空色」做固定补光，而不是采样天空。
 	# 原因：海岸/峡谷/熔岩用的是 HDRI 全景，转过身后半天空本身很暗，
 	# 采样天空会让同一条赛道在某个朝向上整段掉进黑夜，亮度完全不可控。
@@ -3766,16 +3853,22 @@ func _setup_environment(parent: Node3D, def: Dictionary) -> void:
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = amb_color if not night else Color(0.34, 0.42, 0.66)
 	# 夜间环境光提到 0.85：0.72 时暗面楼体/岩石会黑成一团剪影
-	env.ambient_light_energy = 0.85 if night else (0.66 if hdri_used else 0.54)
+	# 白天基准补光从 0.54 抬到 0.60：ACES 下暗面（山影里的路面、楼体背光面）
+	# 原先黑成剪影，车和路面纹理全丢。主题仍可用 ambientEnergy 单独覆盖。
+	env.ambient_light_energy = 0.85 if night else (0.66 if hdri_used else 0.60)
 	# 主题可单独抬环境光：山谷在逆光山影里暗面会糊成剪影，纹理全丢。
 	env.ambient_light_energy = clampf(
 		float(theme.get("ambientEnergy", env.ambient_light_energy)), 0.2, 1.2)
 	env.adjustment_enabled = true
-	env.adjustment_contrast = 1.24
-	env.adjustment_saturation = 1.18 if not night else 1.08
-	env.adjustment_brightness = 1.00
-	env.ssao_radius = 2.4
-	env.ssao_intensity = 4.0
+	# 逐图调色：默认值与原全局值一致；主题可单独控制对比/饱和/亮度。
+	env.adjustment_contrast = clampf(float(theme.get("gradeContrast", 1.24)), 1.0, 1.4)
+	env.adjustment_saturation = clampf(
+		float(theme.get("gradeSaturation", 1.18 if not night else 1.08)), 0.8, 1.6)
+	env.adjustment_brightness = clampf(float(theme.get("gradeBrightness", 1.0)), 0.85, 1.2)
+	# SSAO：逐图微调。城市/峡谷需要更深的接触阴影撑出体块，雪原要轻，
+	# 否则纯白地面上 AO 会变成脏灰斑。默认仍是 1.6 / 2.6。
+	env.ssao_radius = clampf(float(theme.get("ssaoRadius", 1.6)), 0.8, 3.2)
+	env.ssao_intensity = clampf(float(theme.get("ssaoIntensity", 2.6)), 1.0, 4.0)
 	env.ssao_power = 1.7
 	env.ssao_sharpness = 0.98
 	env.ssao_light_affect = 0.06
@@ -3784,17 +3877,32 @@ func _setup_environment(parent: Node3D, def: Dictionary) -> void:
 	env.ssr_fade_in = 0.12
 	env.ssr_fade_out = 1.5
 	env.ssr_depth_tolerance = 0.4
-	env.ssao_intensity = 2.6
 	env.ssil_enabled = true
 	env.ssil_intensity = 1.15
 	env.ssil_radius = 6.0
 	env.ssil_sharpness = 0.98
+	# SDFGI：静态峡谷/楼群的间接光反弹。只在 ULTRA 且主题允许时开（见 _apply_quality），
+	# 统一压低能量，避免把已拍板的城市夜景整体提亮。
+	env.sdfgi_enabled = false
+	env.sdfgi_use_occlusion = true
+	env.sdfgi_read_sky_light = true
+	env.sdfgi_bounce_feedback = 0.40
+	env.sdfgi_cascades = 3
+	env.sdfgi_min_cell_size = 0.45
+	env.sdfgi_max_distance = 170.0
+	env.sdfgi_energy = 0.65
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 	env.glow_enabled = true
-	env.glow_intensity = clampf(float(theme.get("glowOpacity", 0.4)) * 1.1, 0.25, 1.4)
+	env.glow_intensity = clampf(float(theme.get("glowOpacity", 0.4)) * 1.1, 0.2, 1.2)
 	env.glow_bloom = 0.08
+	# 太阳/雪面/熔岩的 HDR 峰值很高，用主题的 glowHdr 抬高泛光门槛。
+	# 霓虹夜城没有这个键 → 保持 1.0，亮度是用户拍板过的，不动。
+	env.glow_hdr_threshold = clampf(float(theme.get("glowHdr", 1.0)), 1.0, 2.0)
+	if not night:
+		env.glow_hdr_threshold = maxf(env.glow_hdr_threshold, 1.32)
+		env.glow_bloom = 0.045
+	_glow_base = env.glow_intensity
 	env.ssao_enabled = true
-	env.ssao_radius = 1.6
 	env.fog_enabled = true
 	# 远景清晰度基线：雾色不再压暗 55%，雾密度降约 30%；far_clarity 可在设置里再调
 	_base_fog_color = _c(theme.get("fogColor", "#c8e4ea"), Color(0.78, 0.89, 0.92)).darkened(0.34)
@@ -3806,9 +3914,15 @@ func _setup_environment(parent: Node3D, def: Dictionary) -> void:
 	var fog_far := maxf(float(theme.get("fogFar", 3600.0)), 800.0)
 	_base_fog_density = clampf(0.72 / fog_far, 0.00010, 0.00065)
 	env.fog_density = _base_fog_density
-	env.fog_aerial_perspective = 0.20
+	env.fog_aerial_perspective = clampf(float(theme.get("aerial", 0.20)), 0.05, 0.6)
+	# 低空雾层：晨雾/谷雾/海面薄雾贴着地表，远景山体有分层。
+	env.fog_height = float(theme.get("fogHeight", 0.0))
+	env.fog_height_density = clampf(float(theme.get("fogHeightDensity", 0.0)), -4.0, 4.0)
+	# 雾朝太阳方向的散射，让落日天空与远山之间有暖色过渡。
+	env.fog_sun_scatter = clampf(float(theme.get("fogSunScatter", 0.10)), 0.0, 1.0)
 	# subtle atmosphere for sun shafts on clear days too
-	env.volumetric_fog_enabled = true
+	var vol_theme := bool(theme.get("volumetric", true))
+	env.volumetric_fog_enabled = vol_theme
 	_base_vol_density = 0.0016 if weather_kind == "none" else 0.008
 	env.volumetric_fog_density = _base_vol_density
 	env.volumetric_fog_albedo = _c(theme.get("fogColor", "#c8e4ea"), Color(0.8, 0.86, 0.95)).darkened(0.25)
@@ -3820,7 +3934,7 @@ func _setup_environment(parent: Node3D, def: Dictionary) -> void:
 	env.volumetric_fog_anisotropy = 0.55
 	var misty := weather_kind != "none" or night
 	if misty:
-		env.volumetric_fog_enabled = true
+		env.volumetric_fog_enabled = vol_theme
 		# 沙尘只是薄霾：0.008 会把峡谷/熔岩压成剪影，dust 用轻一档
 		_base_vol_density = 0.008 if (weather_kind == "rain" or weather_kind == "snow") else 0.0035
 		env.volumetric_fog_density = _base_vol_density
@@ -3829,6 +3943,16 @@ func _setup_environment(parent: Node3D, def: Dictionary) -> void:
 		env.volumetric_fog_length = 260.0
 		env.volumetric_fog_ambient_inject = 0.35
 		env.volumetric_fog_sky_affect = 0.35
+	env.volumetric_fog_anisotropy = clampf(
+		float(theme.get("volumetricAnisotropy", 0.55)), 0.2, 0.9)
+	# 雪原/冰湖的体积雾环境注入会抬平暗部岩壁，主题可单独压暗
+	if theme.has("volAmbientInject"):
+		env.volumetric_fog_ambient_inject = clampf(
+			float(theme.get("volAmbientInject")), 0.0, 1.0)
+	# 雪图默认 0.008 的密度会把近处岩壁糊成一片奶白，主题可按需减半
+	if theme.has("volDensity"):
+		_base_vol_density = clampf(float(theme.get("volDensity")), 0.0, 0.02)
+		env.volumetric_fog_density = _base_vol_density
 	env.fog_sky_affect = 0.16
 
 	var world_env := WorldEnvironment.new()
@@ -3852,19 +3976,89 @@ func _setup_environment(parent: Node3D, def: Dictionary) -> void:
 		sun.light_color = _c(theme.get("sunColor", "#fff2da"), Color(1.0, 0.95, 0.86)).lerp(
 			Color(1.0, 0.82, 0.58), 0.45)
 	sun.shadow_enabled = true
+	# 光源角直径：0 是硬边阴影；半影柔化走 PCSS，实测 0.2° 就要 4% GPU。
+	# 十图对比软/硬边观感差异很小，统一硬边 + shadow_blur 柔化，字段保留给个别主题按需开启。
+	sun.light_angular_distance = clampf(float(theme.get("sunSoftness", 0.0)), 0.0, 5.0)
 	sun.shadow_bias = 0.016
 	sun.shadow_normal_bias = 1.1
-	sun.shadow_blur = 1.35
+	# 阴影边缘柔化：实测 1.35→2.6 没有可测帧率差（同一遍 PCF 采样），
+	# 户外图默认更柔和，城内保持锐利以保住楼体投影轮廓。
+	sun.shadow_blur = clampf(float(theme.get("shadowBlur", 1.35)), 0.0, 4.0)
 	sun.shadow_opacity = 1.0
-	sun.directional_shadow_max_distance = sun.directional_shadow_max_distance
 	sun.directional_shadow_blend_splits = false
 	# 4 分裂会把整个可见场景画进 4 张阴影图：实测 M1 Pro 上阴影 pass
 	# 占了一半以上的 draw call。赛车游戏远景阴影几乎看不到，改成 2 分裂 + 收短距离。
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 	parent.add_child(sun)
 	_sun = sun
-	_volumetric_allowed = env.volumetric_fog_enabled
+	# 逐图效果预算：干燥晴天 SSR 只在车漆上可见，关掉省 6~7% GPU；
+	# 湿滑/现代城市场景保留全量屏空间反射。
+	_theme_ssr_allowed = bool(theme.get("ssr", true))
+	_volumetric_allowed = vol_theme
+	# SDFGI 实测在 1600×900 ULTRA 下吃掉约 23~25% 帧率，而 Canyon 的间接光收益
+	# 只值回一部分，城市夜景还会整体提亮（用户拍板过亮度）。默认关闭，
+	# 保留 APEX_Q_SDFGI=1 供高端机/截图对比使用。
+	var sdfgi_tracks: Array[String] = []
+	_theme_sdfgi_allowed = String(theme.get("name", "")) in sdfgi_tracks \
+		and bool(theme.get("sdfgi", true))
 	_apply_quality()
+
+
+## 复用菜单/烘焙赛道时，把 _env/_sun 绑定到该世界，并补写逐图光照参数。
+## 菜单场景是旧版本烘焙的 .scn，里面序列化的 SSAO/阴影参数不会自动更新。
+## 逐图补光：太阳背面再放一盏无阴影的方向光，把背光岩壁/车侧从纯黑里拉回来。
+## 不参与阴影投射，Forward+ 下开销很小；夜间城市刻意压到极低，避免破坏拍板亮度。
+func _ensure_fill_light(root: Node3D, def: Dictionary) -> void:
+	if root == null:
+		return
+	var theme: Dictionary = def.get("theme", {})
+	var fill := root.find_child("FillLight", true, false) as DirectionalLight3D
+	if fill == null:
+		fill = DirectionalLight3D.new()
+		fill.name = "FillLight"
+		root.add_child(fill)
+	var sun_dir: Array = theme.get("sunDir", [0.42, 0.52, 0.2])
+	var fill_dir: Array = theme.get("fillDir", [
+		-float(sun_dir[0]), 0.55, -float(sun_dir[2])])
+	var dir := Vector3(float(fill_dir[0]), float(fill_dir[1]), float(fill_dir[2])).normalized()
+	if dir.length_squared() < 0.001:
+		dir = Vector3(-float(sun_dir[0]), 0.55, -float(sun_dir[2])).normalized()
+	fill.transform = Transform3D(Basis.looking_at(-dir, Vector3.UP), Vector3.ZERO)
+	fill.light_color = _c(String(theme.get("fillColor", "#bcd6ff")), Color(0.72, 0.84, 1.0))
+	fill.light_energy = clampf(float(theme.get("fillPower", 0.0)), 0.0, 1.2)
+	fill.shadow_enabled = false
+	fill.light_specular = 0.25
+	fill.visible = fill.light_energy > 0.001
+
+
+func _bind_world_environment(root: Node3D, def: Dictionary) -> void:
+	if root == null:
+		return
+	var theme: Dictionary = def.get("theme", {})
+	var we := root.find_child("WorldEnvironment", true, false) as WorldEnvironment
+	if we != null and we.environment != null:
+		_env = we.environment
+	var sun := root.find_child("Sun", true, false) as DirectionalLight3D
+	if sun != null:
+		_sun = sun
+	# 烘焙场景里遗留的旧版展车聚光（能量 7）：进比赛后就是凭空多出的第二主光，
+	# 直接隐藏。菜单侧由 _decorate_menu_scene 压到辅助级并顺太阳方向。
+	for node in root.find_children("*", "SpotLight3D", true, false):
+		node.visible = false
+	if _env != null:
+		_env.ssao_radius = clampf(float(theme.get("ssaoRadius", 1.6)), 0.8, 3.2)
+		_env.ssao_intensity = clampf(float(theme.get("ssaoIntensity", 2.6)), 1.0, 4.0)
+		# 逐图效果预算也要重建，否则缓存地图会沿用上一张图的 SSR/体积雾开关。
+		_theme_ssr_allowed = bool(theme.get("ssr", true))
+		_volumetric_allowed = bool(theme.get("volumetric", true))
+		_theme_sdfgi_allowed = false
+		_env.sdfgi_enabled = false
+		_glow_base = _env.glow_intensity
+		_base_fog_color = _env.fog_light_color
+		_base_fog_density = _env.fog_density
+		_base_vol_density = _env.volumetric_fog_density
+	if _sun != null:
+		_sun.shadow_blur = clampf(float(theme.get("shadowBlur", 1.35)), 0.0, 4.0)
 
 
 func _open_pause() -> void:
@@ -3882,6 +4076,7 @@ func _open_pause() -> void:
 	pause_screen.restart_requested.connect(_on_pause_restart)
 	pause_screen.settings_requested.connect(_on_pause_settings)
 	pause_screen.menu_requested.connect(_on_pause_menu)
+	pause_screen.photo_requested.connect(_on_pause_photo)
 	get_tree().paused = true
 
 
@@ -3897,21 +4092,34 @@ func _on_pause_restart() -> void:
 	if pause_screen != null:
 		pause_screen.queue_free()
 		pause_screen = null
-	if open_world_active:
-		# 开放世界不重建 9km 地图，直接把车送回出生点
-		if open_world != null and car != null:
-			var sp: Dictionary = open_world.spawn()
-			car.pos = sp["pos"]
-			car.heading = float(sp.get("heading", 0.0))
-			car.vel = Vector3.ZERO
-			car.speed_kph = 0.0
-		return
 	_start_race(current_track_id, current_car_id, current_mode)
 
 
 func _on_pause_settings() -> void:
 	_close_pause()
 	_open_settings()
+
+
+## 拍照模式：树保持暂停（计时/AI 冻结），相机节点 PROCESS_MODE_ALWAYS。
+func _on_pause_photo() -> void:
+	if pause_screen != null:
+		pause_screen.queue_free()
+		pause_screen = null
+	if hud != null:
+		hud.visible = false
+	photo_mode = PhotoModeScript.new()
+	photo_mode.name = "PhotoMode"
+	add_child(photo_mode)
+	photo_mode.setup(cam, car)
+	photo_mode.closed.connect(_on_photo_closed)
+
+
+func _on_photo_closed() -> void:
+	photo_mode = null
+	if hud != null:
+		hud.visible = true
+	# 树一直处于暂停状态，退出拍照后回到暂停菜单。
+	_open_pause()
 
 
 func _on_pause_menu() -> void:
@@ -3985,18 +4193,51 @@ func _open_settings() -> void:
 
 func _on_settings_closed() -> void:
 	get_tree().paused = false
+	# 键位提示等开关在设置里改动后，回到菜单立即生效。
+	if state == AppState.MENU and menu != null and is_instance_valid(menu):
+		menu.refresh()
 
 
 func apply_quality_now() -> void:
 	_apply_quality()
+	if state == AppState.MENU and menu_world != null:
+		_menu_apply_render_stability()
 
 
 func _apply_quality() -> void:
 	var q := Settings.preset()
 	var preset_id := String(q["id"])
+	var scale_mode: int = Viewport.SCALING_3D_MODE_BILINEAR
+	# 渲染预算审计：只在 APEX_PERF_OVERRIDE=1 时启用，逐项覆盖画质参数。
+	# 用法例：APEX_PERF_OVERRIDE=1 APEX_Q_SSIL=0 APEX_Q_VOL=0 Godot ... --perf-test
+	if OS.get_environment("APEX_PERF_OVERRIDE") == "1":
+		q = q.duplicate()
+		for pair in [
+			["APEX_Q_SCALE", "scale"],
+			["APEX_Q_SSR_STEPS", "ssr_steps"],
+			["APEX_Q_SHADOW_DIST", "shadow_dist"],
+			["APEX_Q_SHADOW_ATLAS", "shadow_atlas"],
+			["APEX_Q_SHADOW_FILTER", "shadow_filter"],
+			["APEX_Q_LOD_BIAS", "lod_bias"],
+		]:
+			var env_value := OS.get_environment(String(pair[0]))
+			if env_value.is_valid_float():
+				q[String(pair[1])] = float(env_value)
+				print("[Q-OVERRIDE] %s=%s" % [String(pair[1]), env_value])
+		for pair in [
+			["APEX_Q_SSR", "ssr"],
+			["APEX_Q_SSAO", "ssao"],
+			["APEX_Q_SSIL", "ssil"],
+			["APEX_Q_VOL", "vol"],
+			["APEX_Q_TAA", "taa"],
+		]:
+			var flag := OS.get_environment(String(pair[0]))
+			if flag == "0" or flag == "1":
+				q[String(pair[1])] = flag == "1"
 	CityFacadesScript.set_detail(Settings.index)
 	var vp := get_viewport()
 	var temporal := false
+	var perf_override := OS.get_environment("APEX_PERF_OVERRIDE") == "1"
 	# 扩展画质细项：分辨率 / 帧率上限 / 垂直同步 / 渲染缩放（字段由 Settings 提供）
 	if not shot_mode and not _perf_mode:
 		var fps_setting = Settings.get("fps_limit")
@@ -4018,40 +4259,124 @@ func _apply_quality() -> void:
 	if vp != null:
 		var scale := float(q["scale"])
 		var custom_scale = Settings.get("render_scale")
-		if custom_scale != null:
+		if custom_scale != null and not perf_override:
 			scale = clampf(float(custom_scale), 0.5, 1.0)
-		var mode: int = Viewport.SCALING_3D_MODE_BILINEAR
+		# HiDPI 像素预算：Retina 上 3D 缓冲按物理像素算，1600×900 窗口实际是
+		# 3200×1800。按档位把 3D 分辨率限制为「逻辑分辨率 × logical_scale」，
+		# 剩下的清晰度交给升频器；这是高档 28fps → 60fps 的关键一步。
+		# 1× 屏同样要按档位降分辨率，否则低档在普通显示器上等于满分辨率渲染。
+		var hidpi := maxf(DisplayServer.screen_get_scale(), 1.0)
+		if not perf_override:
+			scale = minf(scale, Settings.logical_scale() / hidpi)
 		var want := Settings.upscale
-		# 平台自适应：macOS 走 MetalFX（GPU 原生时间升频），桌面走 FSR2；
-		# 二者都会替代内置 TAA，避免两套时间累积叠加成糊/闪烁。
-		if want != "off":
+		if perf_override and not OS.get_environment("APEX_Q_UPSCALE").is_empty():
+			want = OS.get_environment("APEX_Q_UPSCALE")
+		# 大画布（Retina 全屏 / 4K）下，MetalFX/FSR2 的时间升频输出尺寸等于
+		# 整个根视口画布。实测 macOS 3456×2160 全屏时升频后画布达 31MP，
+		# 固定多吃 ~7ms：同 0.70 缩放，时间升频 54fps，空间路径 87fps。
+		# 所以 auto 档在大画布上改走「稍高内部分辨率 + 双线性/FXAA」，
+		# 画质不降反升（0.85 vs 0.70），帧率也更高。
+		var win_px := Vector2i(1600, 900)
+		if DisplayServer.get_name() != "headless":
+			win_px = DisplayServer.window_get_size()
+		var big_canvas := maxi(win_px.x, win_px.y) >= 2400
+		# 玩家手动把渲染比例调到 1.0 以下时尊重他的选择，不再为了清晰度抬回去。
+		var user_scale: Variant = Settings.get("render_scale")
+		var allow_big_raise: bool = user_scale == null or float(user_scale) >= 0.99
+		# 只在 Metal 时间升频上做这个切换：Windows/Linux 的 FSR2 输出成本曲线不同，
+		# 保持原路径，避免为了 macOS 的固定开销误伤其它平台。
+		if big_canvas and allow_big_raise and want == "auto" and not perf_override \
+				and PlatformProfile.supports_metalfx():
+			want = "off"
+			scale = maxf(scale, clampf(float(q.get("big_scale", scale)), 0.4, 0.95))
+		# 只在真的降分辨率时才启用升频器；原生分辨率下时间升频纯属白烧 GPU。
+		# macOS 走 MetalFX，桌面走 FSR2；TAA 与时间升频不叠加，避免双重累积。
+		if want != "off" and scale < 0.99:
 			if PlatformProfile.supports_metalfx():
-				if scale < 0.99 and want != "on":
-					mode = Viewport.SCALING_3D_MODE_METALFX_SPATIAL
-				else:
-					mode = Viewport.SCALING_3D_MODE_METALFX_TEMPORAL
-					temporal = true
+				# auto/on 都走时间升频：同分辨率下比空间升频干净得多，
+				# 实测 M1 Pro 在 120 帧上限内没有帧率代价。
+				scale_mode = Viewport.SCALING_3D_MODE_METALFX_TEMPORAL
+				temporal = true
 			elif PlatformProfile.supports_fsr2():
-				mode = Viewport.SCALING_3D_MODE_FSR2
+				scale_mode = Viewport.SCALING_3D_MODE_FSR2
 				temporal = true
 		if temporal:
-			scale = 1.0  # 原生分辨率做时间抗锯齿，画面最稳最清楚
-			vp.msaa_3d = Viewport.MSAA_DISABLED  # MetalFX/FSR2 自带 AA，避免引擎内部再关一次并告警
+			# 时间升频自带 AA；空间升频需要 FXAA 补边缘。
+			vp.msaa_3d = Viewport.MSAA_DISABLED
 		else:
 			vp.msaa_3d = Settings.msaa_mode()
-		vp.scaling_3d_mode = mode
+		if big_canvas and not perf_override:
+			# 大画布上 4×MSAA 等于把 8MP 画布再乘 4；空间路径统一交给 FXAA。
+			vp.msaa_3d = Viewport.MSAA_DISABLED
+		if perf_override:
+			var msaa_env := OS.get_environment("APEX_Q_MSAA")
+			if msaa_env.is_valid_int():
+				vp.msaa_3d = int(msaa_env) as Viewport.MSAA
+				print("[Q-OVERRIDE] msaa=%s" % msaa_env)
+		vp.scaling_3d_mode = scale_mode
 		vp.scaling_3d_scale = scale
+		# 网格 LOD 激进程度：阈值越大，远处模型越早切低模。低档把远景三角形
+		# 砍掉大半，高档保持接近默认，超高档更晚切 LOD 保住轮廓。
+		vp.mesh_lod_threshold = float(q.get("lod_threshold", 1.0))
+		if perf_override and OS.get_environment("APEX_Q_LOD_THRESHOLD").is_valid_float():
+			vp.mesh_lod_threshold = float(OS.get_environment("APEX_Q_LOD_THRESHOLD"))
 		vp.use_taa = bool(q.get("taa", false)) and not temporal
+		vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA \
+			if vp.msaa_3d == Viewport.MSAA_DISABLED and not temporal and not vp.use_taa \
+			else Viewport.SCREEN_SPACE_AA_DISABLED
 		vp.use_debanding = true
+		if perf_override and OS.get_environment("APEX_Q_OVERSAMPLE").is_valid_float():
+			vp.oversampling_override = float(OS.get_environment("APEX_Q_OVERSAMPLE"))
+		governor.reset_for_quality(scale, vp)
 	# 阴影预算按档位走：低档小图集 + 硬阴影省 GPU，超高档大图 + 高质量软阴影。
 	# 以前全档位共用 project.godot 的 8192 图集，低档白白画一张大阴影图。
-	RenderingServer.directional_shadow_atlas_set_size(Settings.shadow_atlas(), Settings.shadow_filter())
+	var shadow_atlas := int(q.get("shadow_atlas", Settings.shadow_atlas()))
+	var shadow_filter := int(q.get("shadow_filter", Settings.shadow_filter()))
+	RenderingServer.directional_shadow_atlas_set_size(shadow_atlas, shadow_filter)
 	if _env != null:
-		_env.ssr_enabled = bool(q["ssr"])
+		# 性能审计开关：临时强制覆盖逐图效果预算（仅 APEX_PERF_OVERRIDE=1 生效）。
+		var ssr_allowed := _theme_ssr_allowed
+		var vol_allowed := _volumetric_allowed
+		# 直接 A/B：不跑性能覆盖也能单独开关逐图 SSR。
+		var theme_ssr_flag := OS.get_environment("APEX_Q_THEME_SSR")
+		if theme_ssr_flag == "1":
+			ssr_allowed = true
+		elif theme_ssr_flag == "0":
+			ssr_allowed = false
+		if perf_override:
+			var ssr_flag := OS.get_environment("APEX_Q_THEME_SSR")
+			if ssr_flag == "0" or ssr_flag == "1":
+				ssr_allowed = ssr_flag == "1"
+			var vol_flag := OS.get_environment("APEX_Q_THEME_VOL")
+			if vol_flag == "0" or vol_flag == "1":
+				vol_allowed = vol_flag == "1"
+		_env.ssr_enabled = bool(q["ssr"]) and ssr_allowed
 		_env.ssr_max_steps = int(q["ssr_steps"])
 		_env.ssao_enabled = bool(q["ssao"])
 		_env.ssil_enabled = bool(q["ssil"])
-		_env.volumetric_fog_enabled = _volumetric_allowed and bool(q["vol"])
+		# SDFGI 只给 ULTRA + 封闭静态地貌；APEX_Q_SDFGI=0/1 可做 A/B 对照。
+		var sdfgi_want := preset_id == "ultra" and _theme_sdfgi_allowed
+		var sdfgi_flag := OS.get_environment("APEX_Q_SDFGI")
+		if sdfgi_flag == "1":
+			sdfgi_want = true
+		elif sdfgi_flag == "0":
+			sdfgi_want = false
+		_env.sdfgi_enabled = sdfgi_want
+		_env.volumetric_fog_enabled = vol_allowed and bool(q["vol"])
+		# 抬 AO 对直射光的响应（纯 uniform，不增加采样）：车底、墙角在阳光里
+		# 也有暗部收紧，接触阴影更实，物体不再像贴在路面上。
+		_env.ssao_light_affect = 0.16 if preset_id == "ultra" else (0.10 if preset_id == "high" else 0.06)
+		# 最弱的那层泛光（1/16 分辨率）对画面几乎不可见，却要多走一遍升降采样。
+		# 必须显式写回 1.0：只写 0 的话，从高档切回超高后这一层永远不会恢复。
+		_env.set("glow_levels/4", 1.0 if preset_id == "ultra" else 0.0)
+		var use_glow_map := (preset_id == "high" or preset_id == "ultra") \
+			and OS.get_environment("APEX_Q_GLOW_MAP") != "0"
+		_env.glow_map = _lens_dirt_texture() if use_glow_map else null
+		_env.glow_map_strength = 0.35 if preset_id == "ultra" else 0.22
+		if perf_override:
+			var glow_flag := OS.get_environment("APEX_Q_GLOW")
+			if glow_flag == "0" or glow_flag == "1":
+				_env.glow_enabled = glow_flag == "1"
 		if _env.sky != null:
 			_env.sky.radiance_size = Settings.sky_radiance() as Sky.RadianceSize
 			var sky_mat := _env.sky.sky_material
@@ -4062,23 +4387,33 @@ func _apply_quality() -> void:
 					"cloud_detail", Settings.cloud_detail())
 		_apply_far_clarity()
 	if _sun != null:
-		_sun.directional_shadow_max_distance = float(q["shadow_dist"])
+		# 逐图阴影预算：森林/雪山这类远景被树冠挡死的地图，420m 阴影只在
+		# 看不见的远处烧 GPU；按主题收短到 300~400m，画面几乎无感。
+		var shadow_mul := clampf(
+			float(track_def.get("theme", {}).get("shadowDistMul", 1.0)), 0.5, 1.2)
+		_sun.directional_shadow_max_distance = float(q["shadow_dist"]) * shadow_mul
+		if perf_override:
+			var soft_env := OS.get_environment("APEX_Q_SUNSOFT")
+			if soft_env.is_valid_float():
+				_sun.light_angular_distance = clampf(float(soft_env), 0.0, 5.0)
+				print("[Q-OVERRIDE] sun_softness=%s" % soft_env)
+			var blur_env := OS.get_environment("APEX_Q_SHADOWBLUR")
+			if blur_env.is_valid_float():
+				_sun.shadow_blur = clampf(float(blur_env), 0.0, 4.0)
+				print("[Q-OVERRIDE] shadow_blur=%s" % blur_env)
 		# 超高：两级阴影级联之间混合过渡，远处阴影边界不再有硬切换线
 		_sun.directional_shadow_blend_splits = preset_id == "ultra"
 	if streamer != null:
-		# 开放世界的剔除距离在 _start_open_world 里单独收紧过（大地图分块大，
-		# 默认远景会让剔除失效），换画质档时不能被通用远景覆盖回去。
-		if open_world_active:
-			streamer.max_distance = 1600.0
-			streamer.tight_sector = true
-		else:
-			streamer.max_distance = Settings.far_distance()
+		streamer.max_distance = Settings.far_distance()
 		streamer.prefetch_strength = 1.35 if preset_id == "ultra" else (1.15 if preset_id == "high" else 0.9)
 	_apply_lod_bias_all()
+	if perf_override and OS.get_environment("APEX_Q_LOD_BIAS").is_valid_float():
+		_apply_lod_bias_all(float(OS.get_environment("APEX_Q_LOD_BIAS")))
 	_sync_post_params()
-	print("[QUALITY] %s  缩放 %.2f  %s  锐化 %.2f  远景 %.2f" % [
-		preset_id, float(q["scale"]),
-		("MetalFX/FSR2 时间升频" if temporal else ("空间升频" if Settings.upscale != "off" else "内置 TAA")),
+	print("[QUALITY] %s  缩放 %.2f  %s  LOD %.1f  锐化 %.2f  远景 %.2f" % [
+		preset_id, governor.scale,
+		("MetalFX/FSR2 时间升频" if temporal else ("空间升频" if scale_mode != Viewport.SCALING_3D_MODE_BILINEAR else "无升频")),
+		vp.mesh_lod_threshold if vp != null else 1.0,
 		Settings.sharpen, Settings.far_clarity])
 
 
@@ -4094,23 +4429,60 @@ func _apply_far_clarity() -> void:
 	_env.fog_sky_affect = clampf(0.16 + (clarity - 1.0) * 0.05, 0.08, 0.24)
 
 
+## 逐图电影调色参数：theme 留空 = 中性（菜单/车库保持原样）。
+## 只蓝本色相，曝光与亮度继续由环境/主题控制，避免动到已拍板的夜城亮度。
+func _set_post_grade(theme: Dictionary) -> void:
+	# 视觉审计开关：APEX_Q_GRADE=0 可逐图对比调色前后（不写存档）。
+	if OS.get_environment("APEX_Q_GRADE") == "0":
+		theme = {}
+	var mix := clampf(float(theme.get("gradeMix", 0.0)), 0.0, 1.0)
+	var grain := clampf(float(theme.get("filmGrain", 0.0)), 0.0, 0.05)
+	if mix <= 0.001 and grain <= 0.0005:
+		_post_grade = {}
+		_post_grade_active = false
+	else:
+		_post_grade = {
+			"mix": mix,
+			"temp": clampf(float(theme.get("gradeTemp", 0.0)), -1.0, 1.0),
+			"shadow": _c(String(theme.get("gradeShadow", "")), Color(0.0, 0.0, 0.0)),
+			"highlight": _c(String(theme.get("gradeHighlight", "")), Color(1.0, 1.0, 1.0)),
+			"grain": grain,
+		}
+		_post_grade_active = true
+	_sync_post_params()
+
+
 func _sync_post_params() -> void:
 	if motion_blur_mat == null or get_viewport() == null:
 		return
 	var size := Vector2(get_viewport().size)
-	motion_blur_mat.set_shader_parameter("sharpen", Settings.sharpen)
+	# 3D 内部分辨率越低，升频后的软化越明显：按比例补一点锐化（最多 +45%），
+	# 让 0.4~0.5 渲染倍数下的画面仍然利落。纯 uniform 更新，不触发管线重建。
+	var scale_k := clampf(governor.scale, 0.32, 1.0) if governor.cap > 0.0 else 1.0
+	var sharp_boost := 1.0 + clampf((0.75 - scale_k) * 1.15, 0.0, 0.45)
+	motion_blur_mat.set_shader_parameter("sharpen",
+		clampf(Settings.sharpen * sharp_boost, 0.0, 0.85))
 	motion_blur_mat.set_shader_parameter("taps", Settings.blur_taps())
 	motion_blur_mat.set_shader_parameter("texel", Vector2(
 		1.0 / maxf(size.x, 1.0), 1.0 / maxf(size.y, 1.0)))
+	motion_blur_mat.set_shader_parameter("resolution", size)
+	motion_blur_mat.set_shader_parameter("grade_mix", float(_post_grade.get("mix", 0.0)))
+	motion_blur_mat.set_shader_parameter("grade_temp", float(_post_grade.get("temp", 0.0)))
+	motion_blur_mat.set_shader_parameter("grade_shadow",
+		_post_grade.get("shadow", Color(0.0, 0.0, 0.0)))
+	motion_blur_mat.set_shader_parameter("grade_highlight",
+		_post_grade.get("highlight", Color(1.0, 1.0, 1.0)))
+	motion_blur_mat.set_shader_parameter("film_grain", float(_post_grade.get("grain", 0.0)))
 	if motion_blur_rect != null:
-		motion_blur_rect.visible = Settings.sharpen > 0.001 or _last_blur_amount > 0.004
+		motion_blur_rect.visible = Settings.sharpen > 0.001 or _last_blur_amount > 0.004 \
+			or _post_grade_active
 
 
 ## 换画质档时把全场几何的 LOD 偏移同步到当前档位：
 ## 低档 <1 让车/树/建筑更早切低模省帧率，超高档 >1 把满精度模型留到更远。
 ## 新建场景里的物件在摆放入口（RealAssetKit / CarVisual）按当前档写入初始值。
-func _apply_lod_bias_all() -> void:
-	var bias := Settings.lod_bias()
+func _apply_lod_bias_all(bias_override: float = -1.0) -> void:
+	var bias := Settings.lod_bias() if bias_override < 0.0 else bias_override
 	for node in get_tree().root.find_children("*", "GeometryInstance3D", true, false):
 		(node as GeometryInstance3D).lod_bias = bias
 	for ai in ais:
@@ -4124,7 +4496,35 @@ func _sync_post_amount(amount: float) -> void:
 		return
 	motion_blur_mat.set_shader_parameter("amount", amount)
 	if motion_blur_rect != null:
-		motion_blur_rect.visible = amount > 0.004 or Settings.sharpen > 0.001
+		motion_blur_rect.visible = amount > 0.004 or Settings.sharpen > 0.001 \
+			or _post_grade_active
+
+
+static var _lens_dirt_cache: Texture2D = null
+
+
+## 程序化镜头脏污：低频噪声 + 少量压暗斑，喂给 Environment.glow_map，
+## 让霓虹/路灯的 bloom 带一点镜头污渍，而不是一圈干净的圆形光晕。
+static func _lens_dirt_texture() -> Texture2D:
+	if _lens_dirt_cache != null:
+		return _lens_dirt_cache
+	var size := 256
+	var noise := FastNoiseLite.new()
+	noise.seed = 20261111
+	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	noise.frequency = 0.011
+	noise.fractal_octaves = 3
+	noise.fractal_gain = 0.55
+	var img := Image.create(size, size, false, Image.FORMAT_RGB8)
+	for y in size:
+		for x in size:
+			var n := noise.get_noise_2d(float(x), float(y)) * 0.5 + 0.5
+			var smudge := smoothstep(0.30, 0.78, n)
+			var v := lerpf(0.55, 1.0, smudge)
+			img.set_pixel(x, y, Color(v, v, v))
+	img.generate_mipmaps()
+	_lens_dirt_cache = ImageTexture.create_from_image(img)
+	return _lens_dirt_cache
 
 
 func _c(hex: String, fallback: Color) -> Color:
@@ -4174,6 +4574,8 @@ func _parse_args() -> void:
 			_arg_camera = int(arg.substr(9))
 		elif arg.begins_with("--shot-speed="):
 			_arg_shot_speed = float(arg.substr(13))
+		elif arg.begins_with("--drive-probe="):
+			_drive_probe_time = float(arg.substr(14))
 		elif arg == "--tune":
 			_tune_demo = true
 		elif arg == "--perf-test":
@@ -4182,8 +4584,6 @@ func _parse_args() -> void:
 			_analog_test_mode = true
 		elif arg == "--drift-test":
 			_drift_test_mode = true
-		elif arg == "--openworld-test":
-			_openworld_test_mode = true
 
 
 func _track_or_default() -> String:
@@ -4196,208 +4596,6 @@ func _car_or_default() -> String:
 
 func _mode_or_default() -> String:
 	return _arg_mode if _arg_mode in ["gp", "ta", "duel"] else "gp"
-
-
-## 车辆碰撞尺寸：用 manifest 里每台车实测的 contact = [宽, 长]（米），
-## 取代原来固定的 r=2.1 圆形碰撞（圆直径 4.2m 比车宽/车长都不匹配，侧向像一堵看不见的墙）。
-func _car_half_extents(car_id: String) -> Vector2:
-	var cars: Dictionary = GameData.car_manifest.get("cars", {})
-	var entry: Dictionary = cars.get(car_id, {})
-	var c: Array = entry.get("contact", [1.9, 4.4])
-	var w := float(c[0]) if c.size() > 0 else 1.9
-	var l := float(c[1]) if c.size() > 1 else 4.4
-	return Vector2(clampf(w * 0.5, 0.80, 1.30), clampf(l * 0.5, 1.80, 2.90))
-
-
-## 2D 带朝向矩形（OBB）SAT 求最小分离向量。
-## 返回 {hit, normal(从 B 指向 A 的单位向量), depth, mtv(世界 xz)}。
-func _obb_mtv(pos_a: Vector2, yaw_a: float, half_a: Vector2,
-		pos_b: Vector2, yaw_b: float, half_b: Vector2) -> Dictionary:
-	var out := {"hit": false, "normal": Vector2.ZERO, "depth": 0.0, "mtv": Vector2.ZERO}
-	var ra := Vector2(cos(yaw_a), -sin(yaw_a))
-	var fa := Vector2(sin(yaw_a), cos(yaw_a))
-	var rb := Vector2(cos(yaw_b), -sin(yaw_b))
-	var fb := Vector2(sin(yaw_b), cos(yaw_b))
-	var axes: Array[Vector2] = [ra, fa, rb, fb]
-	var d := pos_a - pos_b
-	var best_depth := 1e30
-	var best_axis := Vector2.ZERO
-	for axis in axes:
-		var proj_a := absf(ra.dot(axis)) * half_a.x + absf(fa.dot(axis)) * half_a.y
-		var proj_b := absf(rb.dot(axis)) * half_b.x + absf(fb.dot(axis)) * half_b.y
-		var dist := absf(d.dot(axis))
-		var overlap := proj_a + proj_b - dist
-		if overlap <= 0.0:
-			return out
-		if overlap < best_depth:
-			best_depth = overlap
-			best_axis = axis
-	out["hit"] = true
-	out["depth"] = best_depth
-	var normal: Vector2 = best_axis if d.dot(best_axis) >= 0.0 else -best_axis
-	out["normal"] = normal
-	out["mtv"] = normal * best_depth
-	return out
-
-
-func _resolve_car_contacts() -> float:
-	if car == null or track_path == null:
-		return 0.0
-	var player_half := _car_half_extents(current_car_id)
-	var player_fwd := car.forward()
-	var max_impact := 0.0
-	for ai in ais:
-		var ai_id := String(ai.spec.get("id", ""))
-		var ai_half := _car_half_extents(ai_id) if not ai_id.is_empty() else Vector2(0.95, 2.2)
-		var hit := _obb_mtv(
-			Vector2(car.pos.x, car.pos.z), car.heading, player_half,
-			Vector2(ai.pos.x, ai.pos.z), ai.heading, ai_half)
-		if not hit["hit"]:
-			continue
-		var mtv: Vector2 = hit["mtv"]
-		var normal: Vector2 = hit["normal"]
-		var depth: float = hit["depth"]
-		if depth < 0.0005:
-			continue
-		# ---- 接触解算：小步位置修正 + 接触分离速度，避免「闪现」和「粘上碰」----
-		var n3 := Vector3(normal.x, 0.0, normal.y)
-		var ai_fwd := Vector3(sin(ai.heading), 0.0, cos(ai.heading))
-		var ai_vel := ai_fwd * ai.speed
-		var rel := car.vel - ai_vel
-		var vn := rel.dot(n3)  # <0：两车还在相互压；>0：正在分开
-
-		# 位置修正每帧限幅，宁可多弹几帧也不瞬移（用户反馈「直接闪到前面去了」）。
-		# 上限比旧版放宽：撞上后要较快脱离接触，否则两车会贴着磨蹭（「黏」）。
-		var push := minf(depth * 0.75, 0.38)
-		var desired_ai := -n3 * push
-		var ai_got := Vector3.ZERO
-		var frame := track_path.frame_at(ai.dist)
-		if not frame.is_empty():
-			var side: Vector3 = frame["side"]
-			var tangent: Vector3 = frame["tangent"]
-			var want_lat := desired_ai.x * side.x + desired_ai.z * side.z
-			var want_along := desired_ai.x * tangent.x + desired_ai.z * tangent.z
-			var prev_off := ai.offset
-			var prev_dist := ai.dist
-			var limit := maxf(float(frame.get("half_width", track_path.half_width)) - 1.4, 0.55)
-			ai.offset = clampf(ai.offset + want_lat, -limit, limit)
-			ai.dist = maxf(ai.dist + want_along, 0.0)
-			var got_lat := ai.offset - prev_off
-			var got_along := ai.dist - prev_dist
-			ai_got = Vector3(side.x * got_lat + tangent.x * got_along, 0.0,
-				side.z * got_lat + tangent.z * got_along)
-		# AI 被护栏/边界夹住而没让出去的位移，只补一小部分给玩家（限幅，避免闪现）
-		var unfulfilled := desired_ai - ai_got
-		var car_push := n3 * push - unfulfilled
-		var push_cap := push * 1.8
-		if car_push.length() > push_cap and push_cap > 0.0001:
-			car_push = car_push.normalized() * push_cap
-		car.pos.x += car_push.x
-		car.pos.z += car_push.z
-		# 任何接触都给 AI 一个侧向弹开锁存：撞完先让开，不要下一帧又贴回玩家。
-		if not frame.is_empty():
-			var ai_side_v: Vector3 = frame["side"]
-			ai.bump_lat = clampf(ai.bump_lat - n3.dot(ai_side_v) * minf(0.55 + depth, 1.4), -2.8, 2.8)
-			ai.bump_timer = maxf(ai.bump_timer, 0.65)
-
-		# 接触分离速度：低速轻碰也有 1.3m/s 的轻微弹开；高速对撞按 38% 反弹。
-        # 单帧速度修正限幅，避免「闪一下窜出去」。
-		var target_sep := maxf(1.3, -vn * 0.38)
-		var vn_dv := clampf(target_sep - vn, 0.0, 3.0)
-		if vn < target_sep:
-			var car_share := 0.70
-			var ai_share := 0.30
-			car.vel += n3 * (vn_dv * car_share)
-			var ai_new := ai_vel - n3 * (vn_dv * ai_share)
-			ai.speed = clampf(ai_new.dot(ai_fwd), 0.0,
-				maxf(ai.speed, ai_new.length()) + 5.0)
-			var vf := car.vel.dot(player_fwd)
-			if vf < -0.5:
-				car.vel -= player_fwd * vf
-		if vn < -1.2:
-			max_impact = maxf(max_impact, -vn)
-			last_hit_pos = ((car.pos + ai.pos) * 0.5) + Vector3(0.0, 0.55, 0.0)
-			last_hit_active = true
-		# ---- 真实碰撞反馈：撞一下 → 双方掉速 → AI 沿侧向弹开 0.9s ----
-		var impact := -vn
-		if impact > 0.8:
-			# AI 按撞击强度掉速（撞得越狠掉得越多，最少也蹭掉一成）
-			ai.speed = maxf(ai.speed * clampf(1.0 - impact * 0.045, 0.70, 1.0), 2.0)
-			# 玩家正面撞上时前向速度也按冲量掉（侧面刮蹭不刹车）
-			var frontness := absf(n3.dot(player_fwd))
-			if frontness > 0.35:
-				var fdrop := minf(impact * 0.30 * frontness, 6.0)
-				var vf0 := car.vel.dot(player_fwd)
-				if vf0 > 0.0:
-					car.vel -= player_fwd * minf(fdrop, vf0)
-			# AI 弹开冲量：沿赛道侧向被撞开，update_ai 里 0.9s 衰减回走线
-			var ai_side: Vector3 = frame["side"]
-			ai.bump_lat = clampf(-n3.dot(ai_side), -1.0, 1.0) * minf(1.2 + impact * 0.25, 2.8)
-			ai.bump_timer = 0.9
-		elif depth > 0.03 and game_feel != null and game_feel.has_method("on_scrape"):
-			# 低速贴住/并排磨蹭：给少量火花，避免「撞了但没反馈」。
-			game_feel.on_scrape(
-				clampf(-vn / 6.0 + depth * 0.4, 0.05, 0.6),
-				((car.pos + ai.pos) * 0.5) + Vector3(0.0, 0.45, 0.0))
-
-	# AI 互相分离：OBB 精确求最小分离向量。旧版只用赛道纵横矩形近似，
-	# 两车斜着并排时会漏判出可见穿模；这里同时做位置、相对速度、弹开锁存。
-	for i in ais.size():
-		for j in range(i + 1, ais.size()):
-			var a: AICar = ais[i]
-			var b: AICar = ais[j]
-			var half_a := _car_half_extents(String(a.spec.get("id", "")))
-			var half_b := _car_half_extents(String(b.spec.get("id", "")))
-			var hit := _obb_mtv(
-				Vector2(a.pos.x, a.pos.z), a.heading, half_a,
-				Vector2(b.pos.x, b.pos.z), b.heading, half_b)
-			if not hit["hit"]:
-				continue
-			var normal: Vector2 = hit["normal"]  # B → A
-			var depth: float = hit["depth"]
-			if depth < 0.0005:
-				continue
-			var frame := track_path.frame_at(a.dist)
-			if frame.is_empty():
-				continue
-			var side: Vector3 = frame["side"]
-			var tangent: Vector3 = frame["tangent"]
-			var n3 := Vector3(normal.x, 0.0, normal.y)
-			# 位置分离：A 沿 n3、B 沿 -n3，投影回 offset/dist 并限幅。
-			var push := minf(depth * 0.70, 0.36)
-			var limit_a := maxf(float(frame.get("half_width", track_path.half_width)) - 1.4, 0.55)
-			var frame_b := track_path.frame_at(b.dist)
-			var limit_b := limit_a
-			if not frame_b.is_empty():
-				limit_b = maxf(float(frame_b.get("half_width", track_path.half_width)) - 1.4, 0.55)
-			a.offset = clampf(a.offset + n3.dot(side) * push, -limit_a, limit_a)
-			a.dist = maxf(a.dist + n3.dot(tangent) * push, 0.0)
-			b.offset = clampf(b.offset - n3.dot(side) * push, -limit_b, limit_b)
-			b.dist = maxf(b.dist - n3.dot(tangent) * push, 0.0)
-			# 分离速度：沿各自车头方向补一点相对速度，避免同速并排被“焊死”。
-			var fwd_a := Vector3(sin(a.heading), 0.0, cos(a.heading))
-			var fwd_b := Vector3(sin(b.heading), 0.0, cos(b.heading))
-			var rel_vn := (fwd_a * a.speed - fwd_b * b.speed).dot(n3)
-			var sep := maxf(0.9, -rel_vn * 0.25)
-			var dv := clampf(sep - rel_vn, 0.0, 2.0)
-			if dv > 0.0:
-				a.speed = maxf(a.speed + dv * 0.5 * n3.dot(fwd_a), 0.0)
-				b.speed = maxf(b.speed - dv * 0.5 * n3.dot(fwd_b), 0.0)
-			# 接触掉速 + 弹开锁存（bump_lat 在 update_ai 里 0.8s 衰减）
-			var scrape := clampf(depth * 0.06, 0.0, 0.15)
-			a.speed *= 1.0 - scrape
-			b.speed *= 1.0 - scrape
-			var lateral_bump := n3.dot(side) * minf(0.6 + depth, 1.5)
-			a.bump_lat = clampf(a.bump_lat + lateral_bump, -2.8, 2.8)
-			b.bump_lat = clampf(b.bump_lat - lateral_bump, -2.8, 2.8)
-			a.bump_timer = maxf(a.bump_timer, 0.8)
-			b.bump_timer = maxf(b.bump_timer, 0.8)
-			max_impact = maxf(max_impact, -rel_vn)
-			if game_feel != null and game_feel.has_method("on_scrape"):
-				game_feel.on_scrape(
-					clampf(-rel_vn / 8.0 + depth * 0.35, 0.04, 0.5),
-					((a.pos + b.pos) * 0.5) + Vector3(0.0, 0.45, 0.0))
-	return max_impact
 
 
 # ---------------------------------------------------------------------------
@@ -4446,14 +4644,25 @@ func _run_verification() -> void:
 		float(last_input.get("steer", 0.0)), float(last_input.get("throttle", 0.0))])
 	if float(last_input.get("steer", 0.0)) < 0.35 or float(last_input.get("throttle", 0.0)) < 0.55:
 		failures.append("analog depth did not reach continuous steer/throttle")
+	# 负油门（磁轴 S 键 → 刹车/倒车）：带符号深度必须保留到车辆输入
+	AnalogInput.set_debug_values(0.0, -0.8)
+	var reverse_input := {}
+	for i in 14:
+		await get_tree().create_timer(0.02).timeout
+		reverse_input = InputSetup.read_drive_input()
+	AnalogInput.clear_debug_values()
+	print("[M1] analog depth(0.00, -0.80) → steer=%.2f throttle=%.2f" % [
+		float(reverse_input.get("steer", 0.0)), float(reverse_input.get("throttle", 0.0))])
+	if float(reverse_input.get("throttle", 0.0)) > -0.55:
+		failures.append("analog negative throttle lost (reverse)")
 	Settings.analog_curve_steer = steer_curve_backup
 	Settings.analog_curve_throttle = throttle_curve_backup
 	Settings.analog_deadzone = deadzone_backup
 	Settings.analog_input_enabled = analog_enabled_backup
 
 	print("[M1] === car collision (OBB 按 manifest 车宽车长) ===")
-	var half_m3 := _car_half_extents("bmw_m3_e46_gtr")
-	var half_gl8 := _car_half_extents("buick_gl8")
+	var half_m3 := CarContacts.half_extents("bmw_m3_e46_gtr")
+	var half_gl8 := CarContacts.half_extents("buick_gl8")
 	print("[M1] contact half: m3_e46=(%.2f, %.2f)m  gl8=(%.2f, %.2f)m" % [half_m3.x, half_m3.y, half_gl8.x, half_gl8.y])
 	if absf(half_m3.x - 0.93) > 0.06 or absf(half_m3.y - 2.245) > 0.06:
 		failures.append("M3 E46 contact size mismatch: %s" % str(half_m3))
@@ -4468,7 +4677,7 @@ func _run_verification() -> void:
 	]
 	var probe_ok := 0
 	for pr in probes:
-		var res := _obb_mtv(pr[0], pr[1], half_m3, pr[2], pr[3], half_m3)
+		var res := CarContacts.obb_mtv(pr[0], pr[1], half_m3, pr[2], pr[3], half_m3)
 		if bool(res["hit"]) == bool(pr[4]):
 			probe_ok += 1
 		else:
@@ -4538,7 +4747,12 @@ func _run_verification() -> void:
 		scenery_holder.free()
 		if path.total_length < 800.0:
 			failures.append("track %s: length %.1fm too short" % [String(def.get("id", "?")), path.total_length])
-		if mesh_count < 4:
+		# 实景城市（metro）的路面/楼群来自 CityWorld 模型，TrackBuilder 只补
+		# 起跑线 + 发车格两个网格；开放漂移场地只有柏油 + 草地两块，
+		# 用程序化赛道的 4 网格门槛会误报。
+		var open_field := bool(def.get("openField", false))
+		var min_meshes := 2 if (bool(def.get("realCity", false)) or open_field) else 4
+		if mesh_count < min_meshes:
 			failures.append("track %s: only %d meshes" % [String(def.get("id", "?")), mesh_count])
 
 		probe.track = path
@@ -4557,7 +4771,7 @@ func _run_verification() -> void:
 			String(def.get("id", "?")), path.total_length, path.width, mesh_count, travelled, max_kph])
 		print("[M3] %-8s scenery: nodes=%3d instances=%4d" % [
 			String(def.get("id", "?")), scenery_count, int(scenery_stats["instances"])])
-		if int(scenery_stats["instances"]) < 40:
+		if not open_field and int(scenery_stats["instances"]) < 40:
 			failures.append("M3: track %s scenery only %d instances" % [String(def.get("id", "?")), int(scenery_stats["instances"])])
 		if travelled < 80.0:
 			failures.append("track %s: car only travelled %.1fm in 10s" % [String(def.get("id", "?")), travelled])
@@ -4565,6 +4779,7 @@ func _run_verification() -> void:
 
 	print("[M1] === full GP race: coast, 3 laps, 3 AI ===")
 	_start_race("coast", DEFAULT_CAR, "gp")
+	await _await_race_ready()
 	if race == null:
 		failures.append("race manager failed to start")
 	else:
@@ -4595,6 +4810,28 @@ func _run_verification() -> void:
 				failures.append("standings has %d entries (expected 4)" % race.results.size())
 			if race.best_lap_time <= 0.0:
 				failures.append("player best lap not recorded")
+			var sector_ok := race.best_sector_times.size() == RaceManager.SECTOR_COUNT
+			if sector_ok:
+				for split in race.best_sector_times:
+					if float(split) <= 0.0:
+						sector_ok = false
+			if not sector_ok:
+				failures.append("sector best times incomplete: %s" % str(race.best_sector_times))
+			else:
+				var last_sum := 0.0
+				for split in race.last_sector_times:
+					last_sum += maxf(0.0, float(split))
+				print("[M1] sectors best=%s last=%s sum=%.3fs lap=%s" % [
+					str(race.best_sector_times), str(race.last_sector_times),
+					last_sum, RaceManager.format_time(race.last_lap_time)])
+				if race.last_sector_times.size() == RaceManager.SECTOR_COUNT \
+						and float(race.last_sector_times[0]) > 0.0 \
+						and float(race.last_sector_times[1]) > 0.0 \
+						and float(race.last_sector_times[2]) > 0.0 \
+						and absf(last_sum - race.last_lap_time) > 0.05:
+					failures.append("sector sum %.3fs != last lap %.3fs" % [last_sum, race.last_lap_time])
+				if race.record_summary.get("best_sectors", []).is_empty():
+					failures.append("records.json did not persist best sectors")
 			var ai_laps := 0
 			for ai in ais:
 				ai_laps = maxi(ai_laps, ai.lap)
@@ -4622,11 +4859,22 @@ func _run_verification() -> void:
 	var stock_top := float(stock.get("topKph", 0))
 	var stock_grip := float(stock.get("grip", 0.0))
 	# 改装现在花 XP：验证期间临时给足积分，M2 结束恢复玩家档案。
-	var ps_prof := load("res://scripts/core/profile_store.gd")
+	var ps_prof := ProfileStore
 	var profile_backup: Dictionary = ps_prof.load_profile()
 	var verify_profile := profile_backup.duplicate(true)
 	verify_profile["xp"] = maxi(int(verify_profile.get("xp", 0)), 200000)
+	verify_profile["xp_spent"] = 0
+	# 成就进度清空，避免玩家已有记录让「首次解锁」断言失效。
+	verify_profile["achievements"] = {}
+	verify_profile["driven_cars"] = {}
+	verify_profile["car_total"] = 46
 	ps_prof.save_profile(verify_profile)
+	# 免费改装下玩家存档里可能已经满级；不清零的话「升 5 级」会直接封顶 10，
+	# 后面的 save/load 断言就随存档漂移。测试从 0 级起步，结束由 garage_backup 还原。
+	var test_cfg := Garage.config(car_id)
+	test_cfg["spent"] = {}
+	for key in Garage.UPGRADE_KEYS:
+		test_cfg[key] = 0
 	for key in Garage.UPGRADE_KEYS:
 		for i in 5:
 			Garage.add_upgrade_level(car_id, key)
@@ -4693,9 +4941,49 @@ func _run_verification() -> void:
 		garage_screen.car_index = posmod(garage_screen.car_index + 1, GameData.cars_specs.size())
 		garage_screen.refresh()
 		print("[M2] garage UI: opened with %s, car switch -> %s" % [ui_car, garage_screen._current_car_id()])
+	# 真经济：扣款必须真实生效，超额消费必须拒绝且不改变余额。
+	var balance_before: int = ps_prof.credit_balance()
+	var spend_ok: bool = ps_prof.spend_credits(25)
+	var balance_after: int = ps_prof.credit_balance()
+	if not spend_ok or balance_after != balance_before - 25:
+		failures.append("M2: real economy spend did not deduct balance")
+	var overdraft: bool = ps_prof.spend_credits(balance_after + 1)
+	if overdraft or ps_prof.credit_balance() != balance_after:
+		failures.append("M2: overdraft should be rejected without changing balance")
+	print("[M2] economy: balance %d -> %d  overdraft=%s" % [
+		balance_before, balance_after, str(overdraft)])
+	# 车辆收藏：首次驾驶 +40 XP，重复不加；5 / 15 / 全车系解锁成就。
+	var car_first: Dictionary = ps_prof.mark_car_driven("probe_car_0", 46)
+	var car_repeat: Dictionary = ps_prof.mark_car_driven("probe_car_0", 46)
+	var garage5: Dictionary = {}
+	for i in range(1, 5):
+		garage5 = ps_prof.mark_car_driven("probe_car_%d" % i, 46)
+	var garage_all: Dictionary = {}
+	for i in range(5, 46):
+		garage_all = ps_prof.mark_car_driven("probe_car_%d" % i, 46)
+	var g5_ok := false
+	for a in garage5.get("achievements", []):
+		if String(a.get("id", "")) == "garage_5":
+			g5_ok = true
+	var gall_ok := false
+	for a in garage_all.get("achievements", []):
+		if String(a.get("id", "")) == "garage_all":
+			gall_ok = true
+	if int(car_first.get("xp_gain", 0)) < 40:
+		failures.append("M2: first drive gave no XP")
+	if int(car_repeat.get("xp_gain", 0)) != 0:
+		failures.append("M2: repeated drive should not give XP")
+	if not g5_ok:
+		failures.append("M2: garage 5-car achievement missing")
+	if not gall_ok:
+		failures.append("M2: garage all-cars achievement missing")
+	print("[M2] garage collection: first=+%d repeat=+%d 5car=%s all=%s" % [
+		int(car_first.get("xp_gain", 0)), int(car_repeat.get("xp_gain", 0)),
+		str(g5_ok), str(gall_ok)])
 	_clear_race()
 	ps_prof.save_profile(profile_backup)
 	_start_race("coast", car_id, "gp")
+	await _await_race_ready()
 	var rim_nodes := 0
 	if car == null:
 		failures.append("M2: tuned race car failed to spawn")
@@ -4722,11 +5010,19 @@ func _run_verification() -> void:
 		failures.append("M2: race car should mount 4 procedural wheels (%d)" % rim_nodes)
 	_clear_race()
 	_start_race("city", DEFAULT_CAR, "gp")
+	await _await_race_ready()
 	if car != null and car.model != null:
 		var headlights := car.model.find_children("Headlight*", "", true, false).size()
-		print("[M3] night race (city): headlights=%d scenery=%s" % [headlights, str(race != null)])
+		var ai_lights := 0
+		for rival in ais:
+			if rival != null and rival.model != null:
+				ai_lights += rival.model.find_children("Headlight_*", "", true, false).size()
+		print("[M3] night race (city): headlights=%d ai=%d/%d scenery=%s" % [
+			headlights, ai_lights, ais.size() * 2, str(race != null)])
 		if headlights != 2:
 			failures.append("M3: night car headlights %d/2" % headlights)
+		if ai_lights != ais.size() * 2:
+			failures.append("M3: night AI headlights %d/%d" % [ai_lights, ais.size() * 2])
 	var weather_ok := weather != null and weather.kind == "rain" and weather.particles != null
 	print("[M3] weather fx (city rain): ok=%s" % str(weather_ok))
 	if not weather_ok:
@@ -4758,7 +5054,7 @@ func _run_verification() -> void:
 			car.pos = ai0.pos + Vector3(0.2, 0.0, 0.1)
 			car.vel = Vector3.ZERO
 			for n in 16:
-				_resolve_car_contacts()
+				contacts.resolve()
 			var sep := Vector2(car.pos.x - ai0.pos.x, car.pos.z - ai0.pos.z).length()
 			print("[M3] car contact: separation after forced overlap = %.2fm" % sep)
 			if sep < 1.8:
@@ -4766,9 +5062,9 @@ func _run_verification() -> void:
 			# 防粘 + 防闪现：朝对方给 8m/s 的接触速度，解算一帧后位移必须很小、且已产生分离速度
 			car.pos = ai0.pos + Vector3(0.32, 0.0, 0.18)
 			car.vel = Vector3.ZERO
-			var ai_half_t := _car_half_extents(String(ai0.spec.get("id", "")))
-			var car_half_t := _car_half_extents(current_car_id)
-			var probe_hit := _obb_mtv(Vector2(car.pos.x, car.pos.z), car.heading, car_half_t,
+			var ai_half_t := CarContacts.half_extents(String(ai0.spec.get("id", "")))
+			var car_half_t := CarContacts.half_extents(current_car_id)
+			var probe_hit := CarContacts.obb_mtv(Vector2(car.pos.x, car.pos.z), car.heading, car_half_t,
 				Vector2(ai0.pos.x, ai0.pos.z), ai0.heading, ai_half_t)
 			if probe_hit["hit"]:
 				var nn: Vector2 = probe_hit["normal"]
@@ -4777,7 +5073,7 @@ func _run_verification() -> void:
 				var max_move := 0.0
 				for k in 18:
 					var pos_before := car.pos
-					_resolve_car_contacts()
+					contacts.resolve()
 					max_move = maxf(max_move, car.pos.distance_to(pos_before))
 				var ai_vel_t := Vector3(sin(ai0.heading), 0.0, cos(ai0.heading)) * ai0.speed
 				var vn_after := (car.vel - ai_vel_t).dot(n3t)
@@ -4796,16 +5092,16 @@ func _run_verification() -> void:
 				bb.offset = clampf(aa.offset + 0.45, -track_path.half_width + 2.2, track_path.half_width - 2.2)
 				bb.speed = aa.speed
 				for n in 24:
-					_resolve_car_contacts()
+					contacts.resolve()
 					var af := track_path.frame_at(aa.dist)
 					aa.pos = (af["pos"] as Vector3) + (af["side"] as Vector3) * aa.offset
 					aa.heading = atan2((af["tangent"] as Vector3).x, (af["tangent"] as Vector3).z)
 					var bf := track_path.frame_at(bb.dist)
 					bb.pos = (bf["pos"] as Vector3) + (bf["side"] as Vector3) * bb.offset
 					bb.heading = atan2((bf["tangent"] as Vector3).x, (bf["tangent"] as Vector3).z)
-				var half_aa := _car_half_extents(String(aa.spec.get("id", "")))
-				var half_bb := _car_half_extents(String(bb.spec.get("id", "")))
-				var residual := _obb_mtv(Vector2(aa.pos.x, aa.pos.z), aa.heading, half_aa,
+				var half_aa := CarContacts.half_extents(String(aa.spec.get("id", "")))
+				var half_bb := CarContacts.half_extents(String(bb.spec.get("id", "")))
+				var residual := CarContacts.obb_mtv(Vector2(aa.pos.x, aa.pos.z), aa.heading, half_aa,
 					Vector2(bb.pos.x, bb.pos.z), bb.heading, half_bb)
 				var residual_depth := float(residual["depth"]) if bool(residual["hit"]) else 0.0
 				var sep_ai := Vector2(aa.pos.x - bb.pos.x, aa.pos.z - bb.pos.z).length()
@@ -4848,7 +5144,7 @@ func _simulate_until_results(max_seconds: float = 400.0, dt: float = 1.0 / 120.0
 		if race.state != RaceManager.State.COUNTDOWN:
 			for ai in ais:
 				ai.update_ai(dt, car, race.race_laps, ais, race.player_pace)
-			_resolve_car_contacts()
+			contacts.resolve()
 		race.update(dt)
 		if current_mode == "ta":
 			_update_ghost(dt)
@@ -4883,11 +5179,50 @@ func _simulate_until_results(max_seconds: float = 400.0, dt: float = 1.0 / 120.0
 	return sim
 
 
+## 帧间隔分布诊断：APEX_FRAME_LOG=1 时自 race-ready 起采集 15s，
+## 分「入场/倒计时」与「比赛」两段打印分位数与超时帧数（不参与正式逻辑）。
+func _print_frame_stats() -> void:
+	for pair in [["intro", _frame_log_intro], ["race", _frame_log_race]]:
+		var samples: Array = (pair[1] as Array).duplicate()
+		var n := samples.size()
+		if n == 0:
+			continue
+		samples.sort()
+		var c17 := 0
+		var c20 := 0
+		var c25 := 0
+		var c33 := 0
+		var c50 := 0
+		for v in samples:
+			var ms := float(v) * 1000.0
+			if ms > 16.7:
+				c17 += 1
+			if ms > 20.0:
+				c20 += 1
+			if ms > 25.0:
+				c25 += 1
+			if ms > 33.0:
+				c33 += 1
+			if ms > 50.0:
+				c50 += 1
+		print("[FRAME] %s n=%d p50=%.1f p90=%.1f p99=%.1f max=%.1f ms | >16.7=%d >20=%d >25=%d >33=%d >50=%d" % [
+			String(pair[0]), n,
+			float(samples[int(n * 0.50)]) * 1000.0,
+			float(samples[int(n * 0.90)]) * 1000.0,
+			float(samples[int(n * 0.99)]) * 1000.0,
+			float(samples[n - 1]) * 1000.0,
+			c17, c20, c25, c33, c50])
+
+
 func _perf_tick(dt: float) -> void:
 	if state != AppState.RACE:
 		return
 	_perf_time += dt
 	_perf_sample_timer += dt
+	var vp := get_viewport()
+	if not _perf_measure_on:
+		RenderingServer.viewport_set_measure_render_time(vp.get_viewport_rid(), true)
+		_perf_measure_on = true
 	if _perf_sample_timer >= 0.1 and _perf_time > 2.5:
 		_perf_sample_timer = 0.0
 		_perf_samples.append(float(Engine.get_frames_per_second()))
@@ -4895,6 +5230,8 @@ func _perf_tick(dt: float) -> void:
 		_perf_triangles.append(float(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)))
 		_perf_proc_us.append(float(Performance.get_monitor(Performance.TIME_PROCESS)))
 		_perf_phys_us.append(float(Performance.get_monitor(Performance.TIME_PHYSICS_PROCESS)))
+		_perf_render_cpu.append(RenderingServer.viewport_get_measured_render_time_cpu(vp.get_viewport_rid()))
+		_perf_render_gpu.append(RenderingServer.viewport_get_measured_render_time_gpu(vp.get_viewport_rid()))
 	if _perf_time < 10.0:
 		return
 	var fps_sum := 0.0
@@ -4910,15 +5247,34 @@ func _perf_tick(dt: float) -> void:
 	var n := maxi(1, _perf_samples.size())
 	var proc_ms := 0.0
 	var phys_ms := 0.0
+	var cpu_ms := 0.0
+	var gpu_ms := 0.0
 	for i in _perf_proc_us.size():
 		proc_ms += _perf_proc_us[i]
 		phys_ms += _perf_phys_us[i]
+		if i < _perf_render_cpu.size():
+			cpu_ms += _perf_render_cpu[i]
+			gpu_ms += _perf_render_gpu[i]
 	var m := maxi(1, _perf_proc_us.size())
-	print("[PERF] track=%s car=%s mode=%s vsync_off" % [current_track_id, current_car_id, current_mode])
-	print("[PERF] fps avg=%.1f min=%.1f | draw_calls avg=%.0f | primitives avg=%.0f" % [
-		fps_sum / float(n), fps_min, draw_sum / float(n), tri_sum / float(n)])
-	print("[PERF] script_process avg=%.2f ms | physics avg=%.2f ms (帧预算 %.1f ms)" % [
-		proc_ms / float(m), phys_ms / float(m), 1000.0 / (fps_sum / float(n))])
+	var q := Settings.preset()
+	var shadow_atlas := int(q.get("shadow_atlas", 0))
+	print("[PERF] track=%s car=%s mode=%s preset=%s vsync_off" % [
+		current_track_id, current_car_id, current_mode, String(Settings.PRESETS[Settings.index]["id"])])
+	print("[PERF] fps avg=%.1f min=%.1f | frame %.2f ms | draw_calls avg=%.0f | primitives avg=%.0f" % [
+		fps_sum / float(n), fps_min, 1000.0 / maxf(fps_sum / float(n), 0.001),
+		draw_sum / float(n), tri_sum / float(n)])
+	print("[PERF] render_cpu avg=%.2f ms | render_gpu avg=%.2f ms | script avg=%.2f ms | physics avg=%.2f ms" % [
+		cpu_ms / float(m), gpu_ms / float(m), proc_ms / float(m), phys_ms / float(m)])
+	print("[PERF] viewport=%dx%d win=%dx%d tex=%dx%d oversample=%.2f screen_scale=%.2f scale_3d=%.2f msaa=%d taa=%s shadow_atlas=%d shadow_dist=%.0f" % [
+		vp.get_visible_rect().size.x, vp.get_visible_rect().size.y,
+		DisplayServer.window_get_size().x, DisplayServer.window_get_size().y,
+		vp.get_texture().get_size().x, vp.get_texture().get_size().y,
+		vp.get_oversampling(), DisplayServer.screen_get_scale(),
+		vp.scaling_3d_scale, vp.msaa_3d, str(vp.use_taa), shadow_atlas,
+		_sun.directional_shadow_max_distance if _sun != null else 0.0])
+	print("[PERF] allow_hidpi=%s content_scale_size=%s factor=%.2f" % [
+		str(ProjectSettings.get_setting("display/window/dpi/allow_hidpi", false)),
+		str(get_window().content_scale_size), get_window().content_scale_factor])
 	get_tree().quit(0)
 
 
@@ -4998,9 +5354,6 @@ func _run_scenery_audit() -> void:
 	for def in GameData.tracks:
 		var track_id := String(def.get("id", "?"))
 		if not only.is_empty() and only != "all" and track_id != only:
-			continue
-		if track_id == "open_world":
-			print("[AUDIT] %-9s skipped（开放世界走 OpenWorld 流水线，非环形赛道）" % track_id)
 			continue
 		var holder := Node3D.new()
 		holder.name = "AuditWorld"

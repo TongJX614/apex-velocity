@@ -7,9 +7,11 @@ extends RefCounted
 ##
 ## UDP 协议（默认 127.0.0.1:48255，可在 Settings 改端口）：
 ##   每个包一行/一个 JSON，任选其一：
-##     "0.42,0.86"                       → steer, throttle（-1..1 / 0..1）
+##     "0.42,0.86"                       → steer, throttle（-1..1 / -1..1）
 ##     "s=0.42;t=0.86"
 ##     {"steer":0.42,"throttle":0.86}
+##   throttle 允许为负：负值 = 刹车/倒车（ACE68 桥发的是 W 深度 − S 深度）。
+##   也可以用 "brake" 字段（0..1）单独表达刹车深度，最终油门 = throttle − brake。
 ##   频率建议 ≥120Hz；超过 STALE_MS 没收到就回退到键盘/手柄数字输入。
 ##
 ## 桥接参考实现：tools/analog_input/analog_bridge.py（含 --test 模拟器）。
@@ -72,7 +74,8 @@ static func _parse_packet(text: String) -> void:
 		if parsed is Dictionary:
 			var d: Dictionary = parsed
 			_raw_steer = clampf(_as_float(d.get("steer", _raw_steer)), -1.0, 1.0)
-			_raw_throttle = clampf(_as_float(d.get("throttle", _raw_throttle)), 0.0, 1.0)
+			# 保留负值：S 键深度（倒车/刹车）以负油门发进来，钳到 0 会永远挂不上 R。
+			_raw_throttle = clampf(_as_float(d.get("throttle", _raw_throttle)), -1.0, 1.0)
 			_raw_brake = clampf(_as_float(d.get("brake", _raw_brake)), 0.0, 1.0)
 			_last_packet_ms = _now_ms()
 			_packets += 1
@@ -113,7 +116,7 @@ static func _parse_packet(text: String) -> void:
 		got = true
 	if got:
 		_raw_steer = clampf(steer, -1.0, 1.0)
-		_raw_throttle = clampf(throttle, 0.0, 1.0)
+		_raw_throttle = clampf(throttle, -1.0, 1.0)
 		_raw_brake = clampf(brake, 0.0, 1.0)
 		_last_packet_ms = _now_ms()
 		_packets += 1
@@ -141,7 +144,7 @@ static func poll(port: int, enabled: bool) -> Dictionary:
 	var debug := _debug_steer != INF
 	if debug:
 		_raw_steer = clampf(_debug_steer, -1.0, 1.0)
-		_raw_throttle = clampf(_debug_throttle, 0.0, 1.0)
+		_raw_throttle = clampf(_debug_throttle, -1.0, 1.0)
 		_last_packet_ms = now
 	else:
 		_ensure_socket(port)
@@ -178,7 +181,7 @@ static func map_steer(raw: float, deadzone: float, curve: float) -> float:
 	return signf(v) * pow(clampf(mag, 0.0, 1.0), clampf(curve, 0.6, 3.0))
 
 
-## 按键深度 → 油门开度：0..1 幂曲线（负值视为刹车）
+## 按键深度 → 油门开度：-1..1 幂曲线（保号，负值 = 刹车/倒车）
 static func map_throttle(raw: float, curve: float) -> float:
 	var v := clampf(raw, -1.0, 1.0)
 	if absf(v) < 0.001:
@@ -198,6 +201,13 @@ static func self_test() -> String:
 	_parse_packet("{\"steer\":-0.6,\"throttle\":0.25,\"brake\":0.1}")
 	if absf(_raw_steer + 0.6) > 0.01 or absf(_raw_throttle - 0.25) > 0.01:
 		return "parse json failed (%.2f, %.2f)" % [_raw_steer, _raw_throttle]
+	# ACE68 桥发的油门是带符号的 W-S，负值必须保留（S = 刹车/倒车）
+	_parse_packet("{\"steer\":0.0,\"throttle\":-0.8}")
+	if _raw_throttle > -0.7:
+		return "parse signed throttle failed (%.2f)" % _raw_throttle
+	_parse_packet("s=0.0;t=-0.5")
+	if _raw_throttle > -0.4:
+		return "parse signed throttle text failed (%.2f)" % _raw_throttle
 	# 2) 映射曲线
 	if absf(map_steer(0.5, 0.0, 1.0) - 0.5) > 0.001:
 		return "map_steer linear failed"
@@ -207,12 +217,20 @@ static func self_test() -> String:
 		return "map_steer curve failed (%.3f)" % map_steer(0.5, 0.0, 1.35)
 	if absf(map_throttle(0.75, 1.15) - 0.7176) > 0.01:
 		return "map_throttle curve failed (%.3f)" % map_throttle(0.75, 1.15)
+	if map_throttle(-0.5, 1.15) > -0.3:
+		return "map_throttle sign lost (%.3f)" % map_throttle(-0.5, 1.15)
 	# 3) 调试注入 → active
 	set_debug_values(0.5, 0.75)
 	var st := poll(DEFAULT_PORT, true)
 	clear_debug_values()
 	if not bool(st.get("active", false)):
 		return "debug injection not active"
+	# 4) 负油门注入不能丢（磁轴 S 键倒车链路）
+	set_debug_values(0.0, -0.8)
+	poll(DEFAULT_PORT, true)
+	clear_debug_values()
+	if _raw_throttle > -0.7:
+		return "debug negative throttle lost (%.2f)" % _raw_throttle
 	status_text(DEFAULT_PORT)
 	clear_debug_values()
 	return ""

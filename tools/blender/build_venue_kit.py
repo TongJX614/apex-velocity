@@ -4,7 +4,7 @@ Run:
   ~/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup \
       --python tools/blender/build_venue_kit.py
 
-Outputs GLB files into assets/venues/ plus venue_manifest.json.
+Outputs GLB files into maps/assets/venues/ plus venue_manifest.json.
 
 Authoring convention: metres, Blender Z-up, asset front = +Y (Godot -Z),
 origin at ground centre. Materials are named Venue<Role> for runtime re-tint.

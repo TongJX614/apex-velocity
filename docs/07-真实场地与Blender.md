@@ -43,7 +43,7 @@ BL="$HOME/Applications/Blender.app/Contents/MacOS/Blender"
 "$BL" --background --factory-startup --python tools/blender/build_trees.py
 ```
 
-### 本轮产出的场地资产（`assets/venues/`）
+### 本轮产出的场地资产（`maps/assets/venues/`）
 
 | 资产 | 尺寸 | 内容 |
 | --- | --- | --- |
@@ -61,7 +61,7 @@ BL="$HOME/Applications/Blender.app/Contents/MacOS/Blender"
 所有资产按**真实米制**建模、Blender Z-up、正面 +Y（导出后 Godot -Z），
 同一材质网格自动合并，重复道具在 Godot 端转 MultiMesh。
 
-## 四、游戏内替换（`scripts/tracks/venue_kit.gd`）
+## 四、游戏内替换（`maps/scripts/tracks/venue_kit.gd`）
 
 - 自动寻找**最长直道**：主看台放一侧、维修区建筑放对面、维修墙贴着赛道；
 - 起跑线放龙门架；起点附近放大屏幕；
@@ -93,7 +93,7 @@ BL="$HOME/Applications/Blender.app/Contents/MacOS/Blender"
 ## 六、构建/替换流程（下次加新资产照做）
 
 1. 在 `tools/blender/build_venue_kit.py` 里加建模函数（真实米制、材质用 `Venue*` 命名）；
-2. 跑 Blender 无头导出 GLB 到 `assets/venues/`；
+2. 跑 Blender 无头导出 GLB 到 `maps/assets/venues/`；
 3. 在 `venue_kit.gd` 里加加载/摆放（重复道具用 MultiMesh）；
 4. `Godot --headless --path . --import` → `--verify` → `--perf-test` → 截图确认。
 

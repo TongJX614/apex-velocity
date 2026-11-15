@@ -3,7 +3,7 @@ extends SceneTree
 ## Usage:
 ##   ~/Applications/Godot.app/Contents/MacOS/Godot --headless --path . --script res://tools/verify_glb_import.gd
 
-const MODELS_DIR := "res://assets/cars/models"
+const MODELS_DIR := "res://cars/assets/models"
 
 
 func _init() -> void:

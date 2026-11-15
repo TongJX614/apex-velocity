@@ -10,11 +10,11 @@ extends SceneTree
 ##
 ##   --car=<id>    manifest 中的车辆 id（默认 bmw_m3_e46_gtr）
 ##   --match=<s>   材质名包含的子串，大小写敏感（默认 CarPaint）
-##   --model=<f>   直接指定 assets/cars/models 下的文件名（覆盖 --car）
+##   --model=<f>   直接指定 cars/assets/models 下的文件名（覆盖 --car）
 ##   --all         打印所有材质（忽略 --match）
 
 const MANIFEST_PATH := "res://data/car_manifest.json"
-const MODELS_DIR := "res://assets/cars/models"
+const MODELS_DIR := "res://cars/assets/models"
 
 var _car := "bmw_m3_e46_gtr"
 var _match := "CarPaint"

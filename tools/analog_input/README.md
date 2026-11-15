@@ -33,7 +33,9 @@ python3 tools/analog_input/analog_bridge.py --stdin
 
 协议细节（游戏端解析）：
 - `steer`：-1（左满）~ +1（右满），0 回正
-- `throttle`：0~1（油门开度）；`brake`：0~1（刹车深度），最终油门 = throttle - brake
+- `throttle`：-1~1，0~1 为油门；**负值 = 刹车/倒车**（ACE68 桥发的就是 W 深度 − S 深度，
+  S 踩得越深负得越多，车停下后按住 S 即挂 R 挡）
+- `brake`：0~1（刹车深度，可选），最终油门 = throttle - brake
 - 包长 <512 字节，超过 380ms 没新包自动回退键盘
 
 ### 3) 磁轴键盘 HID 直读（进阶，需要改配置）

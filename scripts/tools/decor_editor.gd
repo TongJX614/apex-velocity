@@ -1095,7 +1095,7 @@ func _setup_hud() -> void:
 # ---------------------------------------------------------------------------
 # 项目库模型浏览器
 # ---------------------------------------------------------------------------
-## 右侧列出 res://assets/venues 下的全部 .glb。选中一个 → 进入放置模式，
+## 右侧列出 res://maps/assets/venues 下的全部 .glb。选中一个 → 进入放置模式，
 ## 在地面点一下就把它摆上去；摆上去的模型和程序化装饰一样能被选中、移动、缩放、删除。
 func _setup_asset_browser() -> void:
 	var layer := CanvasLayer.new()
@@ -1136,10 +1136,10 @@ func _setup_asset_browser() -> void:
 	search.text_changed.connect(_on_search_changed)
 	vb.add_child(search)
 
-	# 导入自己的模型：选一个 .glb 拷进 assets/venues，立刻出现在列表里可用。
+	# 导入自己的模型：选一个 .glb 拷进 maps/assets/venues，立刻出现在列表里可用。
 	var import_btn := Button.new()
 	import_btn.text = "＋ 导入模型（.glb）"
-	import_btn.tooltip_text = "把本机的 .glb 拷进项目 assets/venues，马上就能摆放"
+	import_btn.tooltip_text = "把本机的 .glb 拷进项目 maps/assets/venues，马上就能摆放"
 	import_btn.pressed.connect(_on_import_pressed)
 	vb.add_child(import_btn)
 
@@ -1245,7 +1245,7 @@ func _on_search_changed(text: String) -> void:
 # ---------------------------------------------------------------------------
 # 导入自己的模型
 # ---------------------------------------------------------------------------
-## 把本机的 .glb 拷进 assets/venues/，立刻进列表可用。
+## 把本机的 .glb 拷进 maps/assets/venues/，立刻进列表可用。
 ## 关键点：Godot 的导入流水线只在编辑器进程里跑，运行时新拷进来的 glb
 ## 用 load() 是拿不到的 —— 所以 RealAssetKit 那边加了 GLTFDocument 现场解析的兜底。
 func _on_import_pressed() -> void:
@@ -1304,7 +1304,7 @@ func _import_model(src: String) -> void:
 	_fill_asset_list("")
 	_thumb_queue.append(base)
 	_select_asset(base)
-	_import_notify("已导入 %s → assets/venues/%s.glb（%s KB）" % [
+	_import_notify("已导入 %s → maps/assets/venues/%s.glb（%s KB）" % [
 		fname, base, str(maxi(1, bytes.size() / 1024))], true)
 	print("[IMPORT] %s -> %s (%d bytes)" % [src, dst_res, bytes.size()])
 
@@ -1546,7 +1546,7 @@ func _show_preview(asset: String) -> void:
 		return
 	_preview_asset = asset
 	_preview_name.text = asset
-	# 手搓道具（护栏柱、海滩伞…）不在 assets/venues 里，拍不出缩略图，直接说明
+	# 手搓道具（护栏柱、海滩伞…）不在 maps/assets/venues 里，拍不出缩略图，直接说明
 	if not _asset_names.has(asset):
 		_preview_tex.texture = null
 		_preview_info.text = "程序化道具 · 无模型预览"

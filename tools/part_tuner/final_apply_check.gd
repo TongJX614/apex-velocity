@@ -8,9 +8,9 @@ extends SceneTree
 var _frames := 0
 var _done := false
 var _garage: Node   # Garage autoload（运行时取，编译期标识符不可用）
-const PL_R := "res://scripts/cars/parts_library.gd"
-const CV_R := "res://scripts/cars/car_visual.gd"
-const GL_R := "res://scripts/cars/garage_look.gd"
+const PL_R := "res://cars/scripts/parts_library.gd"
+const CV_R := "res://cars/scripts/car_visual.gd"
+const GL_R := "res://cars/scripts/garage_look.gd"
 
 
 func _process(_d: float) -> bool:

@@ -18,6 +18,7 @@ config/features=PackedStringArray("4.7", "Forward Plus")
 
 [autoload]
 
+PackLoader="*res://scripts/core/pack_loader.gd"
 Settings="*res://scripts/core/settings.gd"
 GameData="*res://scripts/core/game_data.gd"
 Garage="*res://scripts/core/garage_store.gd"

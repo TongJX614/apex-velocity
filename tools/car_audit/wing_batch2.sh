@@ -4,7 +4,7 @@ GODOT=/Users/tong/Applications/Godot.app/Contents/MacOS/Godot
 PROJ=/Users/tong/Desktop/极速巅峰
 OUT=/tmp/wing_audit/batch2
 mkdir -p "$OUT"
-ROTATED="zeekr_7x xiaomi_su7"
+ROTATED="zeekr_7x"
 cars=$(cat /tmp/wing_audit/car_list.txt)
 for car in $cars; do
   plus=""

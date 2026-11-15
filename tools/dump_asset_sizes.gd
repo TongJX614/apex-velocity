@@ -1,5 +1,5 @@
 extends SceneTree
-## 打印开放世界用到的真实资产的包围盒尺寸与水平占位半径，
+## 打印真实资产库的包围盒尺寸与水平占位半径，
 ## 用来排查"某根柱子特别大""楼骑在路上"这类比例问题。
 ##
 ## 注意：RealAssetKit 以前硬依赖 Settings autoload，在 --script 模式下

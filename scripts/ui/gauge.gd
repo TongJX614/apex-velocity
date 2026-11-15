@@ -28,6 +28,12 @@ var show_minor := true
 
 var _current := 0.0
 var _target := 0.0
+# 收敛后不再每帧重绘：指针到位、外部字段没变、不在断油闪烁时跳过 _draw。
+var _dirty := true
+var _snap_text := ""
+var _snap_redline := -1.0
+var _snap_warn := -1.0
+var _snap_hot := false
 
 
 func setup(dial_kind: Kind, maximum: float, step: float) -> void:
@@ -36,17 +42,36 @@ func setup(dial_kind: Kind, maximum: float, step: float) -> void:
 	major_step = step
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	custom_minimum_size = Vector2(200, 200)
+	_dirty = true
 
 
 func set_value(value: float, immediate: bool = false) -> void:
-	_target = clampf(value, 0.0, max_value * 1.05)
+	var t := clampf(value, 0.0, max_value * 1.05)
+	if t != _target:
+		_target = t
+		_dirty = true
 	if immediate:
 		_current = _target
 
 
 func _process(dt: float) -> void:
 	var rate := 16.0 if _target > _current else 9.0
+	var prev := _current
 	_current = lerpf(_current, _target, 1.0 - exp(-rate * dt))
+	if absf(_current - prev) > 0.05:
+		_dirty = true
+	elif absf(_current - _target) <= 0.05:
+		_current = _target
+	if digital_text != _snap_text or redline_from != _snap_redline \
+			or warn_from != _snap_warn or hot != _snap_hot or hot:
+		_dirty = true
+	if not _dirty:
+		return
+	_dirty = false
+	_snap_text = digital_text
+	_snap_redline = redline_from
+	_snap_warn = warn_from
+	_snap_hot = hot
 	queue_redraw()
 
 

@@ -8,7 +8,9 @@ signal track_selected(track_id: String)
 
 const ACCENT := UIStyle.ACCENT
 const PANEL_W := 1240.0
-const PANEL_H := 680.0
+# 现在是 10 条赛道（2 列 × 5 行），680 高会让最后一行卡片溢出面板，
+# 800 高刚好容纳 5 行卡片 + 底栏，并给详情列表更长的可视区域。
+const PANEL_H := 800.0
 const PAD := 40.0
 const COL_GAP := 14.0
 const CARD_H := 100.0
@@ -29,6 +31,11 @@ var _detail_track_id := ""
 var _sort_mode := 0
 var _sort_buttons: Array[Button] = []
 var _detail_open := false
+# 列表页元素：进入详情时隐藏，避免两套底栏/按键提示同时出现。
+var _close_btn: Button
+var _sub_label: Label
+var _summary_label: Label
+var _foot_row: HBoxContainer
 
 
 func _ready() -> void:
@@ -74,49 +81,59 @@ func _ready() -> void:
 	UIStyle.place(title, 0, 0, 1, 0, PAD, 48, -300, 92)
 	_panel.add_child(title)
 
-	var sub := UIStyle.label_tracked("8 站精通 · 个人最佳 · ENTER / 点击卡片 查看全部成绩并可排序   ·   ESC 关闭",
+	_sub_label = UIStyle.label_tracked("%d 站精通 · 个人最佳 · ENTER / 点击卡片 查看全部成绩并可排序   ·   ESC 关闭" % _archive_tracks().size(),
 		10, UIStyle.TXT_DIM, HORIZONTAL_ALIGNMENT_LEFT, 1)
-	UIStyle.place(sub, 0, 0, 1, 0, PAD + 2, 94, -PAD, 114)
-	_panel.add_child(sub)
+	UIStyle.place(_sub_label, 0, 0, 1, 0, PAD + 2, 94, -PAD, 114)
+	_panel.add_child(_sub_label)
 
-	var close_btn := Button.new()
-	close_btn.focus_mode = Control.FOCUS_ALL
-	close_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	UIStyle.apply_button(close_btn, ACCENT, "ghost", 11)
-	UIStyle.place(close_btn, 1, 0, 1, 0, -276, 28, -40, 68)
-	close_btn.pressed.connect(_close)
-	_panel.add_child(close_btn)
+	_close_btn = Button.new()
+	_close_btn.focus_mode = Control.FOCUS_ALL
+	_close_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	UIStyle.apply_button(_close_btn, ACCENT, "ghost", 11)
+	UIStyle.place(_close_btn, 1, 0, 1, 0, -276, 28, -40, 68)
+	_close_btn.pressed.connect(_close)
+	_panel.add_child(_close_btn)
 	var close_row := HBoxContainer.new()
 	close_row.set_anchors_preset(Control.PRESET_FULL_RECT)
 	close_row.offset_left = 14
 	close_row.offset_right = -12
 	close_row.add_theme_constant_override("separation", 8)
 	close_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	close_btn.add_child(close_row)
+	_close_btn.add_child(close_row)
 	close_row.add_child(UIStyle.label("✕", 12, UIStyle.a(ACCENT, 0.95)))
 	close_row.add_child(UIStyle.label("关闭  /  CLOSE", 11, UIStyle.TXT_SUB))
 	close_row.add_child(UIStyle.spacer())
-	close_row.add_child(UIStyle.keycap("ESC", ACCENT, 9))
+	var esc_key := UIStyle.keycap("ESC", ACCENT, 9)
+	esc_key.visible = Settings.key_hints
+	close_row.add_child(esc_key)
 
 	var profile := ProfileStore.load_profile()
-	var summary := UIStyle.label_tech(_summary_text(profile), 12, UIStyle.TXT_SUB,
+	_summary_label = UIStyle.label_tech(_summary_text(profile), 12, UIStyle.TXT_SUB,
 		HORIZONTAL_ALIGNMENT_LEFT, 1)
-	UIStyle.place(summary, 0, 0, 1, 0, PAD, 124, -PAD, 154)
-	_panel.add_child(summary)
+	UIStyle.place(_summary_label, 0, 0, 1, 0, PAD, 124, -PAD, 154)
+	_panel.add_child(_summary_label)
 
 	_build_grid(profile)
 	_build_detail()
 
-	var foot := HBoxContainer.new()
-	foot.add_theme_constant_override("separation", 10)
-	UIStyle.place(foot, 0, 1, 1, 1, PAD, -56, -PAD, -26)
-	_panel.add_child(foot)
-	foot.add_child(UIStyle.keycap("↑ ↓ ← →", ACCENT, 9))
-	foot.add_child(UIStyle.label("选择赛道", 10, UIStyle.TXT_DIM))
-	foot.add_child(UIStyle.keycap("ENTER", ACCENT, 9))
-	foot.add_child(UIStyle.label("查看全部成绩", 10, UIStyle.TXT_DIM))
-	foot.add_child(UIStyle.spacer())
-	foot.add_child(UIStyle.label_tracked("MASTERY  BRONZE · SILVER · GOLD", 9,
+	_foot_row = HBoxContainer.new()
+	_foot_row.add_theme_constant_override("separation", 10)
+	UIStyle.place(_foot_row, 0, 1, 1, 1, PAD, -56, -PAD, -26)
+	_panel.add_child(_foot_row)
+	var nav_key := UIStyle.keycap("↑ ↓ ← →", ACCENT, 9)
+	nav_key.visible = Settings.key_hints
+	_foot_row.add_child(nav_key)
+	var nav_lbl := UIStyle.label("选择赛道", 10, UIStyle.TXT_DIM)
+	nav_lbl.visible = Settings.key_hints
+	_foot_row.add_child(nav_lbl)
+	var enter_key := UIStyle.keycap("ENTER", ACCENT, 9)
+	enter_key.visible = Settings.key_hints
+	_foot_row.add_child(enter_key)
+	var enter_lbl := UIStyle.label("查看全部成绩", 10, UIStyle.TXT_DIM)
+	enter_lbl.visible = Settings.key_hints
+	_foot_row.add_child(enter_lbl)
+	_foot_row.add_child(UIStyle.spacer())
+	_foot_row.add_child(UIStyle.label_tracked("MASTERY  BRONZE · SILVER · GOLD", 9,
 		UIStyle.a(UIStyle.GOLD, 0.72), HORIZONTAL_ALIGNMENT_RIGHT, 2))
 
 	_panel.pivot_offset = Vector2(PANEL_W, PANEL_H) * 0.5
@@ -131,13 +148,9 @@ func _ready() -> void:
 	_focus_current()
 
 
-## 档案只覆盖 8 条 GP 赛道；开放世界是自由漫游，不参与圈速精通。
+## 档案覆盖全部赛道。
 func _archive_tracks() -> Array:
-	var out: Array = []
-	for def in GameData.tracks:
-		if not bool(def.get("openWorld", false)):
-			out.append(def)
-	return out
+	return GameData.tracks
 
 
 func _summary_text(profile: Dictionary) -> String:
@@ -437,7 +450,7 @@ func _build_detail() -> void:
 	_detail_scroll = ScrollContainer.new()
 	_detail_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_detail_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	UIStyle.place(_detail_scroll, 0, 0, 1, 0, PAD + 16, 246, -PAD - 16, 568)
+	UIStyle.place(_detail_scroll, 0, 0, 1, 0, PAD + 16, 246, -PAD - 16, 652)
 	_detail_root.add_child(_detail_scroll)
 	_detail_list = VBoxContainer.new()
 	_detail_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -445,12 +458,14 @@ func _build_detail() -> void:
 	_detail_scroll.add_child(_detail_list)
 
 	var back := UIStyle.make_button("ESC   返回赛道列表", ACCENT, "ghost", 11, 30.0)
-	UIStyle.place(back, 0, 0, 0, 0, PAD + 16, 580, PAD + 236, 612)
+	UIStyle.place(back, 0, 0, 0, 0, PAD + 16, 664, PAD + 236, 696)
 	back.pressed.connect(_close_detail)
 	_detail_root.add_child(back)
 
 	var choose := UIStyle.make_button("ENTER   切换到该赛道", UIStyle.GOLD, "primary", 11, 30.0)
-	UIStyle.place(choose, 0, 0, 1, 0, -PAD - 272, 580, -PAD - 16, 612)
+	# 右锚点按钮必须左右都用 1，否则左边缘以 0 锚点为基准、负偏移会把按钮
+	# 从画布左边一直拉到右边，变成横贯整屏的金色条。
+	UIStyle.place(choose, 1, 0, 1, 0, -PAD - 272, 664, -PAD - 16, 696)
 	choose.pressed.connect(func() -> void: _choose(_detail_track_id))
 	_detail_root.add_child(choose)
 
@@ -461,6 +476,16 @@ func _open_detail(track_id: String) -> void:
 	_detail_root.visible = true
 	for card in _cards:
 		card.visible = false
+	# 详情页有自己的返回/切换操作和排序栏，隐藏列表页的说明与底栏，
+	# 否则会出现两套互相矛盾的按键提示（截图里的 ESC/ENTER 冲突）。
+	if _close_btn != null:
+		_close_btn.visible = false
+	if _sub_label != null:
+		_sub_label.visible = false
+	if _summary_label != null:
+		_summary_label.visible = false
+	if _foot_row != null:
+		_foot_row.visible = false
 	_refresh_detail()
 	if not _sort_buttons.is_empty():
 		_sort_buttons[_sort_mode].grab_focus()
@@ -471,6 +496,14 @@ func _close_detail() -> void:
 	_detail_root.visible = false
 	for card in _cards:
 		card.visible = true
+	if _close_btn != null:
+		_close_btn.visible = true
+	if _sub_label != null:
+		_sub_label.visible = true
+	if _summary_label != null:
+		_summary_label.visible = true
+	if _foot_row != null:
+		_foot_row.visible = true
 	var index := _track_index(_detail_track_id)
 	if index >= 0 and index < _cards.size():
 		_cards[index].grab_focus()
@@ -708,7 +741,9 @@ func _medal_color(medal: String) -> Color:
 
 func _date_text(unix_time: int) -> String:
 	if unix_time <= 0:
-		return "存档最佳"
+		# 老存档只有圈速、没有时间戳；写“历史”比“存档最佳”更准确，
+		# 也避免整列重复同一个词像坏数据。
+		return "历史"
 	var d := Time.get_datetime_dict_from_unix_time(unix_time)
 	return "%02d-%02d %02d:%02d" % [int(d["month"]), int(d["day"]), int(d["hour"]), int(d["minute"])]
 
@@ -716,9 +751,16 @@ func _date_text(unix_time: int) -> String:
 func _process(delta: float) -> void:
 	if not _detail_open or _detail_scroll == null:
 		return
+	var step := 0.0
 	var v := Input.get_joy_axis(0, JOY_AXIS_RIGHT_Y)
 	if absf(v) > 0.35:
-		_detail_scroll.scroll_vertical += int(v * 620.0 * delta)
+		step += v * 620.0 * delta
+	if Input.is_key_pressed(KEY_DOWN) or Input.is_key_pressed(KEY_S):
+		step += 620.0 * delta
+	if Input.is_key_pressed(KEY_UP) or Input.is_key_pressed(KEY_W):
+		step -= 620.0 * delta
+	if absf(step) > 0.01:
+		_detail_scroll.scroll_vertical += int(step)
 
 
 func _choose(track_id: String) -> void:

@@ -145,7 +145,7 @@ def main():
     A('- 安装文件 sha256 逐一校验通过；被覆盖目标文件备份在 `%s/pre_install/`' % after)
     A('- 安装后导出侧追加 `xiaomi_su7` 单台重导（轮毂/轮胎几何重分+胎体定轴定心，`INSTALL_MANIFEST.updated=21:00 "xiaomi_su7 reworked"`，'
       'sha256 `7c0bca8c…`），已重新导入并复验：胎体 PCA 0.0~0.79°、轮心偏移 ≤0.0005m、胎体 y/z≈0.99；'
-      '本项目 `assets/cars/models/xiaomi_su7.glb` 已是该重导版。')
+      '本项目 `cars/assets/models/xiaomi_su7.glb` 已是该重导版。')
     A('- Godot `--editor --quit` 导入：0 import error / 0 SCRIPT ERROR')
     A('')
     A('## 2. after 静态审计摘要')
@@ -343,7 +343,7 @@ def main():
     A(f'| `{after}/compare_*.png`、`contact_*.png` | 新旧拼图 / 相册 |')
     A('')
     A('---')
-    A('_本次 task-4 只写 `assets/cars/models/`（安装）与 `tools/car_audit/`、`/tmp`；未改 `scripts/`、`data/`、`docs/`；'
+    A('_本次 task-4 只写 `cars/assets/models/`（安装）与 `tools/car_audit/`、`/tmp`；未改 `scripts/`、`data/`、`docs/`；'
       '用户存档/设置未留改动。_')
 
     text = '\n'.join(L) + '\n'

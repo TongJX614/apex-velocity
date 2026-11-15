@@ -5,8 +5,8 @@ Run headless:
   /Users/tong/Applications/Blender.app/Contents/MacOS/Blender -b --python \
       tools/blender/decimate_hq_scenery.py
 
-Source models: assets/thirdparty/polyhaven/models/<id>/<id>.gltf  (CC0)
-Output LODs  : assets/venues/<out>.glb
+Source models: maps/assets/polyhaven/models/<id>/<id>.gltf  (CC0)
+Output LODs  : maps/assets/venues/<out>.glb
 
 Design notes:
 * Poly Haven originals are photogrammetry scans (up to 1.27M tris here);

@@ -7,6 +7,7 @@ signal resume_requested
 signal restart_requested
 signal settings_requested
 signal menu_requested
+signal photo_requested
 
 const ACCENT := UIStyle.ACCENT
 
@@ -131,6 +132,9 @@ func _build() -> void:
 	hint_row.add_child(UIStyle.label("继续比赛", 10, Color(0.60, 0.72, 0.81, 1.0)))
 	hint_row.add_child(UIStyle.keycap("M", ACCENT, 9))
 	hint_row.add_child(UIStyle.label("返回主菜单", 10, Color(0.60, 0.72, 0.81, 1.0)))
+	hint_row.add_child(UIStyle.keycap("P", UIStyle.GOLD, 9))
+	hint_row.add_child(UIStyle.label("拍照模式", 10, Color(0.60, 0.72, 0.81, 1.0)))
+	hint_row.visible = Settings.key_hints
 
 	# 右侧按钮列
 	var panel := Panel.new()
@@ -159,6 +163,11 @@ func _build() -> void:
 	_add_button(buttons_box, "02", "重新开始", "RESTART", restart_requested, UIStyle.SILVER, false)
 	_add_button(buttons_box, "03", "设置", "SETTINGS", settings_requested, UIStyle.SILVER, false)
 	_add_button(buttons_box, "04", "返回主菜单", "MAIN MENU", menu_requested, UIStyle.RED, false)
+
+	# 拍照模式单独放在左侧，不挤占右侧 4 个主菜单按钮的高度。
+	_add_button(_root, "05", "拍照模式", "PHOTO MODE", photo_requested, UIStyle.GOLD, false)
+	var photo_btn: Button = _buttons[_buttons.size() - 1]
+	UIStyle.place(photo_btn, 0, 0, 0, 0, 62, 126, 362, 186)
 
 	var note := UIStyle.label("HUD 与画质设置可在「设置」中即时调整。", 9,
 		Color(0.52, 0.64, 0.73, 0.95))
@@ -256,3 +265,6 @@ func _input(event: InputEvent) -> void:
 		if key == KEY_M:
 			get_viewport().set_input_as_handled()
 			menu_requested.emit()
+		elif key == KEY_P:
+			get_viewport().set_input_as_handled()
+			photo_requested.emit()

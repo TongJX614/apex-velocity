@@ -1,5 +1,5 @@
 #!/bin/bash
-# APEX VELOCITY — 安装 staging 新 GLB 到游戏 assets/cars/models/
+# APEX VELOCITY — 安装 staging 新 GLB 到游戏 cars/assets/models/
 #
 # 依据 /tmp/car_export_out/batch_report.json：
 #   - status=ok 且无 measured_r 偏差>5% / 结构异常告警 → 安装
@@ -14,7 +14,7 @@
 #   /tmp/car_after/install_plan.txt     每台的决策（install/skip/keep-old + 原因 + 大小 + sha256）
 #   /tmp/car_after/pre_install/         被覆盖前的项目文件备份
 #
-# 说明: 只写 assets/cars/models/ 与 /tmp；不改 data/、scripts/。
+# 说明: 只写 cars/assets/models/ 与 /tmp；不改 data/、scripts/。
 
 set -u
 DRY=0
@@ -130,7 +130,7 @@ for slug, info in sorted(entries.items()):
     size = os.path.getsize(rp) if exists else 0
     decisions.append({
         'action': action, 'car_id': car_id or slug, 'slug': slug, 'model': model,
-        'target': os.path.join('assets/cars/models', model),
+        'target': os.path.join('cars/assets/models', model),
         'source': rp, 'report_json': rpj,
         'size': size, 'status': status, 'reasons': reasons,
         'tris': info.get('tris'), 'nodes': info.get('nodes'), 'meshes': info.get('meshes'),
@@ -172,7 +172,7 @@ while IFS=$'\t' read -r action car_id slug model source size tris nodes status r
 		echo "SKIP   $car_id ($slug): $reasons" | tee -a "$PLAN"
 		continue
 	fi
-	target="$PROJECT/assets/cars/models/$model"
+	target="$PROJECT/cars/assets/models/$model"
 	[ -f "$source" ] || { echo "FAIL   $car_id: staging 文件消失 $source" | tee -a "$PLAN"; FAILED=$((FAILED + 1)); continue; }
 	# 覆盖前备份当前项目文件（仅一次）
 	if [ -f "$target" ] && [ ! -f "$OUT_DIR/pre_install/$model" ]; then

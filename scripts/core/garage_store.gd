@@ -1,15 +1,15 @@
 extends Node
 ## Autoload `Garage`: per-car garage configuration + performance upgrades.
 ##
-## Ported from the legacy garage.js. Note: the legacy build sets `credits` to
-## Infinity ("the tuning works is funded indefinitely"), so cosmetics and
-## upgrades are free here too — there is no coin economy to grind.
+## 升级消耗 ProfileStore 的 XP 余额（正式经济）。开发期曾用无限积分配置，
+## 旧存档的 spent 没有真实扣款，加载时做一次性迁移清空，避免重置时凭空退款。
 ## Config is persisted to user://garage.json.
 
 const SAVE_PATH := "user://garage.json"
+const ECONOMY_VERSION := 1
 # 真件库：用 preload 显式加载（新 class_name 在全局类缓存刷新前不可用，
 # autoload 启动早于缓存扫描，直接写类名会导致整个 Garage 加载失败）
-const PartsLibrary := preload("res://scripts/cars/parts_library.gd")
+const PartsLibrary := preload("res://cars/scripts/parts_library.gd")
 const OPTION_KEYS := ["paint", "rim", "caliper", "wheel", "tire", "wing", "livery"]
 const UPGRADE_KEYS := ["engine", "tires", "aero", "nitro",
 	"gearbox", "brakes", "weight", "suspension"]
@@ -68,29 +68,28 @@ func _normalize(raw: Dictionary) -> Dictionary:
 
 
 func load_from_disk() -> void:
-	if not FileAccess.file_exists(SAVE_PATH):
-		cars = default_cars()
-		return
-	var f := FileAccess.open(SAVE_PATH, FileAccess.READ)
-	if f == null:
-		cars = default_cars()
-		return
-	var text := f.get_as_text()
-	f.close()
-	var parsed = JSON.parse_string(text)
-	if typeof(parsed) != TYPE_DICTIONARY:
+	var parsed: Variant = SafeJson.read_dict(SAVE_PATH)
+	if parsed == null:
 		cars = default_cars()
 		return
 	cars = _normalize(parsed)
+	if int((parsed as Dictionary).get("economy_version", 0)) < ECONOMY_VERSION:
+		_migrate_economy()
+
+
+## 旧存档的 spent 是「无限积分时代」的记录，没有真实扣款；
+## 保留改装等级，但清空退款账，防止正式经济下白拿 XP。
+func _migrate_economy() -> void:
+	for car_id in cars:
+		var cfg: Dictionary = cars[car_id]
+		cfg["spent"] = {}
+	print("[GARAGE] 正式经济迁移：清理旧 spent 记录（改装等级保留）")
+	save_to_disk()
 
 
 func save_to_disk() -> void:
-	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
-	if f == null:
+	if not SafeJson.write(SAVE_PATH, JSON.stringify({"economy_version": ECONOMY_VERSION, "cars": cars}, "  ")):
 		push_error("Garage: cannot write %s" % SAVE_PATH)
-		return
-	f.store_string(JSON.stringify({"cars": cars}, "  "))
-	f.close()
 
 
 func config(car_id: String) -> Dictionary:
@@ -306,17 +305,21 @@ func add_upgrade_level(car_id: String, key: String) -> bool:
 	return true
 
 
-func reset_upgrades(car_id: String) -> void:
+func reset_upgrades(car_id: String) -> int:
 	var cfg := config(car_id)
 	var spent: Dictionary = cfg.get("spent", {})
 	var refund := 0
 	for key in UPGRADE_KEYS:
 		refund += maxi(0, int(spent.get(key, 0)))
+	if refund <= 0:
+		# 旧存档（无限积分时代）没有真实扣款：重置只会白丢等级，直接拒绝。
+		return 0
+	for key in UPGRADE_KEYS:
 		cfg[key] = 0
 	cfg["spent"] = {}
-	if refund > 0:
-		ProfileStore.refund_credits(refund)
+	ProfileStore.refund_credits(refund)
 	save_to_disk()
+	return refund
 
 
 # ---------------------------------------------------------------------------

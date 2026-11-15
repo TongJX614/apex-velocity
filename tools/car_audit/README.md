@@ -35,7 +35,7 @@ APEX VELOCITY（极速巅峰）车模升级项目的**可复现审计与实拍�
 --out-report=/tmp/car_audit_report.txt   人读报告
 --out-json=/tmp/car_audit.json           机读 JSON
 --manifest=res://data/car_manifest.json  车辆索引（默认，直接 FileAccess 读取）
---cars-dir=res://assets/cars/models      GLB 目录
+--cars-dir=res://cars/assets/models      GLB 目录
 ```
 
 审计内容：
@@ -112,7 +112,7 @@ bash tools/car_audit/install_new_models.sh
 bash tools/car_audit/capture_baseline_shots.sh /tmp/car_after
 /Users/tong/.dsh/dsh-runtimes/dsh-primary-runtime/dependencies/python/bin/python3 \
   tools/car_audit/make_compare_montage.py --old-dir /tmp/car_baseline --new-dir /tmp/car_after \
-  --ids bmw_m3_e46_gtr bmw_i8 xiaomi_su7 lambo_urus buick_gl8 hyundai_elantra --out-dir /tmp/car_after
+  --ids bmw_m3_e46_gtr bmw_i8 lamborghini_aventador lambo_urus buick_gl8 hyundai_elantra --out-dir /tmp/car_after
 ```
 
 runtime_probe 额外产物（对应验收项 2/3/4）：
@@ -136,7 +136,7 @@ runtime_probe 额外产物（对应验收项 2/3/4）：
 
 - **不要在项目根直接删除/移动任何现有文件**；本工具只读项目和写 `/tmp`。
 - 升级前基线是在**冻结副本**上采集的（项目外备份 + `/tmp/proj_oldlight`）：因为 Lead 从 20:14 起开始替换
-  `assets/cars/models/*.glb`，而车库打光同时被另一位 teammate 修改。复现旧基线时请在冻结副本/旧备份上跑。
+  `cars/assets/models/*.glb`，而车库打光同时被另一位 teammate 修改。复现旧基线时请在冻结副本/旧备份上跑。
 - 车库截图受 `scripts/ui/garage_world.gd` 打光影响；跨轮对比请保持同一打光版本，或只比较模型几何/材质。
 - `transparency=4 (ALPHA_DEPTH_PRE_PASS)` 是 Godot glTF 导入 `alphaMode=BLEND` 的默认结果，
   审计会单独列出，便于确认「透明材质是否只剩玻璃」。

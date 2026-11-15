@@ -17,9 +17,12 @@ uniform float stars_amount : hint_range(0.0, 1.0) = 0.0;
 uniform vec3 haze_color : source_color = vec3(0.72, 0.80, 0.86);
 uniform float haze_strength : hint_range(0.0, 1.0) = 0.35;
 uniform vec3 sun_color : source_color = vec3(1.0, 0.95, 0.86);
+uniform float aurora_amount : hint_range(0.0, 1.0) = 0.0;
 
 float hash(vec2 p) {
-	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+	p = fract(p * vec2(123.34, 456.21));
+	p += dot(p, p + 45.32);
+	return fract(p.x * p.y);
 }
 
 float noise2(vec2 p) {
@@ -97,6 +100,19 @@ void sky() {
 		float star = smoothstep(0.993, 1.0, s) * (0.6 + 0.6 * hash(cell + 3.1));
 		sky_color += star_col * star * twinkle * stars_amount
 			* smoothstep(0.015, 0.25, dir.y) * (1.0 - cov * 0.85);
+	}
+
+	// ---- 极光（仅极地主题启用）----
+	if (aurora_amount > 0.001 && dir.y > 0.02) {
+		float az = atan(dir.z, dir.x);
+		float ribbon = 0.27 + 0.10 * sin(az * 2.0 + 0.8) + 0.035 * sin(az * 5.0 - 1.7);
+		float band = exp(-pow((dir.y - ribbon) / 0.105, 2.0));
+		float fold = 0.55 + 0.45 * sin(az * 14.0 + TIME * 0.25 + sin(az * 5.0) * 2.0);
+		float veil = noise2(vec2(az * 6.0 + TIME * 0.04, dir.y * 9.0));
+		float mask = smoothstep(0.12, 0.62, veil * 0.6 + fold * 0.4);
+		vec3 ac = mix(vec3(0.14, 0.95, 0.55), vec3(0.35, 0.45, 1.0),
+			smoothstep(0.2, 0.9, veil));
+		sky_color += ac * band * mask * aurora_amount * 1.05;
 	}
 
 	COLOR = sky_color;

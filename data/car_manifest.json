@@ -2100,53 +2100,6 @@
     }
    ],
    "cockpitGlass": false
-  },
-  "xiaomi_su7": {
-   "name": "XIAOMI SU7",
-   "cn": "小米 SU7 · 高性能纯电",
-   "model": "xiaomi_su7.glb",
-   "rootName": "CarRoot",
-   "badge": "XIAOMI",
-   "tuning": "stock",
-   "wheelMapped": true,
-   "wheelRadius": 0.35,
-   "wheelbase": 3,
-   "wingScale": 1,
-   "cockpit": {
-    "x": 0.42,
-    "y": 1.11,
-    "z": -0.01,
-    "roofY": 1.43
-   },
-   "contact": [
-    2.24,
-    4.99
-   ],
-   "lights": {
-    "headlight": [
-     0,
-     0.6,
-     2.35
-    ],
-    "target": [
-     0,
-     -0.2,
-     38
-    ]
-   },
-   "exhausts": [
-    {
-     "x": -0.38,
-     "y": 0.47,
-     "z": -2.37
-    },
-    {
-     "x": 0.38,
-     "y": 0.47,
-     "z": -2.37
-    }
-   ],
-   "cockpitGlass": false
   }
  },
  "parts": {

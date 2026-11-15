@@ -36,12 +36,12 @@ hdiutil detach /tmp/blender_mnt
   `VenueGlass` / `VenueEmissive` / `VenueTyre` / `VenueAsphalt` / `VenueGrass`。
 - **预算**：重复道具 ≤ 3k tris；大型建筑 ≤ 25k tris；单文件 ≤ 4 个材质。
 - **导出**：`bpy.ops.export_scene.gltf(export_format='GLB', use_selection=True,
-  export_apply=True, export_yup=True)` → `assets/venues/<name>.glb`。
+  export_apply=True, export_yup=True)` → `maps/assets/venues/<name>.glb`。
 - **清单**：同目录写 `manifest`（尺寸/锚点/推荐间距），Godot 端 `VenueKit` 读取摆放。
 
 ## 2. Godot 接入规范
 
-- `scripts/tracks/venue_kit.gd`：加载 `assets/venues/*.glb`，按赛道样条摆放：
+- `maps/scripts/tracks/venue_kit.gd`：加载 `maps/assets/venues/*.glb`，按赛道样条摆放：
   主看台沿最长直道、维修区建筑在对面、龙门架跨起跑线、广告牌/灯柱/轮胎墙按间距重复。
 - 重复道具用 **MultiMesh**（每个 MeshInstance 子节点一个 MultiMesh = 1 draw call/类），
   大建筑用场景实例。
@@ -58,5 +58,5 @@ hdiutil detach /tmp/blender_mnt
 
 ## 4. 已产出资产
 
-见 `assets/venues/`（龙门架、主看台、维修区建筑、灯柱、广告牌、轮胎墙、护栏网、大屏幕、
+见 `maps/assets/venues/`（龙门架、主看台、维修区建筑、灯柱、广告牌、轮胎墙、护栏网、大屏幕、
 裁判亭、树木）。生成脚本在 `tools/blender/`。

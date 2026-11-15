@@ -269,8 +269,6 @@ CARS = OrderedDict([
                              asp="none", exh="quiet", evTier="hyper", tag="四电机纯电超跑")),
     ("zeekr_7x", dict(family="ev", cylinders=0, fuel="ev", idle=0, redline=0,
                       asp="none", exh="quiet", evTier="mainstream", tag="800V 纯电 SUV")),
-    ("xiaomi_su7", dict(family="ev", cylinders=0, fuel="ev", idle=0, redline=0,
-                        asp="none", exh="quiet", evTier="hyper", tag="高性能纯电")),
 ])
 
 

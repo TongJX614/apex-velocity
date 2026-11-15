@@ -4,7 +4,7 @@ extends SceneTree
 ##   "$GODOT" --headless --path . --script res://tools/audit_cars.gd
 ## Report: /tmp/car_audit_report.txt
 
-const MODELS_DIR := "res://assets/cars/models"
+const MODELS_DIR := "res://cars/assets/models"
 const DATA_DIR := "res://data"
 const OUT_PATH := "/tmp/car_audit_report.txt"
 const OFFSET_TOL := 0.03

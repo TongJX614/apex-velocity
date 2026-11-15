@@ -10,7 +10,7 @@ extends AudioStreamPlayer
 ##     三缸奇数点火的深 lope），而不是一套通用权重表。
 ##   · EV 不再叠加 6 阶高频谐波（那正是刺耳啸叫的来源），改为逆变器基频 +
 ##     极少量谐波 + 齿轮啸叫 + 低频 NVH，频谱质心大幅下降。
-##   · 真实录音素材（assets/audio/engine/*.wav）作为**燃烧质感层**叠加，
+##   · 真实录音素材（cars/assets/audio/engine/*.wav）作为**燃烧质感层**叠加，
 ##     提供程序化合成难以得到的排气粗糙感与机械噪声。
 ##
 ## 分档位（每档一张独立波表，音色目标不同）：
@@ -44,19 +44,19 @@ const TABLE_SIZE := 2048
 ##   · ev_motor_fan 自相关仅 0.04（非周期）、>2kHz 仅 3.2%，是宽频电机
 ##     噪声而非纯音，不会和逆变器基频打架。
 ##
-## 全部为 CC0 素材（授权见 assets/audio/engine/README.md）。
+## 全部为 CC0 素材（授权见 cars/assets/audio/engine/README.md）。
 const TEXTURE_FILES := {
 	# V8：motor_seamless_13 —— 40~90Hz 仅 0.4%，90~300Hz 占 81.6%（厚实的排气体量）
-	"v8": "res://assets/audio/engine/motor_seamless_13.ogg",
+	"v8": "res://cars/assets/audio/engine/motor_seamless_13.ogg",
 	# I6：motor_seamless_12 —— 40~90Hz 仅 0.6%，中频饱满
-	"i6": "res://assets/audio/engine/motor_seamless_12.ogg",
+	"i6": "res://cars/assets/audio/engine/motor_seamless_12.ogg",
 	# I4：motor_seamless_10 —— 40~90Hz 仅 1.1%，高频略多（I4 高转更亮）
-	"i4": "res://assets/audio/engine/motor_seamless_10.ogg",
+	"i4": "res://cars/assets/audio/engine/motor_seamless_10.ogg",
 	# I3：motor_seamless_02 —— 40~90Hz 2.9%，粗糙度最高（三缸点火不匀）
-	"i3": "res://assets/audio/engine/motor_seamless_02.ogg",
+	"i3": "res://cars/assets/audio/engine/motor_seamless_02.ogg",
 }
 ## EV 电机质感素材
-const EV_TEXTURE := "res://assets/audio/engine/ev_motor_fan.ogg"
+const EV_TEXTURE := "res://cars/assets/audio/engine/ev_motor_fan.ogg"
 
 # --- 引擎档案 ---------------------------------------------------------------
 var profile := "i6"

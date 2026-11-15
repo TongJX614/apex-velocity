@@ -25,7 +25,6 @@ var countdown_label: Label
 var toast_label: Label
 var camera_label: Label
 var minimap: Minimap
-var continent_map: ContinentMap
 
 var results_root: Control
 var results_title: Label
@@ -43,6 +42,7 @@ var _accent := UIStyle.ACCENT
 var _track_accent := UIStyle.ACCENT
 var _track_plate: Control
 var _timing_panel: Control
+var _sector_labels: Array[Label] = []
 var _position_panel: Control
 var _map_panel: Panel
 var _map_header: Label
@@ -66,6 +66,22 @@ var _shift_hint: Label
 var _slip_label: Label
 var _position_caption: Label
 var _drift_panel: Panel
+var _lap_card: Panel
+var _lap_card_header: Label
+var _lap_card_time: Label
+var _lap_card_speed: Label
+var _lap_card_best: Label
+var _lap_card_timer := 0.0
+var _lap_card_age := 0.0
+var _seen_laps := -1
+var _lap_max_kph := 0.0
+var _ww_root: Control
+var _ww_scrim: ColorRect
+var _ww_panel: Panel
+var _ww_chev_l: Label
+var _ww_chev_r: Label
+var _ww_time := 0.0
+var _ww_shown := false
 var _drift_caption: Label
 var _drift_score_label: Label
 var _drift_combo_label: Label
@@ -83,21 +99,6 @@ var _duel_label: Label
 var _duel_mode := false
 var _duel_other: Car
 
-# ── 开放世界（无界大陆）模式 ──
-# 开放世界同样是一条赛道：左上信息牌、计时条、右下仪表卡、底部提示
-# 全部复用赛道那套控件，只是内容换成自由漫游。
-# 唯一独有的是右上角的「无界大陆」全域图，其余一律与前八条赛道保持一致。
-var _open_world_mode := false
-var _ow_world: OpenWorld = null
-var _ow_car: Car = null
-var _ow_time := 0.0
-var _ow_distance := 0.0
-var _ow_last_pos := Vector3.ZERO
-var _ow_zone_id := ""
-var _ow_accent := UIStyle.ACCENT
-var _ow_toast_timer := 0.0
-var _continent_panel: Panel
-var _continent_header: Label
 
 
 ## 换挡灯条：一个 Control 内绘制 8 段发光块，避免每帧重建大量节点。
@@ -145,120 +146,6 @@ class ShiftLights:
 				draw_rect(Rect2(x, 0.0, seg_w, 1.0), Color(0.55, 0.70, 0.80, 0.12))
 
 
-## 无界大陆全域图（开放世界右上角）。
-## 世界轮廓与路网在 setup 时一次性烘焙成 256×256 贴图，运行时只叠
-## 一个玩家箭头和一根比例尺，每帧开销可以忽略。
-class ContinentMap:
-	extends Control
-	const MAP_RES := 256
-
-	var world: OpenWorld = null
-	var car: Car = null
-	var _tex: ImageTexture = null
-
-	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	func setup(world_node: OpenWorld, player: Car) -> void:
-		world = world_node
-		car = player
-		_bake()
-		queue_redraw()
-
-	func _bake() -> void:
-		if world == null:
-			return
-		var img := Image.create(MAP_RES, MAP_RES, false, Image.FORMAT_RGBA8)
-		img.fill(Color(0.05, 0.08, 0.11, 1.0))
-		var half := OpenWorld.HALF
-		for j in MAP_RES:
-			for i in MAP_RES:
-				var wx := -half + (float(i) + 0.5) / float(MAP_RES) * OpenWorld.WORLD_SIZE
-				var wz := -half + (float(j) + 0.5) / float(MAP_RES) * OpenWorld.WORLD_SIZE
-				var h := world.height_at(wx, wz)
-				var c := Color(0.04, 0.07, 0.10, 1.0)
-				if h > 0.4:
-					var z: Dictionary = world.zone_at(wx, wz)
-					c = Color(0.16, 0.22, 0.20, 1.0)
-					if not z.is_empty():
-						c = UIStyle.accent_from(z.get("accent", "#55e7d2"), Color(0.4, 0.5, 0.5))
-						c = c.darkened(0.42)
-					if h > 130.0:
-						c = c.lerp(Color(0.92, 0.95, 1.0), 0.55)
-				elif h > -3.0:
-					c = Color(0.16, 0.20, 0.17, 1.0)
-				img.set_pixel(i, j, c)
-		# 路网：路面比地面亮一档，八条辐射主干道一眼就能认出来
-		for road in world.roads:
-			var pts: Array = road["pts"]
-			var prev := Vector2i.ZERO
-			for k in pts.size():
-				var p: Vector2 = pts[k]
-				var ip := Vector2i(int((p.x + half) / OpenWorld.WORLD_SIZE * float(MAP_RES)),
-					int((p.y + half) / OpenWorld.WORLD_SIZE * float(MAP_RES)))
-				ip.x = clampi(ip.x, 0, MAP_RES - 1)
-				ip.y = clampi(ip.y, 0, MAP_RES - 1)
-				if k > 0:
-					_draw_line_px(img, prev, ip, Color(0.88, 0.84, 0.62, 1.0))
-				prev = ip
-		_tex = ImageTexture.create_from_image(img)
-
-	static func _draw_line_px(img: Image, a: Vector2i, b: Vector2i, color: Color) -> void:
-		var dx := absi(b.x - a.x)
-		var dy := absi(b.y - a.y)
-		var sx := 1 if a.x < b.x else -1
-		var sy := 1 if a.y < b.y else -1
-		var err := dx - dy
-		var x := a.x
-		var y := a.y
-		while true:
-			if x >= 0 and x < MAP_RES and y >= 0 and y < MAP_RES:
-				img.set_pixel(x, y, color)
-			if x == b.x and y == b.y:
-				break
-			var e2 := err * 2
-			if e2 > -dy:
-				err -= dy
-				x += sx
-			if e2 < dx:
-				err += dx
-				y += sy
-
-	func _draw() -> void:
-		if _tex == null:
-			return
-		var side := minf(size.x, size.y)
-		var off := Vector2((size.x - side) * 0.5, (size.y - side) * 0.5)
-		draw_texture_rect(_tex, Rect2(off, Vector2(side, side)), false)
-		# 比例尺：1 km
-		var bar_px := 1000.0 / OpenWorld.WORLD_SIZE * side
-		var bar_y := off.y + side - 16.0
-		var bar_x := off.x + 10.0
-		var bar_col := Color(0.95, 0.98, 1.0, 0.75)
-		draw_rect(Rect2(bar_x, bar_y, bar_px, 3), bar_col)
-		draw_rect(Rect2(bar_x, bar_y, 1.5, 8), bar_col)
-		draw_rect(Rect2(bar_x + bar_px - 1.5, bar_y, 1.5, 8), bar_col)
-		if car == null:
-			return
-		# 玩家箭头：跟着车头方向转（地图 x → 世界 x，地图 y → 世界 z）
-		var half := OpenWorld.HALF
-		var cx := off.x + (car.pos.x + half) / OpenWorld.WORLD_SIZE * side
-		var cy := off.y + (car.pos.z + half) / OpenWorld.WORLD_SIZE * side
-		var a := car.heading - PI
-		var base := [
-			Vector2(0.0, -7.0), Vector2(-5.0, 5.0),
-			Vector2(0.0, 2.0), Vector2(5.0, 5.0),
-		]
-		var pts := PackedVector2Array()
-		for b in base:
-			pts.append(Vector2(cx, cy) + Vector2(
-				b.x * cos(a) + b.y * sin(a),
-				-b.x * sin(a) + b.y * cos(a)))
-		draw_colored_polygon(pts, Color(1.0, 0.86, 0.30, 1.0))
-		draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[3], pts[0]]),
-			Color(0.05, 0.07, 0.10, 0.9), 1.2)
-
-
 func _ready() -> void:
 	layer = 10
 	_vignette = TextureRect.new()
@@ -281,12 +168,13 @@ func _ready() -> void:
 	_build_timing(root)
 	_build_position(root)
 	_build_minimap(root)
-	_build_continent(root)
 	_build_cluster(root)
+	_build_lap_card(root)
 	_build_drift_card(root)
 	_build_overlays(root)
 	_build_duel(root)
 	_build_results(root)
+	_build_wrong_way(root)
 	_animate_minimap_entrance()
 	hide_results()
 	_apply_visibility()
@@ -297,20 +185,20 @@ func _ready() -> void:
 # 构建
 # ---------------------------------------------------------------------------
 
-## 顶部小地图入场：从屏幕上方浮下来 + 淡入（每场比赛开始时一次）。
+## 左下角小地图入场：从屏幕左侧滑入 + 淡入（每场比赛开始时一次）。
 func _animate_minimap_entrance() -> void:
 	if _map_panel == null:
 		return
-	var rest_top := _map_panel.offset_top
-	var rest_bottom := _map_panel.offset_bottom
-	_map_panel.offset_top = rest_top - 140.0
-	_map_panel.offset_bottom = rest_bottom - 140.0
+	var rest_left := _map_panel.offset_left
+	var rest_right := _map_panel.offset_right
+	_map_panel.offset_left = rest_left - 140.0
+	_map_panel.offset_right = rest_right - 140.0
 	_map_panel.modulate.a = 0.0
 	var tw := create_tween()
 	tw.set_parallel(true)
-	tw.tween_property(_map_panel, "offset_top", rest_top, 0.55) \
+	tw.tween_property(_map_panel, "offset_left", rest_left, 0.55) \
 		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.tween_property(_map_panel, "offset_bottom", rest_bottom, 0.55) \
+	tw.tween_property(_map_panel, "offset_right", rest_right, 0.55) \
 		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tw.tween_property(_map_panel, "modulate:a", 1.0, 0.38) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
@@ -348,8 +236,8 @@ func update_duel(p1_laps: int, p2_laps: int, p2_kph: float, winner: String) -> v
 	var w := ""
 	if winner != "":
 		w = "   ·   胜者 %s" % winner
-	_duel_label.text = "P1  L%d      P2  L%d      P2 %d km/h%s" % [p1_laps, p2_laps, int(round(p2_kph)), w]
-	_duel_label.add_theme_color_override("font_color", Color(1.0, 0.78, 0.35, 1.0) if winner != "" else UIStyle.TXT)
+	_set_text(_duel_label, "P1  L%d      P2  L%d      P2 %d km/h%s" % [p1_laps, p2_laps, int(round(p2_kph)), w])
+	_set_color(_duel_label, Color(1.0, 0.78, 0.35, 1.0) if winner != "" else UIStyle.TXT)
 
 
 func show_duel_result(winner: String, p1_time: float, p2_time: float) -> void:
@@ -446,6 +334,18 @@ func _build_timing(root: Control) -> void:
 	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_timing_panel.add_child(rule)
 
+	var sector_row := HBoxContainer.new()
+	sector_row.add_theme_constant_override("separation", 6)
+	UIStyle.place(sector_row, 0, 0, 1, 0, 14, 65, -14, 84)
+	sector_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_timing_panel.add_child(sector_row)
+	for i in RaceManager.SECTOR_COUNT:
+		var sector_label := UIStyle.label_tech("S%d --:--.---" % (i + 1), 9,
+			Color(0.72, 0.82, 0.89, 1.0))
+		sector_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		sector_row.add_child(sector_label)
+		_sector_labels.append(sector_label)
+
 	_final_lap = UIStyle.label_tracked("FINAL LAP   ·   最终圈", 10, UIStyle.GOLD,
 		HORIZONTAL_ALIGNMENT_CENTER, 2)
 	_final_lap.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
@@ -496,7 +396,8 @@ func _build_minimap(root: Control) -> void:
 	_map_panel = Panel.new()
 	_map_panel.add_theme_stylebox_override("panel",
 		UIStyle.glass_style(UIStyle.ACCENT, 0.72, UIStyle.R_MD, 0.26))
-	UIStyle.place(_map_panel, 0.5, 0, 0.5, 0, -190, 8, 190, 210)
+	# 左下角：顶部留给赛道信息与教程浮条，地图不再挡前方视野。
+	UIStyle.place(_map_panel, 0, 1, 0, 1, 16, -244, 392, -44)
 	_map_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_map_panel)
 	UIStyle.add_top_glow(_map_panel, UIStyle.ACCENT, 0.8)
@@ -515,35 +416,6 @@ func _build_minimap(root: Control) -> void:
 	minimap.offset_bottom = -12
 	minimap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_map_panel.add_child(minimap)
-
-
-## 右上角：无界大陆全域图（只有开放世界用得上，默认隐藏）。
-## 位置沿用原来开放世界 HUD 的右上角，视觉样式与 _map_panel 完全一致。
-func _build_continent(root: Control) -> void:
-	_continent_panel = Panel.new()
-	_continent_panel.name = "ContinentPanel"
-	_continent_panel.add_theme_stylebox_override("panel",
-		UIStyle.glass_style(UIStyle.ACCENT, 0.72, UIStyle.R_MD, 0.26))
-	UIStyle.place(_continent_panel, 1, 0, 1, 0, -286, 8, -26, 286)
-	_continent_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_continent_panel.visible = false
-	root.add_child(_continent_panel)
-	UIStyle.add_top_glow(_continent_panel, UIStyle.ACCENT, 0.8)
-
-	_continent_header = UIStyle.label_tracked("CONTINENT MAP   ·   无界大陆", 9,
-		Color(0.70, 0.88, 0.94, 0.95), HORIZONTAL_ALIGNMENT_LEFT, 2)
-	UIStyle.place(_continent_header, 0, 0, 1, 0, 14, 8, -14, 26)
-	_continent_panel.add_child(_continent_header)
-
-	continent_map = ContinentMap.new()
-	continent_map.name = "ContinentMap"
-	continent_map.set_anchors_preset(Control.PRESET_FULL_RECT)
-	continent_map.offset_left = 12
-	continent_map.offset_top = 30
-	continent_map.offset_right = -12
-	continent_map.offset_bottom = -12
-	continent_map.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_continent_panel.add_child(continent_map)
 
 
 func _build_cluster(root: Control) -> void:
@@ -759,16 +631,17 @@ func _update_drift(rm: RaceManager, car: Car) -> void:
 		_drift_prev_combo = car.drift_combo
 		return
 	_drift_panel.modulate.a = alpha
-	_drift_caption.text = caption
-	_drift_caption.add_theme_color_override("font_color", col)
-	_drift_score_label.text = score_text
-	_drift_score_label.add_theme_color_override("font_color", col)
-	_drift_combo_label.text = combo_text
-	_drift_combo_label.add_theme_color_override("font_color", col)
-	_drift_total_label.text = "本场漂移  %d" % car.drift_bank
+	_set_text(_drift_caption, caption)
+	_set_color(_drift_caption, col)
+	_set_text(_drift_score_label, score_text)
+	_set_color(_drift_score_label, col)
+	_set_text(_drift_combo_label, combo_text)
+	_set_color(_drift_combo_label, col)
+	_set_text(_drift_total_label, "本场漂移  %d" % car.drift_bank)
 	_drift_bar.visible = car.drift_chain_score > 0.5
-	_drift_bar.accent = col
-	_drift_bar.queue_redraw()
+	if _drift_bar.accent != col:
+		_drift_bar.accent = col
+		_drift_bar.queue_redraw()
 	_drift_bar.set_value(fmod(car.drift_chain_time, 2.2) / 2.2)
 	if car.drift_combo > _drift_prev_combo:
 		_drift_combo_label.scale = Vector2(1.45, 1.45)
@@ -776,6 +649,162 @@ func _update_drift(rm: RaceManager, car: Car) -> void:
 		tw.tween_property(_drift_combo_label, "scale", Vector2.ONE, 0.26) \
 			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_drift_prev_combo = car.drift_combo
+
+
+## 圈成绩卡：仪表卡左侧，每圈冲线后弹出 7 秒（本圈用时 + 本圈极速）。
+func _build_lap_card(root: Control) -> void:
+	_lap_card = Panel.new()
+	_lap_card.name = "LapCard"
+	_lap_card.add_theme_stylebox_override("panel",
+		UIStyle.glass_style(UIStyle.GOLD, 0.86, UIStyle.R_LG, 0.30))
+	UIStyle.place(_lap_card, 1, 1, 1, 1, -744, -218, -466, -22)
+	_lap_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_lap_card.visible = false
+	root.add_child(_lap_card)
+	UIStyle.add_top_glow(_lap_card, UIStyle.GOLD, 0.8)
+	_lap_card_header = UIStyle.label_tracked("", 10, UIStyle.GOLD, HORIZONTAL_ALIGNMENT_LEFT, 2)
+	UIStyle.place(_lap_card_header, 0, 0, 1, 0, 16, 12, -16, 30)
+	_lap_card.add_child(_lap_card_header)
+	_lap_card_time = UIStyle.label_tech("", 34, UIStyle.TXT, HORIZONTAL_ALIGNMENT_LEFT, 0)
+	_lap_card_time.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.55))
+	_lap_card_time.add_theme_constant_override("outline_size", 4)
+	UIStyle.place(_lap_card_time, 0, 0, 1, 0, 16, 36, -16, 82)
+	_lap_card.add_child(_lap_card_time)
+	var cap := UIStyle.label_tracked("TOP SPEED   ·   本圈极速", 9, UIStyle.TXT_DIM,
+		HORIZONTAL_ALIGNMENT_LEFT, 2)
+	UIStyle.place(cap, 0, 0, 1, 0, 16, 92, -16, 108)
+	_lap_card.add_child(cap)
+	_lap_card_speed = UIStyle.label_tech("", 26, UIStyle.GOLD, HORIZONTAL_ALIGNMENT_LEFT, 0)
+	UIStyle.place(_lap_card_speed, 0, 0, 1, 0, 16, 108, -16, 146)
+	_lap_card.add_child(_lap_card_speed)
+	_lap_card_best = UIStyle.label_tracked("", 10, UIStyle.GREEN, HORIZONTAL_ALIGNMENT_LEFT, 1)
+	UIStyle.place(_lap_card_best, 0, 0, 1, 0, 16, 152, -16, 170)
+	_lap_card.add_child(_lap_card_best)
+
+
+func _update_lap_card(rm: RaceManager, car: Car, frame_dt: float) -> void:
+	if _lap_card == null:
+		return
+	# 结算面板会盖住仪表区：圈成绩卡只在冲线缓冲期展示，进结算即收掉。
+	if rm.state == RaceManager.State.RESULTS:
+		_lap_card.visible = false
+		return
+	var dt := frame_dt if frame_dt > 0.0 else get_physics_process_delta_time()
+	if rm.state == RaceManager.State.RACING and not rm.player_finished:
+		_lap_max_kph = maxf(_lap_max_kph, car.speed_kph)
+	if _seen_laps < 0:
+		_seen_laps = rm.player_laps
+	if rm.player_laps > _seen_laps:
+		_seen_laps = rm.player_laps
+		if rm.last_lap_time > 0.0:
+			_lap_card_header.text = "LAP %d   ·   本圈成绩" % rm.player_laps
+			_lap_card_time.text = RaceManager.format_time(rm.last_lap_time)
+			var unit := "mph" if Settings.hud_units == "mph" else "km/h"
+			_lap_card_speed.text = "%d %s" % [int(round(speed_value(_lap_max_kph))), unit]
+			var is_best := rm.best_lap_time > 0.0 \
+				and absf(rm.last_lap_time - rm.best_lap_time) < 0.001
+			_lap_card_best.text = "★ 本场最佳单圈" if is_best else ""
+			_lap_card_best.visible = is_best
+			_lap_card_timer = 7.0
+			_lap_card_age = 0.0
+			_lap_card.visible = true
+		_lap_max_kph = 0.0
+	elif rm.player_laps < _seen_laps:
+		_seen_laps = rm.player_laps
+	if not _lap_card.visible:
+		return
+	_lap_card_age += dt
+	_lap_card_timer -= dt
+	if _lap_card_timer <= 0.0:
+		_lap_card.visible = false
+		return
+	_lap_card.modulate.a = clampf(_lap_card_age / 0.25, 0.0, 1.0) \
+		* clampf(_lap_card_timer / 0.5, 0.0, 1.0)
+
+
+## 全屏逆向警告：红色 scrim + 描边 + 中央大弹窗，脉冲呼吸保证一眼可见。
+func _build_wrong_way(root: Control) -> void:
+	_ww_root = Control.new()
+	_ww_root.name = "WrongWay"
+	_ww_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_ww_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ww_root.visible = false
+	root.add_child(_ww_root)
+	_ww_scrim = ColorRect.new()
+	_ww_scrim.color = Color(0.36, 0.02, 0.04, 0.40)
+	_ww_scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_ww_scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ww_root.add_child(_ww_scrim)
+	var frame := Panel.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0, 0, 0, 0)
+	sb.border_color = UIStyle.a(UIStyle.RED, 0.85)
+	sb.set_border_width_all(10)
+	frame.add_theme_stylebox_override("panel", sb)
+	frame.set_anchors_preset(Control.PRESET_FULL_RECT)
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ww_root.add_child(frame)
+	_ww_panel = Panel.new()
+	_ww_panel.add_theme_stylebox_override("panel",
+		UIStyle.glass_style(UIStyle.RED, 0.93, UIStyle.R_LG, 0.65))
+	UIStyle.place(_ww_panel, 0.5, 0.5, 0.5, 0.5, -450, -70, 450, 110)
+	_ww_panel.pivot_offset = Vector2(450, 90)
+	_ww_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ww_root.add_child(_ww_panel)
+	UIStyle.add_top_glow(_ww_panel, UIStyle.RED, 0.9)
+	var title := UIStyle.label("逆向行驶", 52, UIStyle.TXT, HORIZONTAL_ALIGNMENT_CENTER)
+	title.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
+	title.add_theme_constant_override("outline_size", 6)
+	UIStyle.place(title, 0, 0, 1, 0, 90, 12, -90, 78)
+	_ww_panel.add_child(title)
+	var en := UIStyle.label_tracked("WRONG WAY", 15, UIStyle.RED, HORIZONTAL_ALIGNMENT_CENTER, 6)
+	UIStyle.place(en, 0, 0, 1, 0, 90, 80, -90, 102)
+	_ww_panel.add_child(en)
+	var sub := UIStyle.label("请立即掉头 · 沿赛道方向行驶", 13, UIStyle.TXT_SUB, HORIZONTAL_ALIGNMENT_CENTER)
+	UIStyle.place(sub, 0, 0, 1, 0, 60, 112, -60, 140)
+	_ww_panel.add_child(sub)
+	_ww_chev_l = UIStyle.label("‹‹‹", 40, UIStyle.RED, HORIZONTAL_ALIGNMENT_CENTER)
+	UIStyle.place(_ww_chev_l, 0, 0, 0, 0, 16, 44, 86, 124)
+	_ww_panel.add_child(_ww_chev_l)
+	_ww_chev_r = UIStyle.label("›››", 40, UIStyle.RED, HORIZONTAL_ALIGNMENT_CENTER)
+	UIStyle.place(_ww_chev_r, 1, 0, 1, 0, -86, 44, -16, 124)
+	_ww_panel.add_child(_ww_chev_r)
+
+
+func _update_wrong_way(rm: RaceManager, frame_dt: float) -> void:
+	if _ww_root == null:
+		return
+	var dt := frame_dt if frame_dt > 0.0 else get_physics_process_delta_time()
+	if rm.wrong_way and not _ww_shown:
+		_ww_shown = true
+		_ww_time = 0.0
+		_ww_root.visible = true
+		_ww_root.modulate.a = 0.0
+		_ww_panel.scale = Vector2(1.12, 1.12)
+	elif not rm.wrong_way and _ww_shown:
+		_ww_shown = false
+	if not _ww_root.visible:
+		return
+	_ww_time += dt
+	var target := 1.0 if _ww_shown else 0.0
+	_ww_root.modulate.a = move_toward(_ww_root.modulate.a, target, dt * 6.0)
+	if not _ww_shown and _ww_root.modulate.a <= 0.01:
+		_ww_root.visible = false
+		return
+	var pulse := 0.5 + 0.5 * sin(_ww_time * 7.0)
+	_ww_scrim.color.a = 0.34 + 0.12 * pulse
+	var s := move_toward(_ww_panel.scale.x, 1.0, dt * 0.9)
+	_ww_panel.scale = Vector2(s, s)
+	_ww_chev_l.modulate.a = 0.45 + 0.55 * pulse
+	_ww_chev_r.modulate.a = 0.45 + 0.55 * pulse
+
+
+func wrong_way_shown() -> bool:
+	return _ww_shown and _ww_root != null and _ww_root.visible
+
+
+func lap_card_shown() -> bool:
+	return _lap_card != null and _lap_card.visible
 
 
 func _build_overlays(root: Control) -> void:
@@ -810,73 +839,142 @@ func _build_overlays(root: Control) -> void:
 # 每帧刷新（API 不变）
 # ---------------------------------------------------------------------------
 
-func refresh(rm: RaceManager, car: Car, track: TrackPath) -> void:
+## 变更才写入：text / theme override 每次赋值都会触发布局与主题缓存失效，
+## 60Hz 下整场不变的内容（赛道名、按键提示、档位描述等）直接跳过。
+static func _set_text(label: Label, text: String) -> void:
+	if label != null and label.text != text:
+		label.text = text
+
+
+static func _set_color(label: Control, col: Color) -> void:
+	if label == null:
+		return
+	if label.has_meta("_hud_fc") and label.get_meta("_hud_fc") == col:
+		return
+	label.set_meta("_hud_fc", col)
+	label.add_theme_color_override("font_color", col)
+
+
+func refresh(rm: RaceManager, car: Car, track: TrackPath, frame_dt: float = -1.0) -> void:
 	if rm == null or car == null or track == null:
 		return
 	var accent := _accent
-	track_label.text = "%s" % track.display_name
-	if _duel_mode:
-		mode_label.text = "%s  ·  本地双人 LOCAL DUEL  ·  %d 圈" % [track.id.to_upper(), rm.race_laps]
+	_set_text(track_label, track.display_name)
+	var mode_text: String
+	if track.open_field:
+		mode_text = "%s  ·  自由练习 FREE PRACTICE" % track.display_name
+	elif _duel_mode:
+		mode_text = "%s  ·  本地双人 LOCAL DUEL  ·  %d 圈" % [track.id.to_upper(), rm.race_laps]
 	elif rm.mode == "gp":
-		mode_label.text = "%s  ·  大奖赛 GP  ·  %d 圈" % [track.id.to_upper(), rm.race_laps]
+		mode_text = "%s  ·  大奖赛 GP  ·  %d 圈" % [track.id.to_upper(), rm.race_laps]
 	else:
-		mode_label.text = "%s  ·  计时赛 TIME TRIAL" % track.id.to_upper()
+		mode_text = "%s  ·  计时赛 TIME TRIAL" % track.id.to_upper()
 	if not is_nan(ghost_delta):
-		var ahead := ghost_delta < 0.0
-		mode_label.text += "   ·   幽灵 Δ %+.2f s" % ghost_delta
-		mode_label.add_theme_color_override("font_color",
-			Color(0.46, 1.0, 0.62, 1.0) if ahead else Color(1.0, 0.58, 0.42, 1.0))
+		mode_text += "   ·   幽灵 Δ %+.2f s" % ghost_delta
+		_set_color(mode_label, Color(0.46, 1.0, 0.62, 1.0) if ghost_delta < 0.0 else Color(1.0, 0.58, 0.42, 1.0))
 	else:
-		mode_label.add_theme_color_override("font_color", Color(0.74, 0.86, 0.92, 1.0))
-	camera_label.text = "相机  %s      ·      START 暂停     M 主菜单" % camera_name
+		_set_color(mode_label, Color(0.74, 0.86, 0.92, 1.0))
+	_set_text(mode_label, mode_text)
 	var race_text := RaceManager.format_time(rm.race_time)
 	if time_label.text != race_text:
 		time_label.text = race_text
-	lap_label.text = "LAP  %d / %d" % [mini(rm.player_laps + 1, rm.race_laps), rm.race_laps]
-	var last_text := RaceManager.format_time(rm.last_lap_time)
-	var best_text := RaceManager.format_time(rm.best_lap_time)
-	var current_lap := maxf(rm.race_time - rm.lap_start_time, 0.0)
-	if rm.state == RaceManager.State.COUNTDOWN:
-		current_lap = 0.0
-	lap_time_label.text = "本圈 %s      ·      上圈 %s      ·      最佳 %s" % [
-		RaceManager.format_time(current_lap), last_text, best_text]
-	position_label.text = "P%d" % rm.player_position
-	_position_total.text = "/ %d" % rm.total_cars
-	if rm.player_position == 1:
-		position_label.add_theme_color_override("font_color", UIStyle.GOLD)
-	elif rm.player_position <= 3:
-		position_label.add_theme_color_override("font_color", UIStyle.SILVER)
+	if track.open_field:
+		# 自由练习：没有圈数/分段/名次，只留会话计时 + 漂移连击卡。
+		_set_text(lap_label, "FREE")
+		_set_text(lap_time_label, "无圈数 · 无分段 · 漂移连击右下角实时记分")
+		for sl in _sector_labels:
+			sl.visible = false
+		if _position_panel != null:
+			_position_panel.visible = false
 	else:
-		position_label.add_theme_color_override("font_color", Color(0.88, 0.92, 0.97, 1.0))
+		_set_text(lap_label, "LAP  %d / %d" % [mini(rm.player_laps + 1, rm.race_laps), rm.race_laps])
+		var last_text := RaceManager.format_time(rm.last_lap_time)
+		var best_text := RaceManager.format_time(rm.best_lap_time)
+		var current_lap := maxf(rm.race_time - rm.lap_start_time, 0.0)
+		if rm.state == RaceManager.State.COUNTDOWN:
+			current_lap = 0.0
+		_set_text(lap_time_label, "本圈 %s      ·      上圈 %s      ·      最佳 %s" % [
+			RaceManager.format_time(current_lap), last_text, best_text])
+		for sl in _sector_labels:
+			sl.visible = true
+		if _position_panel != null:
+			_position_panel.visible = true
+		_refresh_sectors(rm)
+	_set_text(position_label, "P%d" % rm.player_position)
+	_set_text(_position_total, "/ %d" % rm.total_cars)
+	if rm.player_position == 1:
+		_set_color(position_label, UIStyle.GOLD)
+	elif rm.player_position <= 3:
+		_set_color(position_label, UIStyle.SILVER)
+	else:
+		_set_color(position_label, Color(0.88, 0.92, 0.97, 1.0))
 	var final_lap := rm.mode == "gp" and rm.player_laps >= rm.race_laps - 1 and rm.race_laps > 1
 	_final_lap.visible = final_lap and rm.state == RaceManager.State.RACING
 
 	_refresh_cluster(car, rm)
 	_update_drift(rm, car)
+	_update_lap_card(rm, car, frame_dt)
+	_update_wrong_way(rm, frame_dt)
 	_update_slipstream(rm, car)
 	_update_countdown(rm)
-	_update_toast(rm)
+	_update_toast(rm, frame_dt)
 	_refresh_common()
 	if _map_header != null:
-		_map_header.text = "SECTOR MAP   ·   %s" % track.id.to_upper()
+		_set_text(_map_header, "SECTOR MAP   ·   %s" % track.id.to_upper())
 	if minimap != null:
 		minimap.line_color = _track_accent
 	if _track_plate != null:
 		var bar := _track_plate.get_meta("accent_bar", null) as ColorRect
-		if bar != null:
+		if bar != null and bar.color != accent:
 			bar.color = accent
 
 
+## 三段计时：显示本圈各段成绩，并对历史最佳分段给出差值。
+func _refresh_sectors(rm: RaceManager) -> void:
+	if _sector_labels.is_empty():
+		return
+	for i in _sector_labels.size():
+		var label := _sector_labels[i]
+		var t := -1.0
+		if i < rm.sector_times.size():
+			t = float(rm.sector_times[i])
+		if t <= 0.0 and i < rm.last_sector_times.size():
+			# 本圈该段还没跑：先保留上一圈成绩（暗色），换圈时 S3 差值不会一闪而过。
+			var prev := float(rm.last_sector_times[i])
+			if prev > 0.0:
+				_set_text(label, "S%d %s" % [i + 1, RaceManager.format_time(prev)])
+				_set_color(label, Color(0.42, 0.52, 0.60, 1.0))
+				continue
+		var text := "S%d %s" % [i + 1, RaceManager.format_time(t)]
+		var col := Color(0.58, 0.68, 0.76, 1.0)
+		if t > 0.0:
+			col = Color(0.72, 0.82, 0.89, 1.0)
+			var new_best := i < rm.sector_new_best.size() and bool(rm.sector_new_best[i])
+			var best := -1.0
+			if i < rm.best_sector_times.size():
+				best = float(rm.best_sector_times[i])
+			if new_best:
+				text += "  ★"
+				col = UIStyle.GOLD
+			elif best > 0.0:
+				var delta := 0.0
+				if i < rm.sector_deltas.size():
+					delta = float(rm.sector_deltas[i])
+				text += " %+.2f" % delta
+				col = Color(0.46, 1.0, 0.62, 1.0) if delta <= 0.0 else Color(1.0, 0.62, 0.44, 1.0)
+		_set_text(label, text)
+		_set_color(label, col)
+
+
 ## 右下仪表卡：转速环 / 速度 / 档位 / 换挡灯 / 油门刹车 / 氮气。
-## 赛道和开放世界共用这一套控件，rm 传 null 表示「没有比赛管理器」，
-## 此时按「一直在跑」处理（开放世界没有发令倒计时）。
+## 仪表卡刷新：rm 为比赛管理器；没有比赛时按「一直在跑」处理。
 func _refresh_cluster(car: Car, rm: RaceManager) -> void:
 	if car == null:
 		return
 	var speed := speed_value(car.speed_kph)
 	if _speed_label != null:
-		_speed_label.text = "%d" % int(round(speed))
-		_speed_unit.text = "MPH" if Settings.hud_units == "mph" else "KM/H"
+		_set_text(_speed_label, "%d" % int(round(speed)))
+		_set_text(_speed_unit, "MPH" if Settings.hud_units == "mph" else "KM/H")
 	if speed_gauge != null:
 		speed_gauge.set_value(speed)
 		speed_gauge.digital_text = "%d" % int(round(speed))
@@ -889,9 +987,9 @@ func _refresh_cluster(car: Car, rm: RaceManager) -> void:
 		tach_gauge.warn_from = 8000.0 * redline_norm * 0.88
 		tach_gauge.hot = car.limiter_active
 		if _rpm_value != null:
-			_rpm_value.text = "%d" % int(round(rpm_actual))
+			_set_text(_rpm_value, "%d" % int(round(rpm_actual)))
 		if _rpm_label != null:
-			_rpm_label.text = "红线 %d" % (int(round(car.redline * 80.0)) * 100)
+			_set_text(_rpm_label, "红线 %d" % (int(round(car.redline * 80.0)) * 100))
 		_update_shift_lights(car, rm)
 	if _gear_name != null:
 		var gl := car.gear_label()
@@ -900,7 +998,7 @@ func _refresh_cluster(car: Car, rm: RaceManager) -> void:
 			short = gl.substr(1)
 		elif gl == "D":
 			short = "D"
-		_gear_name.text = short
+		_set_text(_gear_name, short)
 		var gear_col := Color(0.88, 0.92, 0.97)
 		if gl == "R":
 			gear_col = Color(1.0, 0.42, 0.32)
@@ -910,7 +1008,7 @@ func _refresh_cluster(car: Car, rm: RaceManager) -> void:
 			gear_col = UIStyle.GOLD
 		elif rm == null or rm.state == RaceManager.State.RACING:
 			gear_col = Color(1.0, 0.74, 0.30)
-		_gear_name.add_theme_color_override("font_color", gear_col)
+		_set_color(_gear_name, gear_col)
 	if gear_caption != null:
 		var profile := String(car.spec.get("engineProfile", "")).to_upper()
 		var mode_text := "EV 单速"
@@ -920,7 +1018,7 @@ func _refresh_cluster(car: Car, rm: RaceManager) -> void:
 			mode_text = "M 手动 · " + profile
 		else:
 			mode_text = "A 自动 · " + profile
-		gear_caption.text = mode_text
+		_set_text(gear_caption, mode_text)
 	_update_shift_hint(car, rm)
 	if _thr_bar != null:
 		_thr_bar.set_value(clampf(car.throttle, 0.0, 1.0))
@@ -929,25 +1027,35 @@ func _refresh_cluster(car: Car, rm: RaceManager) -> void:
 	_update_nitro(rm, car)
 
 
-## 相机提示行 + 底部操作提示 + FPS：赛道与开放世界共用。
+## 相机提示行 + 底部操作提示 + FPS。
 func _refresh_common() -> void:
 	var joy := InputSetup.last_input_was_joy
 	if camera_label != null:
-		camera_label.text = ("相机  %s      ·      START 暂停     Ⓑ 切视角" if joy \
-			else "相机  %s      ·      START 暂停     M 主菜单") % camera_name
+		camera_label.visible = Settings.key_hints
+		_set_text(camera_label, ("相机  %s      ·      START 暂停     Ⓑ 切视角" if joy \
+			else "相机  %s      ·      START 暂停     M 主菜单") % camera_name)
 	if hint_label != null:
-		hint_label.visible = Settings.hud_hints
-		hint_label.text = "左摇杆 转向   RT 油门   LT 刹车·倒车   Ⓐ 手刹   Ⓧ 氮气   LB/RB 升降档   Ⓨ 手动/自动   BACK 复位   Ⓑ 相机" if joy \
-			else "W/↑ 油门   S/↓ 刹车·倒车   A/D 转向   SPACE 手刹   左SHIFT 氮气   E/Q 升降档   T 手动/自动   R 复位   C 相机"
+		hint_label.visible = Settings.key_hints
+		_set_text(hint_label, "左摇杆 转向   RT 油门   LT 刹车·倒车   Ⓐ 手刹   Ⓧ 氮气   LB/RB 升降档   Ⓨ 手动/自动   BACK 复位   Ⓑ 相机" if joy \
+			else "W/↑ 油门   S/↓ 刹车·倒车   A/D 转向   SPACE 手刹   左SHIFT 氮气   E/Q 升降档   T 手动/自动   R 复位   C 相机")
 	if _fps_label != null:
 		_fps_label.visible = Settings.show_fps
 		if Settings.show_fps:
-			_fps_label.text = "%d FPS" % Engine.get_frames_per_second()
+			_set_text(_fps_label, "%d FPS" % Engine.get_frames_per_second())
 
 
 func bind_race(rm: RaceManager, car: Car, track: TrackPath) -> void:
 	minimap.setup(track, car, rm.ais)
+	minimap.show_start_line = track == null or not track.open_field
 	_prev_position = rm.player_position
+	_seen_laps = rm.player_laps
+	_lap_max_kph = 0.0
+	_lap_card_timer = 0.0
+	if _lap_card != null:
+		_lap_card.visible = false
+	_ww_shown = false
+	if _ww_root != null:
+		_ww_root.visible = false
 	var accent_hex: String = ""
 	if track != null:
 		var def: Dictionary = GameData.track(track.id)
@@ -957,131 +1065,6 @@ func bind_race(rm: RaceManager, car: Car, track: TrackPath) -> void:
 	_track_accent = UIStyle.accent_from(accent_hex, UIStyle.ACCENT)
 	_accent = UIStyle.ACCENT
 	_apply_visibility()
-
-
-## 开放世界（无界大陆）绑定：开放世界也是一条赛道，HUD 用的是同一套控件。
-## 差别只有两处：
-##   · 没有圈数 / AI / 名次 → 名次牌与顶部赛段小地图退掉；
-##   · 右上角换成一张「无界大陆」全域图（大陆轮廓 + 路网 + 玩家箭头）。
-func bind_open_world(world_node: OpenWorld, player: Car) -> void:
-	_open_world_mode = true
-	_ow_world = world_node
-	_ow_car = player
-	_ow_time = 0.0
-	_ow_distance = 0.0
-	_ow_zone_id = ""
-	_ow_toast_timer = 0.0
-	_ow_last_pos = player.pos if player != null else Vector3.ZERO
-	_track_accent = UIStyle.ACCENT
-	_accent = UIStyle.ACCENT
-	if continent_map != null:
-		continent_map.setup(world_node, player)
-	if _continent_header != null:
-		_continent_header.text = "CONTINENT MAP   ·   无界大陆"
-	_apply_visibility()
-	_animate_continent_entrance()
-
-
-## 全域图入场：和顶部小地图一样，从屏幕上方浮下来 + 淡入。
-func _animate_continent_entrance() -> void:
-	if _continent_panel == null:
-		return
-	var rest_top := _continent_panel.offset_top
-	var rest_bottom := _continent_panel.offset_bottom
-	_continent_panel.offset_top = rest_top - 140.0
-	_continent_panel.offset_bottom = rest_bottom - 140.0
-	_continent_panel.modulate.a = 0.0
-	var tw := create_tween()
-	tw.set_parallel(true)
-	tw.tween_property(_continent_panel, "offset_top", rest_top, 0.55) \
-		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.tween_property(_continent_panel, "offset_bottom", rest_bottom, 0.55) \
-		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.tween_property(_continent_panel, "modulate:a", 1.0, 0.38) \
-		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-
-
-## 开放世界每帧刷新。左上信息牌 / 计时条 / 右下仪表卡 / 底部提示
-## 全部沿用赛道那套控件，内容换成自由漫游。
-func refresh_open_world(world_node: OpenWorld, player: Car, dt: float) -> void:
-	if not _open_world_mode or player == null:
-		return
-	_ow_time += dt
-	var moved := player.pos - _ow_last_pos
-	moved.y = 0.0
-	_ow_distance += moved.length()
-	_ow_last_pos = player.pos
-
-	# ── 当前区域
-	var zone: Dictionary = {}
-	if world_node != null:
-		zone = world_node.zone_at(player.pos.x, player.pos.z)
-	var zid := String(zone.get("id", ""))
-	if zid != _ow_zone_id:
-		_ow_zone_id = zid
-		_ow_accent = UIStyle.accent_from(zone.get("accent", "#55e7d2"), _ow_accent)
-		_show_zone_toast(zone)
-
-	# ── 左上信息牌
-	track_label.text = "无界大陆  CONTINENT"
-	mode_label.text = "自由漫游  FREE ROAM   ·   9 × 9 km   ·   无圈速"
-	mode_label.add_theme_color_override("font_color", Color(0.74, 0.86, 0.92, 1.0))
-
-	# ── 计时条：赛道这里显示「本圈 / 上圈 / 最佳」，开放世界改成
-	#    「总时长 + 当前区域 + 遥测」，控件本身完全一样。
-	var ow_text := RaceManager.format_time(_ow_time)
-	if time_label.text != ow_text:
-		time_label.text = ow_text
-	if zid != "":
-		lap_label.text = "%s   %s" % [String(zone.get("cn", "")), String(zone.get("en", ""))]
-		lap_label.add_theme_color_override("font_color", _ow_accent)
-	else:
-		lap_label.text = "无界大陆  CONTINENT"
-		lap_label.add_theme_color_override("font_color", UIStyle.GOLD)
-	lap_time_label.text = "海拔 %d m      ·      地表 %s      ·      里程 %.2f km" % [
-		int(round(player.pos.y)), _surface_cn(player.world_surface), _ow_distance / 1000.0]
-	_final_lap.visible = false
-
-	# ── 仪表卡 + 提示行（和赛道完全一致）
-	_refresh_cluster(player, null)
-	_update_drift(null, player)
-	_refresh_common()
-
-	if continent_map != null:
-		continent_map.queue_redraw()
-	_update_ow_toast(dt)
-
-
-## 进入新区域时在屏幕中央弹一次区域名（复用赛道的 toast 通道）。
-func _show_zone_toast(zone: Dictionary) -> void:
-	if toast_label == null:
-		return
-	var cn := String(zone.get("cn", "无界大陆"))
-	var en := String(zone.get("en", ""))
-	if en.is_empty():
-		toast_label.text = cn
-	else:
-		toast_label.text = "%s   ·   %s" % [cn, en]
-	toast_label.add_theme_color_override("font_color", _ow_accent)
-	toast_label.modulate.a = 1.0
-	_ow_toast_timer = 2.6
-
-
-func _update_ow_toast(dt: float) -> void:
-	if toast_label == null:
-		return
-	if _ow_toast_timer > 0.0:
-		_ow_toast_timer = maxf(0.0, _ow_toast_timer - dt)
-		toast_label.modulate.a = clampf(_ow_toast_timer / 0.6, 0.0, 1.0)
-		if _ow_toast_timer <= 0.0:
-			toast_label.text = ""
-
-
-static func _surface_cn(surf: String) -> String:
-	return String({
-		"road": "公路", "sand": "沙地", "grass": "草地", "rock": "岩石",
-		"snow": "积雪", "ice": "冰面", "lava": "熔岩", "water": "水面",
-	}.get(surf, surf))
 
 
 func set_camera_name(name: String) -> void:
@@ -1145,7 +1128,7 @@ func _update_shift_hint(car: Car, rm: RaceManager) -> void:
 		_shift_hint.modulate.a = 1.0
 	if _shift_hint.text != text:
 		_shift_hint.text = text
-	_shift_hint.add_theme_color_override("font_color", col)
+	_set_color(_shift_hint, col)
 
 
 ## 氮气条：真实读取 car.nitro_charge / nitro_active / nitro_gaining / drift_active
@@ -1154,7 +1137,7 @@ func _update_nitro(rm: RaceManager, car: Car) -> void:
 		return
 	var charge := clampf(car.nitro_charge, 0.0, 1.0)
 	_nitro_bar.set_value(charge)
-	# rm 为 null = 开放世界：没有发令流程，一直在跑，氮气随时可用
+	# rm 为 null 表示没有发令流程，一直在跑，氮气随时可用
 	var racing := rm == null or rm.state == RaceManager.State.RACING
 	var active := car.nitro_active and racing
 	var charging := car.nitro_gaining and not active
@@ -1176,30 +1159,22 @@ func _update_nitro(rm: RaceManager, car: Car) -> void:
 		_nitro_bar.accent = col
 		_nitro_bar.queue_redraw()
 	if _nitro_label != null:
-		_nitro_label.text = text
-		_nitro_label.add_theme_color_override("font_color", col)
+		_set_text(_nitro_label, text)
+		_set_color(_nitro_label, col)
 	if _nitro_badge != null:
-		_nitro_badge.text = badge
+		_set_text(_nitro_badge, badge)
 
 
 func _update_slipstream(rm: RaceManager, car: Car) -> void:
 	if _slip_label == null:
 		return
-	var active := false
-	if rm != null and rm.state == RaceManager.State.RACING and car != null:
-		var fwd := car.forward()
-		var side := car.right()
-		for ai in rm.ais:
-			if ai == null:
-				continue
-			var rel: Vector3 = ai.pos - car.pos
-			var ahead := rel.dot(fwd)
-			var lateral := absf(rel.dot(side))
-			if ahead > 2.0 and ahead < 26.0 and lateral < 3.6:
-				active = true
-				break
+	var active := rm != null and rm.state == RaceManager.State.RACING \
+		and car != null and car.draft > 0.12
 	_slip_label.visible = active
 	if active:
+		# 显示真实尾流强度，而不是「有没有前车」的布尔值：
+		# 贴得越近、越正后方，充能/推力收益越高，玩家能据此判断何时抽头。
+		_set_text(_slip_label, "SLIPSTREAM   尾流加速   +%d%%" % int(round(car.draft * 100.0)))
 		_slip_label.modulate.a = 0.65 + 0.35 * sin(Time.get_ticks_msec() * 0.008)
 
 
@@ -1214,8 +1189,7 @@ func _update_countdown(rm: RaceManager) -> void:
 	if text.is_empty():
 		return
 	var is_go := text == "GO!"
-	countdown_label.add_theme_color_override("font_color",
-		Color(0.46, 1.0, 0.62, 1.0) if is_go else Color(1.0, 0.95, 0.72, 1.0))
+	_set_color(countdown_label, Color(0.46, 1.0, 0.62, 1.0) if is_go else Color(1.0, 0.95, 0.72, 1.0))
 	countdown_label.pivot_offset = countdown_label.size * 0.5
 	countdown_label.scale = Vector2(1.45, 1.45)
 	var tw := countdown_label.create_tween()
@@ -1223,20 +1197,33 @@ func _update_countdown(rm: RaceManager) -> void:
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
-func _update_toast(rm: RaceManager) -> void:
+## 通用中央提示（完美起步 / 里程碑等），与超车提示共用一条通道。
+func show_message(text: String, color: Color, duration: float = 1.8) -> void:
+	if toast_label == null:
+		return
+	_set_text(toast_label, text)
+	_set_color(toast_label, color)
+	toast_label.modulate.a = 1.0
+	_toast_timer = maxf(_toast_timer, duration)
+
+
+func _update_toast(rm: RaceManager, frame_dt: float = -1.0) -> void:
 	if rm.player_position != _prev_position:
 		if _prev_position > 0 and rm.state == RaceManager.State.RACING:
 			var gained := _prev_position - rm.player_position
-			toast_label.text = ("▲   超越  P%d      +%d" % [rm.player_position, gained]) if gained > 0 \
-				else ("▼   被超越  P%d" % rm.player_position)
-			toast_label.add_theme_color_override("font_color", UIStyle.GREEN if gained > 0 else UIStyle.RED)
+			_set_text(toast_label, ("▲   超越  P%d      +%d" % [rm.player_position, gained]) if gained > 0 \
+				else ("▼   被超越  P%d" % rm.player_position))
+			_set_color(toast_label, UIStyle.GREEN if gained > 0 else UIStyle.RED)
 			_toast_timer = 2.2
 		_prev_position = rm.player_position
 	if _toast_timer > 0.0:
-		_toast_timer -= get_physics_process_delta_time()
+		# HUD 允许以低于物理帧率的频率刷新，计时必须用真实累计帧时长，
+		# 否则把 120Hz 刷成 60Hz 后所有提示都会停留两倍时间。
+		var step := frame_dt if frame_dt > 0.0 else get_physics_process_delta_time()
+		_toast_timer -= step
 		toast_label.modulate.a = clampf(_toast_timer / 0.6, 0.0, 1.0)
 	elif toast_label != null:
-		toast_label.text = ""
+		_set_text(toast_label, "")
 		toast_label.modulate.a = 1.0
 
 
@@ -1244,13 +1231,9 @@ func _apply_visibility() -> void:
 	if _vignette != null:
 		_vignette.visible = Settings.vignette
 	if _map_panel != null:
-		# 开放世界没有赛道，顶部赛段小地图退掉；右上角换成无界大陆全域图
-		_map_panel.visible = Settings.hud_minimap and not _open_world_mode
-	if _continent_panel != null:
-		_continent_panel.visible = Settings.hud_minimap and _open_world_mode
+		_map_panel.visible = Settings.hud_minimap
 	if _position_panel != null:
-		# 自由漫游没有对手，名次牌没有意义
-		_position_panel.visible = not _open_world_mode
+		_position_panel.visible = true
 	if tach_gauge != null:
 		tach_gauge.visible = Settings.hud_tach
 	if _speed_label != null:
@@ -1268,7 +1251,9 @@ func _apply_visibility() -> void:
 	if _rpm_caption != null:
 		_rpm_caption.visible = Settings.hud_tach
 	if hint_label != null:
-		hint_label.visible = Settings.hud_hints
+		hint_label.visible = Settings.key_hints
+	if camera_label != null:
+		camera_label.visible = Settings.key_hints
 
 
 # ---------------------------------------------------------------------------
@@ -1430,6 +1415,14 @@ func show_results(rm: RaceManager) -> void:
 	if rm.ai_fastest_lap > 0.0:
 		record_bits.append("对手最快圈  %s（%s）" % [
 			RaceManager.format_time(rm.ai_fastest_lap), rm.ai_fastest_name])
+	if rm.best_sector_times.size() == RaceManager.SECTOR_COUNT:
+		var sector_bits: Array[String] = []
+		for i in rm.best_sector_times.size():
+			var split := float(rm.best_sector_times[i])
+			if split > 0.0:
+				sector_bits.append("S%d %s" % [i + 1, RaceManager.format_time(split)])
+		if sector_bits.size() == rm.best_sector_times.size():
+			record_bits.append("最佳分段  " + "   ·   ".join(sector_bits))
 	results_records.text = "        ".join(record_bits)
 	results_hint.text = "Ⓐ  返回菜单      ·      Ⓧ  重新比赛      ·      Ⓨ  下一场比赛" if InputSetup.last_input_was_joy \
 		else "R  重新比赛      ·      M  返回菜单      ·      ENTER  下一场比赛"

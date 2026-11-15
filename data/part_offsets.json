@@ -852,6 +852,28 @@
 			"byd_sealion"
 		]
 	},
+	"lamborghini_aventador": {
+		"done": true,
+		"wing": {
+			"bmw_m4_adro_g82": {
+				"dy": -0.16,
+				"dz": -0.14
+			},
+			"bmw_m5_f90": {
+				"dy": 0.06,
+				"dz": 0.03,
+				"scale": 0.61
+			},
+			"byd_yangwang_u7": {
+				"dy": 0.05,
+				"dz": 0.0
+			}
+		},
+		"wing_bans": [
+			"bmw_x6m",
+			"byd_sealion"
+		]
+	},
 	"nio_es7": {
 		"done": true,
 		"no_wing": true
@@ -980,32 +1002,6 @@
 				"dz": -0.11
 			}
 		}
-	},
-	"xiaomi_su7": {
-		"done": true,
-		"wing": {
-			"bmw_m3_e46_gtr": {
-				"dy": -0.04,
-				"dz": -0.1
-			},
-			"bmw_m4_adro_g82": {
-				"dy": -0.19,
-				"dz": -0.19
-			},
-			"bmw_m4_gt4": {
-				"dy": -0.08,
-				"dz": -0.08
-			},
-			"byd_yangwang_u7": {
-				"dy": 0.0,
-				"dz": -0.15
-			}
-		},
-		"wing_bans": [
-			"bmw_x6m",
-			"bmw_m5_f90",
-			"byd_sealion"
-		]
 	},
 	"zeekr_7x": {
 		"done": true,

@@ -18,7 +18,7 @@ extends Node
 ##   msaa:int / taa:bool / ssr:bool / ssao:bool / ssil:bool / volumetric:bool
 ##   motion_blur_enabled:bool / vignette:bool
 ##   master_volume / music_volume / wind_volume / sfx_volume / ui_volume
-##   hud_minimap / hud_tach / hud_speed / hud_hints / hud_units / show_fps
+##   hud_minimap / hud_tach / hud_speed / key_hints / hud_units / show_fps
 ##   steer_sensitivity / camera_shake / laps_override
 ##   apply_display() / apply_audio_buses() / bus_name_for(key) / get_volume(key)
 
@@ -26,40 +26,57 @@ const PlatformProfile := preload("res://scripts/core/platform_profile.gd")
 
 const PRESETS: Array[Dictionary] = [
 	{
-		"id": "low", "name": "低 LOW", "scale": 0.70, "msaa": 0, "taa": false,
+		# 低档只服务帧率：3D 缓冲按 0.8× 逻辑分辨率渲染，所有全屏后处理关闭。
+		"id": "low", "name": "低 LOW", "scale": 0.70, "logical_scale": 0.8, "big_scale": 0.50,
+		"msaa": 0, "taa": false,
 		"ssr": false, "ssr_steps": 16, "ssao": false, "ssil": false, "tree_shadows": false,
 		"vol": false, "shadow_dist": 120.0, "fog_scale": 0.7,
 		"content": 0.35, "particles": 0.35,
 		# 低档省帧率：小阴影图集 + 硬阴影（省掉 PCF 软采样）、模型更早切低模、
 		# 动态模糊减半采样、天空反射缓存降一档
 		"shadow_atlas": 2048, "shadow_filter": 0, "lod_bias": 0.5,
+		"lod_threshold": 3.0,
 		"blur_taps": 6, "sky_radiance": Sky.RADIANCE_SIZE_256, "cloud_octaves": 3, "cloud_detail": 0.0,
 	},
 	{
-		"id": "medium", "name": "中 MEDIUM", "scale": 0.85, "msaa": 0, "taa": false,
-		"ssr": true, "ssr_steps": 32, "ssao": true, "ssil": false, "tree_shadows": false,
+		# 中档：1× 逻辑分辨率 + SSR/SSAO，关掉最贵的 SSIL 与体积雾。
+		"id": "medium", "name": "中 MEDIUM", "scale": 0.85, "logical_scale": 1.0, "big_scale": 0.70,
+		"msaa": 0, "taa": false,
+		"ssr": true, "ssr_steps": 24, "ssao": true, "ssil": false, "tree_shadows": false,
 		"vol": false, "shadow_dist": 220.0, "fog_scale": 0.9,
 		"content": 0.6, "particles": 0.6,
 		"shadow_atlas": 4096, "shadow_filter": 2, "lod_bias": 0.8,
-		"blur_taps": 8, "sky_radiance": Sky.RADIANCE_SIZE_512, "cloud_octaves": 4, "cloud_detail": 1.0,
+		"lod_threshold": 2.0,
+		"blur_taps": 8, "sky_radiance": Sky.RADIANCE_SIZE_256, "cloud_octaves": 4, "cloud_detail": 1.0,
 	},
 	{
-		"id": "high", "name": "高 HIGH", "scale": 1.0, "msaa": 2, "taa": true,
-		"ssr": true, "ssr_steps": 64, "ssao": true, "ssil": true, "tree_shadows": false,
+		# 高档：1.2× 逻辑分辨率 + 完整环境光遮蔽；Retina 上由时间/空间升频补清晰度。
+		# SSIL / TAA / 大阴影图集在 M1 Pro 上各占 10%+ 帧率，只留给超高。
+		# 天空辐射缓存用 256：云层是 TIME 动画，辐射图每帧重算，512 实测吃掉 10~30% 帧率；
+		# 车漆/水面反射在 256 下肉眼无差。
+		"id": "high", "name": "高 HIGH", "scale": 1.0, "logical_scale": 1.2, "big_scale": 0.82,
+		"msaa": 0, "taa": false,
+		"ssr": true, "ssr_steps": 48, "ssao": true, "ssil": false, "tree_shadows": false,
 		"vol": true, "shadow_dist": 240.0, "fog_scale": 1.0,
 		"content": 1.0, "particles": 1.0,
-		"shadow_atlas": 8192, "shadow_filter": 3, "lod_bias": 1.0,
-		"blur_taps": 12, "sky_radiance": Sky.RADIANCE_SIZE_512, "cloud_octaves": 5, "cloud_detail": 1.0,
+		"shadow_atlas": 4096, "shadow_filter": 4, "lod_bias": 1.0,
+		"lod_threshold": 1.0,
+		"blur_taps": 12, "sky_radiance": Sky.RADIANCE_SIZE_256, "cloud_octaves": 5, "cloud_detail": 1.0,
 	},
 	{
-		"id": "ultra", "name": "超高 ULTRA", "scale": 1.0, "msaa": 8, "taa": true,
-		"ssr": true, "ssr_steps": 128, "ssao": true, "ssil": true, "tree_shadows": true,
-		"vol": true, "shadow_dist": 460.0, "fog_scale": 1.15,
+		# 超高：1.4× 逻辑分辨率 + 体积雾 + 更高场景密度，追求画质而非帧率。
+		# SSIL 在 M1 Pro 上实测吃掉 20% 帧率（66→79），赛车高速移动中几乎看不出
+		# 屏幕空间间接光的差别，画面观感由 SSR/SSAO/体积雾承担，因此关掉。
+		# 阴影：8192 图集 + 460m 对 0.7 渲染倍数纯属浪费，收到 4096/420m 后
+		# 阴影密度仍高于高档（240m），实测 +6 fps。模型精度保留到比高档更远即可。
+		"id": "ultra", "name": "超高 ULTRA", "scale": 1.0, "logical_scale": 1.4, "big_scale": 0.85,
+		"msaa": 2, "taa": false,
+		"ssr": true, "ssr_steps": 96, "ssao": true, "ssil": false, "tree_shadows": true,
+		"vol": true, "shadow_dist": 420.0, "fog_scale": 1.15,
 		"content": 1.35, "particles": 1.6,
-		# 超高拉满光影与模型精度：8192 图集 + 高质量软阴影、模型满精度保留到更远、
-		# 1024 天空反射缓存（车漆/玻璃反射更细腻）、粒子加量
-		"shadow_atlas": 8192, "shadow_filter": 3, "lod_bias": 1.7,
-		"blur_taps": 12, "sky_radiance": Sky.RADIANCE_SIZE_512, "cloud_octaves": 5, "cloud_detail": 1.0,
+		"shadow_atlas": 4096, "shadow_filter": 4, "lod_bias": 1.35,
+		"lod_threshold": 0.8,
+		"blur_taps": 12, "sky_radiance": Sky.RADIANCE_SIZE_256, "cloud_octaves": 5, "cloud_detail": 1.0,
 	},
 ]
 
@@ -174,7 +191,8 @@ var analog_curve_throttle := 1.0
 var hud_minimap := true
 var hud_tach := true
 var hud_speed := true
-var hud_hints := true
+## 键位提示总开关（主菜单、比赛、车库等各界面）：默认关，键位教学集中在新手教程。
+var key_hints := false
 var hud_units := "kph"
 var show_fps := false
 var laps_override := 0
@@ -278,6 +296,13 @@ func sync_details_from_preset() -> void:
 
 func cycle() -> void:
 	set_quality((index + 1) % PRESETS.size())
+
+
+## 3D 渲染分辨率上限（相对逻辑分辨率）。Retina/HiDPI 上物理像素是逻辑像素的
+## 2 倍，直接按 scale=1.0 渲染等于 4 倍像素量——M1 Pro 的 1600×900 窗口会
+## 悄悄变成 3200×1800 的 3D 缓冲，这是高档只有 28fps 的根因。
+func logical_scale() -> float:
+	return float(PRESETS[clampi(index, 0, PRESETS.size() - 1)].get("logical_scale", 1.0))
 
 
 func content_scale() -> float:
@@ -447,8 +472,8 @@ func set_value(key: String, value: Variant) -> void:
 			hud_tach = bool(value)
 		"hud_speed":
 			hud_speed = bool(value)
-		"hud_hints":
-			hud_hints = bool(value)
+		"key_hints":
+			key_hints = bool(value)
 		"hud_units":
 			hud_units = String(value)
 		"show_fps":
@@ -607,7 +632,7 @@ func _should_apply_display_on_startup() -> bool:
 		return false
 	var args := OS.get_cmdline_user_args()
 	for arg in args:
-		if arg.begins_with("--shot=") or arg == "--verify" or arg == "--perf" \
+		if arg.begins_with("--shot=") or arg == "--verify" or arg.begins_with("--perf") \
 				or arg.begins_with("--bake-"):
 			return false
 	return true
@@ -656,7 +681,7 @@ func reset_defaults() -> void:
 	hud_minimap = true
 	hud_tach = true
 	hud_speed = true
-	hud_hints = true
+	key_hints = false
 	hud_units = "kph"
 	show_fps = false
 	laps_override = 0
@@ -722,7 +747,7 @@ func save_settings() -> void:
 		"hud_minimap": hud_minimap,
 		"hud_tach": hud_tach,
 		"hud_speed": hud_speed,
-		"hud_hints": hud_hints,
+		"key_hints": key_hints,
 		"hud_units": hud_units,
 		"show_fps": show_fps,
 		"laps_override": laps_override,
@@ -731,26 +756,17 @@ func save_settings() -> void:
 		"last_car": last_car,
 		"last_mode": last_mode,
 	}
-	var file := FileAccess.open("user://settings.json", FileAccess.WRITE)
-	if file != null:
-		file.store_string(JSON.stringify(data, "\t"))
+	SafeJson.write("user://settings.json", JSON.stringify(data, "\t"))
 
 
 func load_settings() -> void:
 	_loading = true
-	if not FileAccess.file_exists("user://settings.json"):
+	var parsed: Variant = SafeJson.read_dict("user://settings.json")
+	if parsed == null:
 		index = PlatformProfile.recommended_quality()
 		sync_details_from_preset()
 		print("[PLATFORM] %s" % PlatformProfile.summary())
 		print("[PLATFORM] 首次启动，按平台推荐画质：%s" % name_text())
-		_loading = false
-		return
-	var file := FileAccess.open("user://settings.json", FileAccess.READ)
-	if file == null:
-		_loading = false
-		return
-	var parsed: Variant = JSON.parse_string(file.get_as_text())
-	if not (parsed is Dictionary):
 		_loading = false
 		return
 	var d: Dictionary = parsed as Dictionary
@@ -821,7 +837,8 @@ func load_settings() -> void:
 	hud_minimap = bool(d.get("hud_minimap", true))
 	hud_tach = bool(d.get("hud_tach", true))
 	hud_speed = bool(d.get("hud_speed", true))
-	hud_hints = bool(d.get("hud_hints", true))
+	# 旧键 hud_hints 是默认值回写、非用户选择，不继承；改名后默认关。
+	key_hints = bool(d.get("key_hints", false))
 	hud_units = String(d.get("hud_units", "kph"))
 	show_fps = bool(d.get("show_fps", false))
 	laps_override = clampi(int(d.get("laps_override", 0)), 0, 20)

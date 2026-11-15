@@ -6,11 +6,31 @@ extends RefCounted
 static var _smoke: Texture2D
 static var _flame: Texture2D
 static var _spark: Texture2D
+static var _glow: Texture2D
 static var _nitro_vignette: Texture2D
 static var _nitro_streaks: Texture2D
 static var _nitro_flash: Texture2D
 static var _smoke_mat: StandardMaterial3D
 static var _flame_mat: ShaderMaterial
+
+
+## 柔和径向光斑：路灯灯头光晕、太阳眩光等加色面片共用。
+static func radial_glow_texture() -> Texture2D:
+	if _glow != null:
+		return _glow
+	var n := 64
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	var half := float(n) * 0.5
+	for y in n:
+		for x in n:
+			var u := (float(x) + 0.5 - half) / half
+			var v := (float(y) + 0.5 - half) / half
+			var r := sqrt(u * u + v * v)
+			var a := pow(clampf(1.0 - r, 0.0, 1.0), 2.4)
+			img.set_pixel(x, y, Color(1.0, 0.92, 0.8, a))
+	img.generate_mipmaps()
+	_glow = ImageTexture.create_from_image(img)
+	return _glow
 
 
 static func smoke_texture() -> Texture2D:

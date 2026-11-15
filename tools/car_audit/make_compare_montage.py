@@ -7,7 +7,7 @@
   /Users/tong/.dsh/dsh-runtimes/dsh-primary-runtime/dependencies/python/bin/python3 \
     tools/car_audit/make_compare_montage.py \
       --old-dir /tmp/car_baseline --new-dir /tmp/car_after \
-      --ids bmw_m3_e46_gtr bmw_i8 xiaomi_su7 lambo_urus buick_gl8 hyundai_elantra \
+      --ids bmw_m3_e46_gtr bmw_i8 lamborghini_aventador lambo_urus buick_gl8 hyundai_elantra \
       --out-dir /tmp/car_after \
       --prefix compare \
       [--scene garage] [--width 800] [--label-old "升级前" --label-new "升级后"]

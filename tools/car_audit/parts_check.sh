@@ -11,7 +11,7 @@
 #   GODOT / PROJECT     Godot 路径 / 项目根
 #   OUT_DIR             输出目录（默认 /tmp/car_after/parts）
 #   SAVE_FILE           用户存档路径（默认自动按 project.godot 的 config/name 定位）
-#   CARS                车型（逗号分隔，默认 bmw_m3_e46_gtr,lambo_urus,buick_gl8,xiaomi_su7）
+#   CARS                车型（逗号分隔，默认 bmw_m3_e46_gtr,lambo_urus,buick_gl8,lamborghini_aventador）
 #   CFGS                组合（逗号分隔，默认 factory,paint1,paint2,wheels,tire,wing,caliper）
 #   TIMEOUT             单张看门狗秒数（默认 120）
 #
@@ -27,7 +27,7 @@ set -u
 GODOT="${GODOT:-/Users/tong/Applications/Godot.app/Contents/MacOS/Godot}"
 PROJECT="${PROJECT:-/Users/tong/Desktop/极速巅峰}"
 OUT_DIR="${1:-${OUT_DIR:-/tmp/car_after/parts}}"
-CARS="${CARS:-bmw_m3_e46_gtr,lambo_urus,buick_gl8,xiaomi_su7}"
+CARS="${CARS:-bmw_m3_e46_gtr,lambo_urus,buick_gl8,lamborghini_aventador}"
 CFGS="${CFGS:-factory,paint1,paint2,wheels,tire,wing,caliper}"
 TIMEOUT="${TIMEOUT:-120}"
 mkdir -p "$OUT_DIR/logs"

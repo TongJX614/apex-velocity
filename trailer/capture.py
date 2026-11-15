@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""APEX VELOCITY 宣传片 · 游戏内真实画面拍摄器
+"""APEX VELOCITY 宣传片 · 游戏内真实画面拍摄器（90 秒版）
 
 依据 docs/58-宣传片剧本与分镜表.md 的 SHOTS 表，逐条启动 Godot Movie Maker，
 以固定 30fps 录制**当前版本游戏的真实渲染画面**，输出 AVI(MJPEG) 到 shots/。
 
+本版只拍 10 张封闭赛道。
+
 用法：
     python3 trailer/capture.py            # 拍全部
-    python3 trailer/capture.py S06 S07    # 只拍指定分镜
+    python3 trailer/capture.py ST03 CL2   # 只拍指定分镜
     python3 trailer/capture.py --force    # 已存在也重拍
 
 注意：每个分镜是独立的游戏进程，按顺序执行（多窗口会互抢渲染焦点）。
@@ -25,39 +27,30 @@ DUMMY_SHOT = "/tmp/apex_shot_dummy.png"
 # id, 输出名, scene, track, car, dist, trailer_shot, hud, nogrid, frames, 说明
 SHOTS = [
     # ACT 1 · 整装
-    ("S02", "garage",   "garage",  "",       "bmw_m4_gt3",        None, "",        None, False,  90, "车库展车 · 45 台真车"),
-    ("S03", "menu",     "menu",    "coast",  "bmw_m4_gt3",        None, "",        None, False,  90, "主菜单 · 8 条赛道"),
-    # ACT 2 · 发车（倒数 + 起跑，剪辑时拆成 S04 / S05）
-    ("S04", "grid",     "grid",    "coast",  "xiaomi_su7",        None, "",        1,    False, 180, "3-2-1-GO 发车 + 起跑"),
-    # ACT 3 · 八站征途（每段录 12s，剪辑时挑最好的 5.3s）
-    ("S06", "coast",    "race",    "coast",  "xiaomi_su7",         620, "lead",    0,    True,  360, "翡翠海岸 · 正午碧海"),
-    ("S07", "alpine",   "race",    "alpine", "bmw_m3_touring",     560, "hero",    0,    True,  360, "雪山隘口 · 雪线暖阳"),
-    ("S08", "skyline",  "race",    "skyline","bmw_m4_gt3",         680, "side",    0,    True,  360, "天际环城 · 黄昏金光"),
-    ("S09", "harbor",   "race",    "harbor", "bmw_z4_m40i",        640, "lead",    0,    True,  360, "落日港湾 · 金色暮光"),
-    ("S10", "canyon",   "race",    "canyon", "byd_yangwang_u9",    900, "chase",   0,    True,  360, "赤岩峡谷 · 赤色夕照"),
-    ("S11", "magma",    "race",    "magma",  "bmw_m6_gt3",         820, "hero",    0,    True,  360, "熔岩盆地 · 火山暮色"),
-    ("S12", "glacier",  "race",    "glacier","bmw_i8",             700, "aerial",  0,    True,  360, "冰川湖环道 · 蓝调时刻"),
-    ("S13", "city",     "race",    "city",   "bmw_m4_adro_g82",    700, "lead",    0,    True,  360, "霓虹都市 · 雨夜霓虹"),
+    ("GARAGE", "garage", "garage", "", "bmw_m4_gt3", None, "", None, False, 90, "车库展车 · 46 台真车"),
+    ("MENU", "menu", "menu", "metro", "bmw_m4_gt3", None, "", None, False, 90, "主菜单 · 都会环线"),
+    # ACT 2 · 发车（倒数 + 起跑，剪辑时拆成两段）
+    ("GRID", "grid", "grid", "coast", "bmw_m3_e46_gtr", None, "", 1, False, 180, "3-2-1-GO 发车"),
+    # ACT 3 · 十站征途（每段录 10s，剪辑时挑 5.3s）
+    ("ST01", "pass", "race", "pass", "bmw_m850i", 3200, "chase", 0, True, 300, "雾岭山道 · 晨雾直道"),
+    ("ST02", "coast", "race", "coast", "bmw_csl_hommage", 1000, "hero", 0, True, 300, "翡翠海岸 · 正午碧海"),
+    ("ST03", "metro", "race", "metro", "lambo_urus", 1000, "chase", 0, True, 300, "都会环线 · 真实街道"),
+    ("ST04", "alpine", "race", "alpine", "pandem_m3_e92", 900, "hero", 0, True, 300, "雪山隘口 · 雪线暖阳"),
+    ("ST05", "skyline", "race", "skyline", "bmw_m2_g87", 1100, "hero", 0, True, 300, "天际环城 · 黄昏金光"),
+    ("ST06", "harbor", "race", "harbor", "bmw_z4_m40i", 1000, "hero", 0, True, 300, "落日港湾 · 金色暮光"),
+    ("ST07", "canyon", "race", "canyon", "bmw_m5_f90", 900, "hero", 0, True, 300, "赤岩峡谷 · 赤色夕照"),
+    ("ST08", "magma", "race", "magma", "bmw_m6_gt3", 2200, "chase", 0, True, 300, "熔岩盆地 · 火山暮色"),
+    ("ST09", "glacier", "race", "glacier", "bmw_i8", 1100, "hero", 0, True, 300, "冰川湖环道 · 蓝调时刻"),
+    ("ST10", "city", "race", "city", "bmw_m4_g82", 1100, "hero", 0, True, 300, "霓虹都市 · 雨夜霓虹"),
     # ACT 4 · 极限（快切）
-    ("S14", "drift",    "drift",   "city",   "bmw_m4_adro_g82",   None, "",        0,    True,   90, "漂移甩尾"),
-    ("S15", "nitro",    "nitro",   "city",   "bmw_m4_gt3",        None, "",        0,    True,   90, "氮气喷射"),
-    ("S16", "pack",     "pack",    "city",   "bmw_m4_gt3",        None, "",        0,    True,   90, "三车缠斗"),
-    ("S17", "cockpit",  "race",    "city",   "bmw_m4_gt3",         700, "cockpit", 1,    True,   90, "驾驶位第一视角"),
-    ("S18", "wheel",    "race",    "city",   "bmw_m4_gt3",         700, "wheel",   0,    True,   90, "贴地轮组特写"),
+    ("CL1", "drift", "drift", "city", "bmw_m4_g82", None, "", 0, True, 300, "漂移甩尾"),
+    ("CL2", "nitro", "nitro", "city", "bmw_m4_g82", None, "", 0, True, 300, "氮气喷射"),
+    ("CL3", "pack", "pack", "city", "bmw_m4_g82", None, "", 0, True, 300, "三车缠斗"),
+    ("CL4", "cockpit", "race", "city", "bmw_m4_g82", 2100, "cockpit", 0, True, 150, "驾驶位第一视角"),
+    ("CL5", "wheel", "race", "city", "bmw_m4_g82", 2100, "wheel", 0, True, 150, "贴地轮组特写"),
     # ACT 5 · 冲线与成绩
-    # 收尾留在夜城且隐藏 HUD：延续夜景光线，也避免 HUD 暴露「第 1 圈刚起步」
-    # 与紧随其后的 RACE FINISH 结算界面矛盾；完赛信息交给结算画面承担。
-    ("S19", "finish",   "race",    "city",   "bmw_m4_gt3",        2100, "chase",   0,    True,  120, "夜城最后一程"),
-    ("S20", "results",  "results", "",       "",                  None, "",        None, False,  90, "结算界面"),
-    # 备选角度：每条赛道另拍一段不同赛段的 hero 机位，成片前逐段比选取优
-    ("A06", "coast_alt",   "race", "coast",   "xiaomi_su7",       1000, "hero", 0, True, 180, "备选 · 海岸另一赛段"),
-    ("A07", "alpine_alt",  "race", "alpine",  "bmw_m3_touring",    900, "hero", 0, True, 180, "备选 · 雪山另一赛段"),
-    ("A08", "skyline_alt", "race", "skyline", "bmw_m4_gt3",       1100, "hero", 0, True, 180, "备选 · 天际另一赛段"),
-    ("A09", "harbor_alt",  "race", "harbor",  "bmw_z4_m40i",      1000, "hero", 0, True, 180, "备选 · 港湾另一赛段"),
-    ("A10", "canyon_alt",  "race", "canyon",  "byd_yangwang_u9",  1500, "hero", 0, True, 180, "备选 · 峡谷另一赛段"),
-    ("A11", "magma_alt",   "race", "magma",   "bmw_m6_gt3",       1300, "hero", 0, True, 180, "备选 · 熔岩另一赛段"),
-    ("A12", "glacier_alt", "race", "glacier", "bmw_i8",           1100, "hero", 0, True, 180, "备选 · 冰川另一赛段"),
-    ("A13", "city_alt",    "race", "city",    "bmw_m4_adro_g82",  1100, "hero", 0, True, 180, "备选 · 夜城另一赛段"),
+    ("FIN", "finish", "race", "city", "bmw_m4_g82", 2100, "chase", 0, True, 150, "夜城最后一程"),
+    ("RES", "results", "results", "city", "bmw_m4_g82", None, "", None, False, 90, "结算界面"),
 ]
 
 
@@ -92,7 +85,7 @@ def build_cmd(s):
 def main():
     args = [a for a in sys.argv[1:]]
     force = "--force" in args
-    only = {a for a in args if a.startswith("S") and not a.startswith("--")}
+    only = {a for a in args if not a.startswith("--")}
     os.makedirs(SHOTS_DIR, exist_ok=True)
     todo = [s for s in SHOTS if not only or s[0] in only]
     print(f"[CAPTURE] {len(todo)} shots -> {SHOTS_DIR}", flush=True)

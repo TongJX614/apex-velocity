@@ -19,7 +19,7 @@ func _run() -> void:
 	var f := FileAccess.open("res://data/cars.json", FileAccess.READ)
 	var data: Variant = JSON.parse_string(f.get_as_text())
 	var cars: Array = data["specs"]
-	var script := load("res://scripts/cars/car.gd")
+	var script := load("res://cars/scripts/car.gd")
 	print("%-26s %5s %5s %8s %8s %8s" % ["car", "0-100", "标定", "100-200", "200-300", "平衡极速"])
 	var calib_bad := 0
 	var slow_bad := 0

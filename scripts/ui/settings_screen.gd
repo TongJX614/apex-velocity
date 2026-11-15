@@ -782,7 +782,7 @@ func _build_game_page(page: Control) -> void:
 		["小地图", "MINIMAP", "hud_minimap", "赛道轮廓与对手位置"],
 		["转速表", "TACHOMETER", "hud_tach", "右下角环形转速表"],
 		["速度表", "SPEEDOMETER", "hud_speed", "大号速度与档位"],
-		["操作提示", "CONTROL HINTS", "hud_hints", "底部按键提示行"],
+		["键位提示", "KEY HINTS", "key_hints", "各界面的键位提示 · 教学在新手教程"],
 		["帧率显示", "FPS COUNTER", "show_fps", "左上角实时帧率"],
 	]
 	for entry in rows:
@@ -1126,8 +1126,11 @@ func _sync_all() -> void:
 		_quality_buttons[i].button_pressed = (i == Settings.index)
 	for i in _quality_detail_labels.size():
 		var preset: Dictionary = Settings.PRESETS[i]
-		_quality_detail_labels[i].text = "渲染 %d%%  ·  MSAA %s  ·  %s" % [
-			int(float(preset["scale"]) * 100.0),
+		# 卡片里的百分比要和实际生效的 3D 缓冲一致（Retina 上再除以屏幕缩放）。
+		var hidpi := maxf(DisplayServer.screen_get_scale(), 1.0)
+		var eff := minf(float(preset["scale"]), float(preset["logical_scale"]) / hidpi)
+		_quality_detail_labels[i].text = "3D %d%%  ·  MSAA %s  ·  %s" % [
+			int(round(eff * 100.0)),
 			"关" if int(preset["msaa"]) == 0 else "%dx" % int(preset["msaa"]),
 			"SSR+SSAO" if bool(preset["ssr"]) and bool(preset["ssao"]) else "基础"]
 	if _resolution_opt != null:
@@ -1161,21 +1164,29 @@ func _refresh_budget() -> void:
 	var q: Dictionary = Settings.preset()
 	var filter_names := {0: "硬阴影", 2: "软阴影·低", 3: "软阴影·中", 4: "软阴影·高"}
 	var filter_name: String = filter_names.get(Settings.shadow_filter(), "软阴影")
+	# 显示真正生效的 3D 缓冲：Retina 上档位会把分辨率压到逻辑分辨率的 40–70%，
+	# 只写 render_scale 会让人以为一直在按 100% 渲染。
+	var hidpi := maxf(DisplayServer.screen_get_scale(), 1.0)
+	var eff := minf(float(q["scale"]), Settings.logical_scale() / hidpi)
+	var vp_size := get_viewport().get_visible_rect().size
+	var upscale_names := {"auto": "自动·时间", "on": "强制·时间", "off": "关闭"}
 	_budget_label.text = (
-		"渲染缩放 %d%%       MSAA %s       TAA %s\n"
+		"渲染缩放 %d%%（%d×%d）       MSAA %s       TAA %s\n"
 		+ "SSR %s       SSAO %s       SSIL %s       体积雾 %s\n"
 		+ "升频 %s       锐化 %d%%       远景 %.2fx\n"
 		+ "阴影 %.0fm       植被 %.2fx       粒子 %.2fx\n"
-		+ "阴影精度 %s       模型细节 %.2fx       有效远景 %.0f m"
+		+ "阴影精度 %s       模型细节 %.2fx       LOD 阈值 %.1f       有效远景 %.0f m"
 	) % [
-		int(float(q["scale"]) * 100.0),
+		int(round(eff * 100.0)), int(vp_size.x * eff), int(vp_size.y * eff),
 		"关" if int(q["msaa"]) == 0 else "%dx" % int(q["msaa"]),
 		"开" if bool(q["taa"]) else "关",
 		"开" if bool(q["ssr"]) else "关", "开" if bool(q["ssao"]) else "关",
 		"开" if bool(q["ssil"]) else "关", "开" if bool(q["vol"]) else "关",
-		Settings.upscale, int(round(Settings.sharpen * 100.0)), Settings.far_clarity,
+		String(upscale_names.get(Settings.upscale, Settings.upscale)),
+		int(round(Settings.sharpen * 100.0)), Settings.far_clarity,
 		float(q["shadow_dist"]), float(q["content"]), float(q["particles"]),
-		filter_name, Settings.lod_bias(), Settings.far_distance()]
+		filter_name, Settings.lod_bias(), float(q.get("lod_threshold", 1.0)),
+		Settings.far_distance()]
 
 
 func _sync_chips(key: String, current: Variant) -> void:
@@ -1207,7 +1218,7 @@ func _toggle_value(key: String) -> bool:
 		"hud_minimap": return Settings.hud_minimap
 		"hud_tach": return Settings.hud_tach
 		"hud_speed": return Settings.hud_speed
-		"hud_hints": return Settings.hud_hints
+		"key_hints": return Settings.key_hints
 		"show_fps": return Settings.show_fps
 		"analog_input_enabled": return Settings.analog_input_enabled
 	return false

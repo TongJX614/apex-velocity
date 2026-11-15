@@ -1,6 +1,6 @@
 {
  "source": "src/cars/roster.js",
- "count": 46,
+ "count": 45,
  "specs": [
   {
    "id": "bmw_m3_e46_gtr",
@@ -2026,51 +2026,6 @@
    "engineProfile": "i6",
    "redline": 0.94,
    "gears": 6
-  },
-  {
-   "id": "xiaomi_su7",
-   "name": "XIAOMI SU7",
-   "cn": "小米 SU7 · 高性能纯电",
-   "tag": "EV",
-   "number": 50,
-   "badge": "XIAOMI",
-   "color": "#2f5fb0",
-   "rim": "#c9d2da",
-   "accent": "#eef2f6",
-   "maxSpeed": 73.61,
-   "accel": 10.7,
-   "brake": 36.62,
-   "grip": 7.0,
-   "zeroTo100": 2.8,
-   "stats": {
-    "speed": 50,
-    "accel": 60,
-    "handling": 50
-   },
-   "caps": {
-    "speed": 75,
-    "accel": 89,
-    "handling": 77
-   },
-   "topKph": 265,
-   "desc": "Max 版 673 马力，零百 2.78 秒，直线成绩比预想更凶。",
-   "parts": {
-    "rims": false,
-    "tires": false,
-    "wings": false,
-    "calipers": false,
-    "livery": false
-   },
-   "realZeroTo100": 2.8,
-   "fuelType": "ev",
-   "aspiration": "none",
-   "powerHp": 673,
-   "torqueNm": 838,
-   "weightKg": 2205,
-   "drivetrain": "AWD",
-   "engineProfile": "ev",
-   "redline": 1.0,
-   "gears": 1
   }
  ],
  "palettes": {
@@ -3790,45 +3745,6 @@
     "accent": "#eef2f6"
    }
   ],
-  "xiaomi_su7": [
-   {
-    "name": "原厂漆",
-    "en": "FACTORY",
-    "color": "#2f5fb0",
-    "accent": "#eef2f6"
-   },
-   {
-    "name": "曜石黑",
-    "en": "ONYX BLACK",
-    "color": "#141518",
-    "accent": "#eef2f6"
-   },
-   {
-    "name": "珍珠白",
-    "en": "PEARL WHITE",
-    "color": "#e9e7e0",
-    "accent": "#1b1b1b"
-   },
-   {
-    "name": "赛道红",
-    "en": "RACING RED",
-    "color": "#b81b29",
-    "accent": "#1b1b1b"
-   },
-   {
-    "name": "纳多灰",
-    "en": "NARDO GREY",
-    "color": "#9aa1a8",
-    "accent": "#1b1b1b"
-   },
-   {
-    "name": "哑光石墨",
-    "en": "MATTE GRAPHITE",
-    "color": "#3a3f45",
-    "matte": true,
-    "accent": "#eef2f6"
-   }
-  ],
   "lamborghini_aventador": [
    {
     "name": "原厂漆",
@@ -3913,7 +3829,6 @@
   "zeekr_7x": "zephyr",
   "buick_gl8": "kitsune",
   "bmw_m4_adro_kit": "kitsune",
-  "xiaomi_su7": "zephyr",
   "lamborghini_aventador": "vortex"
  }
 }

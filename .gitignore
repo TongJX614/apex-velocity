@@ -4,6 +4,10 @@
 
 # 大体积资产：从 GitHub Release 下载，不入库
 assets/
+cars/assets/
+cars/audio/
+maps/assets/
+maps/audio/
 build/
 trailer/*.mp4
 

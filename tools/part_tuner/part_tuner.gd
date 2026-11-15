@@ -11,7 +11,7 @@ extends Node
 ## 偏移生效机制：PartsLibrary.build_wing / GarageLook 供体轮挂载时叠加
 ##   part_offsets.json 里对应 car_id 的 {wing:{dy,dz}, wheels:{dy,dz}}。
 
-const PartsLib := preload("res://scripts/cars/parts_library.gd")
+const PartsLib := preload("res://cars/scripts/parts_library.gd")
 
 var _cars: Array = []            # 所有车 id（GameData 顺序）
 var _car_idx := 0

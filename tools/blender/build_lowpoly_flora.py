@@ -4,7 +4,7 @@ Run:
   ~/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup \
       --python tools/blender/build_lowpoly_flora.py
 
-Outputs assets/venues/lowtree_palm.glb, lowtree_round.glb, lowtree_pine.glb
+Outputs maps/assets/venues/lowtree_palm.glb, lowtree_round.glb, lowtree_pine.glb
 (each < 200 triangles — used for everything outside the detailed near band).
 """
 import math

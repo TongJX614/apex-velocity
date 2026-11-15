@@ -4,7 +4,7 @@ Run:
   ~/Applications/Blender.app/Contents/MacOS/Blender --background --factory-startup \
       --python tools/blender/build_trees.py
 
-Outputs assets/venues/tree_palm.glb, tree_broadleaf.glb, tree_pine.glb.
+Outputs maps/assets/venues/tree_palm.glb, tree_broadleaf.glb, tree_pine.glb.
 Origin at trunk base (z = 0), real-world heights (8-11 m).
 """
 import math

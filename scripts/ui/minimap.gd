@@ -14,20 +14,46 @@ var show_start_line := true
 var show_glow := true
 var show_grid := true
 
+# 赛道投影点缓存：赛道不变、控件尺寸不变时只算一次。
+# 旧版每帧对 ~2800 个采样点做闭包调用的坐标变换，是纯 UI 侧的固定 CPU 开销。
+var _cache_valid := false
+var _cache_size := Vector2.ZERO
+var _cache_track: TrackPath
+var _sc := 1.0
+var _mid := Vector2.ZERO
+var _center := Vector2.ZERO
+var _pts := PackedVector2Array()
+var _closed := PackedVector2Array()
+var _marks: Array[PackedVector2Array] = []
+var _start_a := Vector2.ZERO
+var _start_b := Vector2.ZERO
+var _start_nrm := Vector2.ZERO
+var _acc := 0.0
+
 
 func setup(track_path: TrackPath, player_car: Car, ai_cars: Array) -> void:
 	track = track_path
 	player = player_car
 	ais = ai_cars
-
-
-func _process(_dt: float) -> void:
+	_cache_valid = false
 	queue_redraw()
 
 
-func _draw() -> void:
+func _process(dt: float) -> void:
+	# 30Hz 足够：玩家箭头/对手点位的位移在 33ms 内肉眼看不出卡顿。
+	_acc += dt
+	if _acc < 0.033:
+		return
+	_acc = 0.0
+	queue_redraw()
+
+
+func _rebuild_cache() -> void:
+	_cache_valid = false
+	_pts = PackedVector2Array()
+	_closed = PackedVector2Array()
+	_marks.clear()
 	if track == null or track.samples.is_empty():
-		_draw_placeholder()
 		return
 	var mn := Vector2(INF, INF)
 	var mx := Vector2(-INF, -INF)
@@ -40,12 +66,44 @@ func _draw() -> void:
 		return
 	var pad := 18.0
 	var avail := size - Vector2(pad, pad) * 2.0
-	var sc := minf(avail.x / span.x, avail.y / span.y)
-	var mid := (mn + mx) * 0.5
-	var center := size * 0.5
+	_sc = minf(avail.x / span.x, avail.y / span.y)
+	_mid = (mn + mx) * 0.5
+	_center = size * 0.5
+	_pts.resize(track.samples.size())
+	for i in track.samples.size():
+		var s := track.samples[i]
+		_pts[i] = _center + (Vector2(s.x, s.z) - _mid) * _sc
+	if _pts.size() < 3:
+		return
+	_closed = _pts.duplicate()
+	_closed.append(_pts[0])
+	for k in range(1, 8):
+		var idx := int(float(_pts.size()) * float(k) / 8.0) % _pts.size()
+		var a: Vector2 = _pts[idx]
+		var b: Vector2 = _pts[(idx + 1) % _pts.size()]
+		var dir: Vector2 = (b - a).normalized()
+		var nrm := Vector2(-dir.y, dir.x)
+		_marks.append(PackedVector2Array([a - nrm * 3.0, a + nrm * 3.0]))
+	if track.samples.size() > 2:
+		var s0 := track.samples[0]
+		var s1 := track.samples[mini(1, track.samples.size() - 1)]
+		_start_a = _center + (Vector2(s0.x, s0.z) - _mid) * _sc
+		_start_b = _center + (Vector2(s1.x, s1.z) - _mid) * _sc
+		var dir0: Vector2 = (_start_b - _start_a).normalized()
+		_start_nrm = Vector2(-dir0.y, dir0.x)
+	_cache_valid = true
 
-	var to_map := func(world: Vector2) -> Vector2:
-		return center + (world - mid) * sc
+
+func _draw() -> void:
+	if track == null or track.samples.is_empty():
+		_draw_placeholder()
+		return
+	if not _cache_valid or _cache_track != track or _cache_size != size:
+		_cache_track = track
+		_cache_size = size
+		_rebuild_cache()
+	if _pts.size() < 3:
+		return
 
 	# 背景细网格（提升「仪表」专业感）
 	if show_grid:
@@ -57,53 +115,34 @@ func _draw() -> void:
 			var y := size.y * float(gy) / 4.0
 			draw_line(Vector2(6, y), Vector2(size.x - 6, y), grid_col, 1.0)
 
-	var pts := PackedVector2Array()
-	for i in track.samples.size():
-		pts.append(to_map.call(Vector2(track.samples[i].x, track.samples[i].z)))
-	if pts.size() < 3:
-		return
-	var closed := pts.duplicate()
-	closed.append(pts[0])
-
 	# 赛道：外发光 → 暗色内芯 → 主题色主线
 	if show_glow:
-		draw_polyline(closed, Color(line_color.r, line_color.g, line_color.b, 0.13), 12.0, true)
-		draw_polyline(closed, Color(line_color.r, line_color.g, line_color.b, 0.26), 7.0, true)
-	draw_polyline(closed, Color(0.012, 0.020, 0.028, 0.92), 5.0, true)
-	draw_polyline(closed, Color(line_color.r, line_color.g, line_color.b, 0.95), 2.0, true)
+		draw_polyline(_closed, Color(line_color.r, line_color.g, line_color.b, 0.13), 12.0, true)
+		draw_polyline(_closed, Color(line_color.r, line_color.g, line_color.b, 0.26), 7.0, true)
+	draw_polyline(_closed, Color(0.012, 0.020, 0.028, 0.92), 5.0, true)
+	draw_polyline(_closed, Color(line_color.r, line_color.g, line_color.b, 0.95), 2.0, true)
 
-	# 赛段刻度：均匀分布的小垂直线
-	if pts.size() > 8:
-		for k in range(1, 8):
-			var idx := int(float(pts.size()) * float(k) / 8.0) % pts.size()
-			var a: Vector2 = pts[idx]
-			var b: Vector2 = pts[(idx + 1) % pts.size()]
-			var dir: Vector2 = (b - a).normalized()
-			var nrm := Vector2(-dir.y, dir.x)
-			draw_line(a - nrm * 3.0, a + nrm * 3.0, Color(1.0, 1.0, 1.0, 0.22), 1.0, true)
+	# 赛段刻度：缓存的 7 条小垂直线
+	for seg in _marks:
+		draw_line(seg[0], seg[1], Color(1.0, 1.0, 1.0, 0.22), 1.0, true)
 
 	# 起跑线：黑白格子
-	if show_start_line and track.samples.size() > 2:
-		var s0 := track.samples[0]
-		var s1 := track.samples[mini(1, track.samples.size() - 1)]
-		var a: Vector2 = to_map.call(Vector2(s0.x, s0.z))
-		var b: Vector2 = to_map.call(Vector2(s1.x, s1.z))
-		var dir: Vector2 = (b - a).normalized()
-		var nrm := Vector2(-dir.y, dir.x)
+	if show_start_line:
 		var half := 5.0
-		draw_line(a - nrm * half, a + nrm * half, Color(1, 1, 1, 0.92), 2.2, true)
+		draw_line(_start_a - _start_nrm * half, _start_a + _start_nrm * half,
+			Color(1, 1, 1, 0.92), 2.2, true)
 		for cell in 4:
 			var t0 := -half + float(cell) * (half * 2.0 / 4.0)
 			var t1 := t0 + half * 2.0 / 4.0
 			var c := Color(1, 1, 1, 0.85) if cell % 2 == 0 else Color(0.02, 0.05, 0.06, 0.9)
-			draw_line(a + nrm * t0, a + nrm * t1, c, 2.4, true)
+			draw_line(_start_a + _start_nrm * t0, _start_a + _start_nrm * t1, c, 2.4, true)
 
 	# 对手：实心圆 + 深色描边 + 微光
 	for ai in ais:
 		if ai == null:
 			continue
 		var p: Vector3 = ai.pos
-		var pp: Vector2 = to_map.call(Vector2(p.x, p.z))
+		var pp: Vector2 = _center + (Vector2(p.x, p.z) - _mid) * _sc
 		draw_circle(pp, 5.2, Color(0.0, 0.0, 0.0, 0.55))
 		draw_circle(pp, 3.8, Color(ai.car_color, 0.96))
 		draw_arc(pp, 3.8, 0.0, TAU, 16, Color(1, 1, 1, 0.35), 0.8, true)
@@ -111,7 +150,7 @@ func _draw() -> void:
 	# 玩家：带方向箭头 + 脉冲圆环
 	if player != null:
 		var p: Vector3 = player.pos
-		var pp: Vector2 = to_map.call(Vector2(p.x, p.z))
+		var pp: Vector2 = _center + (Vector2(p.x, p.z) - _mid) * _sc
 		var heading_deg := rad_to_deg(player.heading)
 		var fwd := Vector2(sin(deg_to_rad(heading_deg)), cos(deg_to_rad(heading_deg)))
 		var side := Vector2(-fwd.y, fwd.x)

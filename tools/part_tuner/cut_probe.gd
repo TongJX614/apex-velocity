@@ -4,8 +4,8 @@ func _process(_d: float) -> bool:
 	_f += 1
 	if _f < 10:
 		return false
-	var PL: GDScript = load("res://scripts/cars/parts_library.gd")
-	var CV: GDScript = load("res://scripts/cars/car_visual.gd")
+	var PL: GDScript = load("res://cars/scripts/parts_library.gd")
+	var CV: GDScript = load("res://cars/scripts/car_visual.gd")
 	var car := "varis_m4_gts"
 	var holder := Node3D.new()
 	root.add_child(holder)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render quick workbench previews of assets/venues/*.glb to build/previews/.
+"""Render quick workbench previews of maps/assets/venues/*.glb to build/previews/.
 
 Usage:
   Blender -b --python tools/blender/preview_venues.py -- pier_real ship_real ...
