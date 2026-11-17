@@ -276,7 +276,7 @@ func _build_footer() -> void:
 	_footer.add_child(line)
 
 	var hint := UIStyle.label(
-		"S / ESC / F2 关闭     ·     Tab / ←→ 切换分页     ·     滑块可拖动或用方向键微调     ·     改动即时生效并自动保存",
+		"S / ESC / B 关闭     ·     TAB / LB/RB / ←→ 切换分页     ·     摇杆 / 十字键导航 · A 确认     ·     改动即时生效并自动保存",
 		12, UIStyle.TXT_FAINT)
 	UIStyle.place(hint, 0, 1, 0, 1, 42, -50, 900, -22)
 	_footer.add_child(hint)
@@ -669,7 +669,7 @@ func _build_controls_page(page: Control) -> void:
 		["Q / E", "降挡 / 升挡", "SHIFT DOWN / UP"],
 		["T", "手动 / 自动挡切换", "GEARBOX MODE"],
 		["R", "复位到赛道", "RESET CAR"],
-		["C", "切换相机", "CAMERA"],
+		["C / H", "切换相机 / 按住回头", "CAMERA / LOOK BACK"],
 	]
 	for entry in controls:
 		var row := HBoxContainer.new()
@@ -690,7 +690,8 @@ func _build_controls_page(page: Control) -> void:
 		body.add_child(hair)
 
 	var sys := _section(left, "系统快捷键", "SYSTEM")
-	var sys_rows := [["ESC", "暂停 / 继续"], ["M", "返回主菜单"], ["F2", "比赛中打开设置"], ["TAB", "在设置分页间切换"]]
+	var sys_rows := [["ESC", "暂停 / 继续"], ["M", "返回主菜单"], ["F2 · 十字→", "比赛中打开设置"],
+		["P · 十字←", "拍照模式（V 摆桩编辑）"]]
 	for entry in sys_rows:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 14)
@@ -735,24 +736,24 @@ func _build_controls_page(page: Control) -> void:
 	pad_grid.add_theme_constant_override("v_separation", 3)
 	pad_sec.add_child(pad_grid)
 	var pad_rows := [
-		["左摇杆", "转向 · 菜单选择"],
+		["左 / 右摇杆", "转向 / 环视"],
 		["RT / LT", "油门 / 刹车·倒车"],
-		["Ⓐ", "漂移 / 手刹 · 确认"],
-		["Ⓧ", "氮气"],
+		["Ⓐ / Ⓧ", "手刹 / 氮气"],
 		["LB / RB", "降挡 / 升挡"],
-		["Ⓨ", "手动 / 自动挡"],
-		["Ⓑ", "切换相机"],
-		["START", "暂停 / 返回"],
+		["Ⓨ / Ⓑ", "手动 / 切换相机"],
+		["十字↑↓ / ←→", "升降档 / 拍照·设置"],
+		["L3 / R3", "视角回正 / 按住回头"],
+		["BACK / START", "复位 / 暂停"],
 	]
 	for entry in pad_rows:
 		var cell := HBoxContainer.new()
 		cell.add_theme_constant_override("separation", 8)
 		var key := UIStyle.label(String(entry[0]), 11, UIStyle.TXT)
-		key.custom_minimum_size = Vector2(74, 0)
+		key.custom_minimum_size = Vector2(95, 0)
 		cell.add_child(key)
 		cell.add_child(UIStyle.label(String(entry[1]), 11, UIStyle.TXT_DIM))
 		pad_grid.add_child(cell)
-	var pad_note := UIStyle.label("菜单内 A 确认、START 返回；十字键不绑定功能。驾驶振动在上方 FEEL 分区调节。", 10, UIStyle.TXT_FAINT)
+	var pad_note := UIStyle.label("菜单：左摇杆 / 十字键导航 · A 确认 · B / START 返回。驾驶振动在上方 FEEL 分区调节。", 10, UIStyle.TXT_FAINT)
 	pad_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	pad_sec.add_child(pad_note)
 

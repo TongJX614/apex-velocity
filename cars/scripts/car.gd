@@ -33,13 +33,20 @@ const DRIVE_EFF := 0.82            # 传动效率：功率段推力 = P·η/(m·
 const FUEL_CUT_DRAG := 2.6         # 断油时的发动机制动 m/s²
 
 # --- 传动系 -----------------------------------------------------------------
-const GEAR_TOPS := [0.16, 0.30, 0.45, 0.61, 0.79, 1.0]  # 各挡红线对应的极速占比
+## 6 挡基准曲线：各挡红线对应的极速占比。真车挡位数不是统一的 6（本车池里有
+## 6/7/8/9 挡），所以这张表只是**基准形状**，实际用 `_build_gear_tops()` 按每台车
+## 的真实挡位数在归一化位置上重采样得到 `gear_tops`。重采样在 N=6 时采样点与基准
+## 逐位重合，因此 6 挡车的齿比行为与改前完全一致。
+const GEAR_TOPS_REF := [0.16, 0.30, 0.45, 0.61, 0.79, 1.0]
+## 支持的最大挡位数（车池里最高的 9AT）。超出按上限取，避免齿比表越界。
+const MAX_GEARS := 9
 const SHIFT_CUT_AUTO := 0.13
 const SHIFT_CUT_MANUAL := 0.055
 const AUTO_UPSHIFT := 0.985        # 自动升档上限（红线比例，约 7450rpm）
 const AUTO_SHIFT_RPM := 0.75       # 自动挡升档点：6000rpm（1.0 = 8000rpm）
 const AUTO_DOWNSHIFT := 0.625      # 自动降档阈值：5000rpm
 const AUTO_SHIFT_HYST := 0.8       # 换挡车速滞回带（m/s）：必须大于换挡断油期间的掉速
+const AUTO_UPSHIFT_WAIT := 0.45    # 到升挡转速却被滞回带挡住多久后强制升挡（s）
 const MANUAL_TORQUE := 1.12        # 手动挡动力增益
 const SHIFT_LOCK := 0.11
 
@@ -68,10 +75,19 @@ const WHEELSPIN_PENALTY := {"RWD": 0.22, "FWD": 0.28, "AWD": 0.10}
 
 # --- 漂移 -------------------------------------------------------------------
 const DRIFT_HOLD_SPEED := 6.0      # 低于此速度不再保持漂移（自动收油回抓地）
-const DRIFT_GRIP := 1.05           # 低速漂移中的横向抓地（1/s），越小越滑
-const DRIFT_GRIP_SPEED := 0.9      # 车速每 40m/s 追加的漂移抓地：高速漂得更收敛
+const DRIFT_GRIP := 0.75           # 低速漂移中的横向抓地（1/s），越小越滑
+const DRIFT_GRIP_SPEED := 0.35     # 车速每 40m/s 追加的漂移抓地：高速漂得更收敛
 const DRIFT_ENTER := 9.0           # 进入漂移的抓地衰减速度
 const DRIFT_RECOVER := 3.1         # 松手刹后的抓地恢复速度
+# 滑移角上限（弧度）。超过就开始「救车」：抓地回收 + 偏航衰减，车头自己拉回
+# 行进方向。这才是防止甩飞的正确做法——限制的是打转，不是漂移本身。
+# 低速能甩到 ~69°，高速收到 ~49°（高速打转必然失控，而且视觉上照样是大漂）。
+const DRIFT_SLIP_LOW := 1.20
+const DRIFT_SLIP_MIN := 0.55       # 小舵量/收油时允许的角度下限（约 31°）
+const DRIFT_SLIP_HIGH := 0.85
+const DRIFT_SLIP_RAMP := 0.75      # 从上限到完全救车的滑移角余量（弧度）
+const DRIFT_POWER_OVER := 0.45     # 漂移中全油门追加的偏航：油门控制角度
+const DRIFT_RECLAIM := 0.85        # 横向滑移动能回灌成前进速度的比例
 
 
 # --- 状态 -------------------------------------------------------------------
@@ -112,7 +128,14 @@ var engine_profile := "i6"
 var aspiration := "na"
 var drivetrain := "RWD"
 var redline := 0.94                # 归一化红线（0.92~1.0）
-var gear_count := 6
+## 真实挡位数（1 = 电车单速）。写入时立刻重采样齿比表，这样外部工具
+## （tools/accel_check.gd）只赋一个数字就能拿到正确齿比，不必各自复制上限与建表逻辑。
+var gear_count := 6:
+	set(value):
+		gear_count = clampi(value, 1, MAX_GEARS)
+		_build_gear_tops()
+## 各挡红线对应的极速占比，由 gear_count 重采样 GEAR_TOPS_REF 得到，末位恒为 1.0。
+var gear_tops: PackedFloat32Array = PackedFloat32Array(GEAR_TOPS_REF)
 var real_zero_to_100 := 5.0
 var weight_kg := 1500.0
 var power_hp := 300.0
@@ -127,6 +150,7 @@ var shift_flash := 0.0
 var limiter_active := false
 var shift_lock := 0.0
 var _shift_speed := 0.0            # 上次换挡时的车速：自动挡升降档的方向滞回基准
+var _up_wait := 0.0                # 自动挡已到升挡转速、却被滞回带挡住的累计时间
 var launch := false
 var braking := false
 var reverse_hold := 0.0            # 刹停后持续按住刹车的时长
@@ -206,7 +230,8 @@ func setup(car_spec: Dictionary, track_path: TrackPath, start_dist: float = 10.0
 	aspiration = String(spec.get("aspiration", "na")).to_lower()
 	drivetrain = String(spec.get("drivetrain", "RWD")).to_upper()
 	redline = clampf(float(spec.get("redline", 0.94)), 0.80, 1.0)
-	gear_count = clampi(int(spec.get("gears", 6)), 1, 6)
+	# 真实挡位数直接取自档案；上限与齿比表由 gear_count 的 setter 统一处理。
+	gear_count = int(spec.get("gears", 6))
 	real_zero_to_100 = float(spec.get("realZeroTo100", spec.get("zeroTo100", 5.0)))
 	weight_kg = float(spec.get("weightKg", 1500.0))
 	power_hp = float(spec.get("powerHp", 300.0))
@@ -284,6 +309,7 @@ func reset(start_dist: float = 10.0, lateral: float = 0.0) -> void:
 	limiter_active = false
 	shift_lock = 0.0
 	_shift_speed = 0.0
+	_up_wait = 0.0
 	reverse_hold = 0.0
 	nitro_charge = NITRO_START
 	draft = 0.0
@@ -398,7 +424,7 @@ func update_car(dt: float, input: Dictionary) -> void:
 	#
 	# 触发阈值是 redline × 0.998，不是 × 1.002。
 	#
-	# 为什么必须落在红线以内：顶挡的极速占比 GEAR_TOPS 末位 = 1.0，也就是
+	# 为什么必须落在红线以内：顶挡的极速占比 gear_tops 末位 = 1.0，也就是
 	# "车跑到极速时正好是红线"，而车速被 _speed_cap() 硬钳在 max_speed，
 	# 所以 rpm > redline × 1.002 在自动挡下**永远不成立**——默认是自动挡，
 	# 于是断油声一次都听不到（用户明确要求"断油之后是什么声音"）。
@@ -448,7 +474,9 @@ func update_car(dt: float, input: Dictionary) -> void:
 		if hb:
 			# 漂移中保留大部分动力：旧版 ×0.3 叠加手刹阻力会把车拽停，
 			# 玩家看到的就是「漂到一半莫名其妙停住」。
-			accel *= 0.45 + 0.27 * drift_grip
+			# 0.45 起点同样太狠：全漂移状态只剩 72% 动力，实测漂移 2s 就掉掉三成速，
+			# 大范围横扫退化成原地慢转圈，这就是「手感差一点意思」的物理来源。
+			accel *= 0.60 + 0.33 * drift_grip
 		# 风阻 + 滚阻给油时同样生效：功率段推力靠它和极速达到平衡，
 		# 否则平衡点会远超 max_speed（一直顶到硬钳制才停）。
 		accel -= COAST_ROLL + _aero_drag * (1.0 - DRAFT_DRAG_CUT * draft_eff) \
@@ -462,13 +490,22 @@ func update_car(dt: float, input: Dictionary) -> void:
 	var steer_authority := 1.12 - 0.72 * pow(speed01, 0.85)
 	# 倒车时偏航方向相反（和真车一样），否则按「左」车头会往反方向甩。
 	var yaw_dir := -1.0 if v_f < -0.3 else 1.0
-	# 漂移偏航随车速收敛：低速甩得出大角度，高速一拉手刹也不会原地打转。
-	var drift_yaw := lerpf(0.80, 0.40, clampf(speed_abs / 45.0, 0.0, 1.0))
+	# 漂移时偏航要**加强**而不是削弱：正常过弯轮胎咬死、半径已经很小，
+	# 只有让漂移到偏航角速度更高，才能做到「车身角度更大 + 拐弯半径更小」。
+	# 油门那一乘项是动力转向：全油门车尾继续外抛、收油角度自动收紧。
+	var drift_yaw := lerpf(1.50, 1.15, clampf(speed_abs / 45.0, 0.0, 1.0)) \
+		* (1.0 + DRIFT_POWER_OVER * clampf(throttle_in, 0.0, 1.0))
 	var yaw_rate := steer * 2.35 * spd_norm * steer_authority \
 		* lerpf(1.0, drift_yaw, drift_grip) * yaw_dir
-	# 滑移角过大时收一点偏航，避免一直甩到原地打转。
-	if drift_angle > 0.85:
-		yaw_rate *= lerpf(1.0, 0.55, clampf((drift_angle - 0.85) / 0.5, 0.0, 1.0))
+	# 甩过头才救车：偏航大幅衰减、车头被拉回行进方向，限制的是原地打转不是漂移。
+	# 上限随驾驶意图（舵量 × 油门）抬升：固定上限会把所有输入钳在同一个角度上
+	# ——实测满舵/半舵、全油/收油的角度只差 3°，玩家既收不回也放不出去。
+	var slip_limit := lerpf(DRIFT_SLIP_LOW, DRIFT_SLIP_HIGH, clampf(speed_abs / 45.0, 0.0, 1.0))
+	var demand := clampf(absf(steer), 0.0, 1.0) * lerpf(0.50, 1.0, clampf(throttle_in, 0.0, 1.0))
+	var slip_max := lerpf(DRIFT_SLIP_MIN, slip_limit, demand)
+	var slip_over := clampf((drift_angle - slip_max) / DRIFT_SLIP_RAMP, 0.0, 1.0)
+	if slip_over > 0.0:
+		yaw_rate *= lerpf(1.0, 0.22, slip_over)
 	heading -= yaw_rate * dt
 
 	fwd = forward()
@@ -488,19 +525,27 @@ func update_car(dt: float, input: Dictionary) -> void:
 	# 用合速度而不是前向分量——漂移中前向速度掉得很快，否则抓地会跟着塌掉。
 	var grip_drift := DRIFT_GRIP + DRIFT_GRIP_SPEED * clampf(vel.length() / 40.0, 0.0, 1.5)
 	var grip := lerpf(grip_normal, grip_drift, drift_grip)
+	# 甩过头时把抓地咬回去：横向动量被轮胎吸收，车收正而不是继续横着飞出去。
+	if slip_over > 0.0:
+		grip = lerpf(grip, grip_normal, slip_over * 0.80)
 	var lateral_before := new_vl
 	new_vl *= exp(-grip * dt)
-	# 漂移回收：被轮胎重新咬住的横向动量有一部分转回前进方向，
-	# 让出弯保持速度，而不是「横向速度凭空蒸发 → 车像被钉在地上」。
+	# 漂移保速：轮胎咬住横向滑移时，那部分动能不是消失而是转回前进方向。
+	# 缺了这一步，车身每转一度就把前向速度搬进「横向」桶里再抹掉——
+	# 结果打方向越猛掉速越快、角度反而越小，漂移退化成原地慢转圈。
+	# 按动能守恒回灌（vf² += R·(vl₀²−vl²)），速度只受真实阻力支配。
 	if drift_grip > 0.05 and absf(new_vf) > 2.0:
-		var reclaimed := absf(lateral_before - new_vl) * 0.42
-		new_vf += reclaimed * signf(new_vf)
+		var freed := lateral_before * lateral_before - new_vl * new_vl
+		if freed > 0.0:
+			new_vf += signf(new_vf) * (sqrt(new_vf * new_vf + DRIFT_RECLAIM * freed) - absf(new_vf))
 
 	var speed_now := absf(new_vf)
 	var base_drag := COAST_ROLL + _aero_drag * (1.0 - DRAFT_DRAG_CUT * draft_eff) \
 		* speed_now * speed_now
 	if hb:
-		new_vf = _toward_zero(new_vf, (base_drag + HANDBRAKE_DRAG + drift_grip * 0.5) * dt)
+		# 手刹的额外阻力只该在「起漂」那一下起作用；按住不放时还按 drift_grip
+		# 全额扣速，等于一边漂移一边踩死刹车，是漂移掉速的主要来源。
+		new_vf = _toward_zero(new_vf, (base_drag + HANDBRAKE_DRAG + drift_grip * 0.18) * dt)
 	elif throttle_in <= 0.01:
 		if throttle_in < -0.01 and not braking:
 			new_vf = _toward_zero(new_vf, base_drag * dt)
@@ -576,6 +621,7 @@ func _update_gearbox(dt: float, input: Dictionary, speed_abs: float, reversing: 
 		gear = 1
 		auto_gear = 1
 		_shift_speed = 0.0
+		_up_wait = 0.0
 		return
 	if gear_count <= 1:
 		gear = 1
@@ -604,6 +650,7 @@ func _update_gearbox(dt: float, input: Dictionary, speed_abs: float, reversing: 
 					shift_hint_timer = 0.55
 		# 手动期间持续跟随车速，切回自动挡时滞回基准才不会是陈旧值。
 		_shift_speed = speed_abs
+		_up_wait = 0.0
 		auto_gear = gear
 		return
 	# ---- 自动挡 ----
@@ -613,22 +660,31 @@ func _update_gearbox(dt: float, input: Dictionary, speed_abs: float, reversing: 
 	# 只判方向不够——功率弱的车升档后推力刚好抵不过阻力，车速会掉一点点，
 	# 于是立刻降档、再加速、再升档，每 0.25s 一轮，换挡断油一直挂着，车反而走不动。
 	var up_at := minf(redline * AUTO_UPSHIFT, AUTO_SHIFT_RPM)
-	if shift_lock <= 0.0 and rpm >= up_at and gear < gear_count \
-			and speed_abs > _shift_speed + AUTO_SHIFT_HYST:
+	# 转速到了升挡点却被滞回带挡住时累计计时：滞回带本身可能变成永远满足
+	# 不了的条件（降进低挡后已经顶在该挡红线上、车速再也涨不起来），
+	# 计时到点就无视滞回带强制升挡，保证自动挡不可能卡死在某个挡。
+	var rpm_up_ok := gear < gear_count and rpm >= up_at
+	_up_wait = _up_wait + dt if rpm_up_ok else 0.0
+	if shift_lock <= 0.0 and rpm_up_ok \
+			and (speed_abs > _shift_speed + AUTO_SHIFT_HYST or _up_wait >= AUTO_UPSHIFT_WAIT):
 		gear += 1
 		shift_cut = SHIFT_CUT_AUTO
 		shift_lock = SHIFT_LOCK
 		shift_flash = 0.14
 		_shift_speed = speed_abs
+		_up_wait = 0.0
 	elif shift_lock <= 0.0 and gear > 1 and rpm < AUTO_DOWNSHIFT \
 			and speed_abs < _shift_speed - AUTO_SHIFT_HYST:
 		var rpm_new := _rpm_for_gear(speed_abs, gear - 1)
-		if rpm_new <= redline * 0.99:
+		# 低挡转速必须落在升挡点以下才允许降：否则会一降完就顶红线、
+		# 立刻又该升回来，等于白降一次挡（真实自动挡也不会在高速时降到 1 挡）。
+		if rpm_new <= redline * 0.99 and rpm_new < up_at:
 			gear -= 1
 			shift_cut = SHIFT_CUT_AUTO * 0.85
 			shift_lock = SHIFT_LOCK
 			shift_flash = 0.12
 			_shift_speed = speed_abs
+			_up_wait = 0.0
 	auto_gear = gear
 
 
@@ -654,13 +710,35 @@ func _update_shift_hint(_dt: float, speed_abs: float) -> void:
 		shift_hint = ""
 
 
+## 按真实挡位数重采样齿比表：在归一化位置 i/(N-1) 上对 6 挡基准做线性插值。
+## N=6 时采样点正好落在基准节点上，结果逐位等于 GEAR_TOPS_REF，6 挡车行为不变；
+## N=7/8/9 时阶梯更密（每挡覆盖的极速区间更窄），N=5 时更疏。
+func _build_gear_tops() -> void:
+	gear_tops.resize(gear_count)
+	if gear_count <= 1:
+		gear_tops[0] = 1.0
+		return
+	var last := GEAR_TOPS_REF.size() - 1
+	for i in gear_count:
+		var pos := float(i) / float(gear_count - 1) * float(last)
+		var k := int(pos)
+		if k >= last:
+			gear_tops[i] = float(GEAR_TOPS_REF[last])
+		else:
+			gear_tops[i] = lerpf(float(GEAR_TOPS_REF[k]), float(GEAR_TOPS_REF[k + 1]), pos - float(k))
+
+
+## 取某挡的极速占比。挡位是运行时状态，换车（spec 挡位更少）时可能比表还大，故钳制。
+func _gear_top(g: int) -> float:
+	return gear_tops[clampi(g, 1, gear_tops.size()) - 1]
+
+
 func _rpm_for_gear(speed_abs: float, use_gear: int) -> float:
 	var span := redline - RPM_IDLE
 	if gear_count <= 1:
 		var ratio := speed_abs / maxf(max_speed, 1.0)
 		return clampf(RPM_IDLE + ratio * span, 0.0, 1.15)
-	var g := clampi(use_gear, 1, gear_count)
-	var top := float(GEAR_TOPS[g - 1]) * max_speed
+	var top := _gear_top(use_gear) * max_speed
 	var ratio2 := speed_abs / maxf(top, 0.5)
 	return clampf(RPM_IDLE + ratio2 * span, 0.0, 1.15)
 
@@ -708,13 +786,13 @@ func _torque_curve(rpm_n: float) -> float:
 			return clampf(1.25 - 1.9 * pow(r - 0.55, 2.0), 0.55, 1.28)
 
 
-## 高挡低速「拖挡」衰减：齿比越小轮上扭矩越低，6 挡起步只能慢慢蠕动。
+## 高挡低速「拖挡」衰减：齿比越小轮上扭矩越低，顶挡起步只能慢慢蠕动。
 ## 1 挡豁免（起步离合全联动）；车速进入该挡合理区间后恢复满推力。
 ## 自动挡升档点 6000rpm 保证换挡后转速仍高于此区间，所以不影响 0-100 标定。
 func _gear_lug(speed_abs: float) -> float:
 	if gear <= 1:
 		return 1.0
-	var engage := float(GEAR_TOPS[gear - 1]) * max_speed * 0.35
+	var engage := _gear_top(gear) * max_speed * 0.35
 	# 下限保证还能蠕动：低于滚阻就彻底动不了，玩家会以为车坏了。
 	var floor_v := clampf(0.7 / float(gear), 0.22, 0.5)
 	return clampf(floor_v + (1.0 - floor_v) * speed_abs / maxf(engage, 1.0), floor_v, 1.0)
@@ -774,7 +852,7 @@ func _model_zero_to_100(power: float, start_v: float = 0.0, target_v: float = 10
 	var v := start_v
 	var g := gear_count
 	for gi in range(gear_count):
-		if v <= float(GEAR_TOPS[gi]) * max_speed:
+		if v <= gear_tops[gi] * max_speed:
 			g = gi + 1
 			break
 	var cut := 0.0

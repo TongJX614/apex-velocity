@@ -3,7 +3,8 @@ extends RefCounted
 ## 运行时注册驾驶输入映射（项目不把 InputMap 写进 project.godot）。
 ## 键盘 + 手柄：左摇杆转向、LT/RT 刹车/油门、肩键升降挡、
 ## A 漂移（手刹）、X 氮气、B 切相机、Y 手动/自动挡、START 暂停/返回。
-## 十字键（D-pad）不绑定任何功能。菜单：左摇杆导航，A 确认，START 返回。
+## 右摇杆环视、R3 回头、L3 视角回正；十字键上下换挡、左右快捷菜单。
+## 菜单：左摇杆 / 十字键导航，A 确认，B / START 返回。
 ## 所有驾驶动作都由 main.gd 的 read_drive_input() 汇总成车辆输入字典。
 
 const KEY_ACTIONS := {
@@ -18,16 +19,19 @@ const KEY_ACTIONS := {
 	"manual_toggle": [KEY_T],
 	"reset_car": [KEY_R],
 	"camera_mode": [KEY_C],
+	"look_back": [KEY_H],
 }
 
 const JOY_BUTTON_ACTIONS := {
 	"handbrake": [JOY_BUTTON_A],          # A = 漂移/手刹
 	"nitro": [JOY_BUTTON_X],              # X = 氮气
-	"shift_up": [JOY_BUTTON_RIGHT_SHOULDER],
-	"shift_down": [JOY_BUTTON_LEFT_SHOULDER],
+	"shift_up": [JOY_BUTTON_RIGHT_SHOULDER, JOY_BUTTON_DPAD_UP],
+	"shift_down": [JOY_BUTTON_LEFT_SHOULDER, JOY_BUTTON_DPAD_DOWN],
 	"manual_toggle": [JOY_BUTTON_Y],
 	"camera_mode": [JOY_BUTTON_B],
 	"reset_car": [JOY_BUTTON_BACK],       # Back/Select（Switch 的 - 键）= 复位
+	"look_back": [JOY_BUTTON_RIGHT_STICK],  # R3 按住回头
+	"camera_reset": [JOY_BUTTON_LEFT_STICK],  # L3 视角回正
 }
 
 const STICK_DEADZONE := 0.14
@@ -94,8 +98,8 @@ static func ensure_actions() -> void:
 	ensure_ui_actions()
 
 
-## 菜单/界面导航：左摇杆，A 确认，START（菜单键）返回。
-## 十字键不参与导航，B 不再返回（B 在驾驶中切相机）。
+## 菜单/界面导航：左摇杆 + 十字键，A 确认，B / START 返回。
+## B 在驾驶中仍是切相机，main.gd 会先消费 camera_mode，不冲突。
 ## Godot 内置 ui_* 默认带手柄按键，这里先清掉再按新方案注册。
 static var _ui_ready := false
 
@@ -110,6 +114,10 @@ static func ensure_ui_actions() -> void:
 			_remove_joy_button(action, button)
 	_add_joy_button("ui_accept", JOY_BUTTON_A)
 	_add_joy_button("ui_cancel", JOY_BUTTON_START)
+	_add_joy_button("ui_cancel", JOY_BUTTON_B)
+	for i in dpad.size():
+		var axis_action: String = ["ui_up", "ui_down", "ui_left", "ui_right"][i]
+		_add_joy_button(axis_action, dpad[i])
 	_add_joy_axis("ui_up", JOY_AXIS_LEFT_Y, -1.0)
 	_add_joy_axis("ui_down", JOY_AXIS_LEFT_Y, 1.0)
 	_add_joy_axis("ui_left", JOY_AXIS_LEFT_X, -1.0)
@@ -190,7 +198,7 @@ static func ensure_duel_actions() -> void:
 			InputMap.action_add_event(action, ev)
 
 
-## 本地双人输入：player 0 = P1（方向键 + 空格/Shift），player 1 = P2（WASD + K/L）。
+## 本地双人输入：键盘照旧；若接了手柄，P1 用第一个、P2 用第二个。
 static func read_duel_input(player: int) -> Dictionary:
 	ensure_duel_actions()
 	var p := "p1_" if player == 0 else "p2_"
@@ -204,20 +212,73 @@ static func read_duel_input(player: int) -> Dictionary:
 		throttle += 1.0
 	if Input.is_action_pressed(p + "brake"):
 		throttle -= 1.0
+	var hb := Input.is_action_pressed(p + "handbrake")
+	var nitro := Input.is_action_pressed(p + "nitro")
+	var shift_up := Input.is_action_just_pressed(p + "shift_up")
+	var shift_down := Input.is_action_just_pressed(p + "shift_down")
+	var manual := Input.is_action_just_pressed(p + "manual")
+	# 双人同屏：第一个手柄归 P1，第二个归 P2；只有一个手柄时 P2 仍用键盘。
+	var pads := Input.get_connected_joypads()
+	if player < pads.size():
+		var device := int(pads[player])
+		var stick := Input.get_joy_axis(device, JOY_AXIS_LEFT_X)
+		if absf(stick) > STICK_DEADZONE:
+			steer = clampf(steer + stick, -1.0, 1.0)
+		var rt := Input.get_joy_axis(device, JOY_AXIS_TRIGGER_RIGHT)
+		var lt := Input.get_joy_axis(device, JOY_AXIS_TRIGGER_LEFT)
+		if rt > TRIGGER_DEADZONE:
+			throttle = clampf(throttle + rt, -1.0, 1.0)
+		if lt > TRIGGER_DEADZONE:
+			throttle = clampf(throttle - lt, -1.0, 1.0)
+		hb = hb or Input.is_joy_button_pressed(device, JOY_BUTTON_A)
+		nitro = nitro or Input.is_joy_button_pressed(device, JOY_BUTTON_X)
+		var edge_id := "%d:%d" % [player, device]
+		shift_up = shift_up or _duel_edge(edge_id + ":up",
+			Input.is_joy_button_pressed(device, JOY_BUTTON_RIGHT_SHOULDER))
+		shift_down = shift_down or _duel_edge(edge_id + ":down",
+			Input.is_joy_button_pressed(device, JOY_BUTTON_LEFT_SHOULDER))
+		manual = manual or _duel_edge(edge_id + ":manual",
+			Input.is_joy_button_pressed(device, JOY_BUTTON_Y))
 	return {
 		"steer": steer,
 		"throttle": throttle,
-		"handbrake": Input.is_action_pressed(p + "handbrake"),
-		"nitro": Input.is_action_pressed(p + "nitro"),
-		"shift_up": Input.is_action_just_pressed(p + "shift_up"),
-		"shift_down": Input.is_action_just_pressed(p + "shift_down"),
-		"manual_toggle": Input.is_action_just_pressed(p + "manual"),
+		"handbrake": hb,
+		"nitro": nitro,
+		"shift_up": shift_up,
+		"shift_down": shift_down,
+		"manual_toggle": manual,
 		"reverse_pressed": Input.is_action_just_pressed(p + "brake"),
 	}
 
-static func _primary_joypad() -> int:
+
+static var _duel_prev: Dictionary = {}
+
+
+## 双人手柄按键边沿：动作映射是全局的，不能直接用 just_pressed 区分两个手柄。
+static func _duel_edge(key: String, now: bool) -> bool:
+	var was := bool(_duel_prev.get(key, false))
+	_duel_prev[key] = now
+	return now and not was
+
+
+static func primary_joypad() -> int:
 	var pads := Input.get_connected_joypads()
 	return int(pads[0]) if pads.size() > 0 else -1
+
+
+## 右摇杆（死区外才返回），菜单转车 / 驾驶环视共用。
+static func right_stick(deadzone: float = 0.18) -> Vector2:
+	var device := primary_joypad()
+	if device < 0:
+		return Vector2.ZERO
+	var v := Vector2(
+		Input.get_joy_axis(device, JOY_AXIS_RIGHT_X),
+		Input.get_joy_axis(device, JOY_AXIS_RIGHT_Y))
+	return v if v.length() > deadzone else Vector2.ZERO
+
+
+static func _primary_joypad() -> int:
+	return primary_joypad()
 
 
 ## 汇总一帧的驾驶输入：

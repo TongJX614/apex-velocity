@@ -1,7 +1,7 @@
 class_name ChaseCamera
 extends Camera3D
 ## 三个比赛视角：追尾 / 近身 / 车头。
-## 车头视角机位在车头前方（看不到车身），鼠标拖动可左右、上下环视。
+## 默认用近身（用户拍板的固定取景）；车头视角机位在车头前方（看不到车身），鼠标拖动可左右、上下环视。
 
 enum Mode { CHASE, CLOSE, NOSE }
 
@@ -17,10 +17,19 @@ const NOSE_PITCH_MAX := 0.62
 const NOSE_HOLD_TIME := 2.0
 const NOSE_RECENTER_RATE := 0.9
 
+## 右摇杆自由环视：追尾 / 近身 / 车头通用，松手 1.4s 后回正。
+const LOOK_RATE := 2.6
+const LOOK_PITCH_RATE := 1.8
+const LOOK_YAW_LIMIT := 2.6
+const LOOK_PITCH_LIMIT := 0.9
+const LOOK_HOLD_TIME := 1.4
+const LOOK_RECENTER_RATE := 3.2
+const LOOK_BACK_RATE := 7.0
+
 var target: Car
 var track: TrackPath
 var world: Node = null          # 都会环线：相机不能低于城市地形
-var mode: Mode = Mode.CHASE
+var mode: Mode = Mode.CLOSE
 var shake := 0.0
 ## 氮气 / 换挡 / 碰撞叠加的瞬时 FOV 偏移（度），在 _follow_rig 里指数衰减。
 var fov_boost := 0.0
@@ -31,6 +40,11 @@ var nose_yaw := 0.0
 var nose_pitch := 0.0
 var _nose_dragging := false
 var _nose_hold := 0.0
+## 右摇杆自由环视（追尾 / 近身）与 R3 回头混合。
+var look_yaw := 0.0
+var look_pitch := 0.0
+var _look_hold := 0.0
+var _look_back_blend := 0.0
 
 
 func follow(car_node: Car, track_path: TrackPath = null) -> void:
@@ -65,9 +79,10 @@ func _rig_params() -> Dictionary:
 	if target != null:
 		speed01 = clampf(target.speed_kph / 300.0, 0.0, 1.0)
 	if mode == Mode.CLOSE:
-		var close_push := smoothstep(0.05, 0.85, speed01) * 2.2
+		# 用户定稿：近身机位就是这个固定取景，不随速度推拉。
+		# 数值取自拍板截图（190kph 时的实际机位）再往后 0.20m。
 		return {
-			"distance": 3.55 + close_push, "height": 1.92 + close_push * 0.06,
+			"distance": 5.55, "height": 2.03,
 			"look_ahead": 6.0, "base_fov": 64.0, "speed01": speed01,
 		}
 	# 低速：贴车尾的常规追尾视角（车屁股往前看）；
@@ -93,6 +108,10 @@ func snap() -> void:
 	nose_yaw = 0.0
 	nose_pitch = 0.0
 	_nose_hold = 0.0
+	look_yaw = 0.0
+	look_pitch = 0.0
+	_look_hold = 0.0
+	_look_back_blend = 0.0
 	if target == null:
 		return
 	if mode == Mode.NOSE:
@@ -115,6 +134,44 @@ func cycle_mode() -> String:
 
 func mode_label() -> String:
 	return MODE_LABELS[int(mode)]
+
+
+## L3：立即把环视 / 回头偏移清零，不改相机模式和跟随机位。
+func recenter_look() -> void:
+	look_yaw = 0.0
+	look_pitch = 0.0
+	_look_hold = 0.0
+	_look_back_blend = 0.0
+	nose_yaw = 0.0
+	nose_pitch = 0.0
+	_nose_hold = 0.0
+
+
+func _update_look(dt: float) -> void:
+	var rs := InputSetup.right_stick()
+	if rs.length_squared() > 0.0:
+		look_yaw = clampf(look_yaw + rs.x * LOOK_RATE * dt, -LOOK_YAW_LIMIT, LOOK_YAW_LIMIT)
+		look_pitch = clampf(look_pitch - rs.y * LOOK_PITCH_RATE * dt, -LOOK_PITCH_LIMIT, LOOK_PITCH_LIMIT)
+		_look_hold = 0.0
+	else:
+		_look_hold += dt
+		if _look_hold > LOOK_HOLD_TIME:
+			var k := 1.0 - exp(-LOOK_RECENTER_RATE * dt)
+			look_yaw = lerpf(look_yaw, 0.0, k)
+			look_pitch = lerpf(look_pitch, 0.0, k)
+	_update_look_back(dt)
+
+
+func _update_look_back(dt: float) -> void:
+	var back := 1.0 if Input.is_action_pressed("look_back") else 0.0
+	var rate := LOOK_BACK_RATE if back > _look_back_blend else LOOK_RECENTER_RATE
+	_look_back_blend = move_toward(_look_back_blend, back, rate * dt)
+
+
+func _apply_look() -> void:
+	if absf(look_yaw) > 0.0005 or absf(look_pitch) > 0.0005 or _look_back_blend > 0.0005:
+		rotate_object_local(Vector3.UP, -(look_yaw + PI * _look_back_blend))
+		rotate_object_local(Vector3.RIGHT, look_pitch)
 
 
 func follow_update(dt: float) -> void:
@@ -162,7 +219,9 @@ func follow_update(dt: float) -> void:
 	var slip01 := clampf(absf(target.lat_slip) / 9.0, 0.0, 1.0)
 	var corner_look := steer01 * (0.55 + slip01 * 0.70) * (0.35 + speed01 * 0.65)
 	look += target.right() * clampf(corner_look * 1.30, -1.15, 1.15)
+	_update_look(dt)
 	look_at(look, Vector3.UP)
+	_apply_look()
 	if kick > 0.0005:
 		rotate_object_local(Vector3.RIGHT, -kick * 0.055)
 		rotate_object_local(Vector3.FORWARD, kick * 0.040)
@@ -217,7 +276,15 @@ func _follow_nose(dt: float) -> void:
 			nose_yaw = lerpf(nose_yaw, 0.0, k)
 			nose_pitch = lerpf(nose_pitch, 0.0, k)
 
-	var look_basis := Basis(Vector3.UP, target.heading + nose_yaw)
+	# 右摇杆同样可以环视车头视角；转动时暂停自动回正计时。
+	var rs := InputSetup.right_stick()
+	if rs.length_squared() > 0.0:
+		nose_yaw = clampf(nose_yaw + rs.x * LOOK_RATE * dt, -NOSE_YAW_LIMIT, NOSE_YAW_LIMIT)
+		nose_pitch = clampf(nose_pitch - rs.y * LOOK_PITCH_RATE * dt, NOSE_PITCH_MIN, NOSE_PITCH_MAX)
+		_nose_hold = 0.0
+	_update_look_back(dt)
+
+	var look_basis := Basis(Vector3.UP, target.heading + nose_yaw + PI * _look_back_blend)
 	var dir := look_basis * Vector3(0.0, sin(nose_pitch), cos(nose_pitch))
 	look_at(global_position + dir * 32.0, Vector3.UP)
 	kick *= exp(-KICK_DECAY * dt)

@@ -38,6 +38,8 @@ maps/
 `data/tracks.json` 里带 `openField: true` 的图（当前为 `drift` 漂移练习）走独立分支：
 `TrackBuilder.build` 只铺一块 `fieldSize` 见方的整片柏油（8m 平铺 + 46m 细节层，无标线/路肩/护栏/起跑格）加一圈草地外延；`SceneryKit` / `VenueKit` 直接返回零布景，`configure_terrain` 保持地形平坦。`TrackPath.open_field` / `field_half` 供车辆与相机判断：场内没有墙，越出方形边界按草地阻力处理；样条只作小地图与出生参考。主流程强制单人自由练习（计时赛通道），GO 即计时，无圈数/分段/逆行/完赛，漂移连击照常记分。
 
+摆桩练习的锥桶不属于地图几何：`scripts/core/cone_field.gd`（MultiMesh 锥桶 + 车体 OBB 撞倒判定，只倒不挡车）、`scripts/core/cone_store.gd`（布局存 `user://cone_layout_drift.json` + 三套预设）、`scripts/ui/cone_editor.gd`（俯视图光标摆桩，打开期间整棵树暂停）。地图模块不感知锥桶。
+
 ## 资源契约
 
 1. **场地资产**：`res://maps/assets/venues/`（`RealAssetKit.ROOT`）。装饰编辑器会扫描该目录全部 `.glb`；新增模型直接放入即可。

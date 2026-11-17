@@ -1,19 +1,21 @@
 class_name AchievementsScreen
 extends CanvasLayer
 ## 车手档案 / 成就墙 · v2 视觉（玻璃面板 + 金色解锁态 + 数据头图）。
-## 等级、XP、战绩、15 个成就（锁定灰显）。ESC 关闭。
+## 等级、XP、战绩、15 个成就（锁定灰显）。B / START / ESC 关闭，右摇杆 / 方向键滚动。
 
 signal closed
 
 const ACCENT := UIStyle.ACCENT
 const PANEL_W := 1240.0
 const PANEL_H := 796.0
+const SCROLL_SPEED := 900.0
 
 var _list: GridContainer
 var _summary_label: Label
 var _panel: Panel
 var _xp_bar: ProgressBar
 var _stat_values: Array[Label] = []
+var _scroll: ScrollContainer
 
 
 func _ready() -> void:
@@ -69,7 +71,7 @@ func _ready() -> void:
 	UIStyle.place(title, 0, 0, 1, 0, 40, 48, -260, 92)
 	_panel.add_child(title)
 
-	var sub := UIStyle.label_tracked("成就墙   ·   等级 / 经验 / 最快圈   ·   ESC 关闭", 10,
+	var sub := UIStyle.label_tracked("成就墙   ·   等级 / 经验 / 最快圈   ·   B / START / ESC 关闭", 10,
 		UIStyle.TXT_DIM, HORIZONTAL_ALIGNMENT_LEFT, 1)
 	UIStyle.place(sub, 0, 0, 1, 0, 42, 94, -260, 114)
 	_panel.add_child(sub)
@@ -109,17 +111,17 @@ func _ready() -> void:
 	_summary_label = UIStyle.label_tracked("", 9, UIStyle.TXT_DIM, HORIZONTAL_ALIGNMENT_RIGHT, 1)
 	list_head.add_child(_summary_label)
 
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.add_theme_constant_override("scrollbar_width", 6)
-	UIStyle.place(scroll, 0, 0, 1, 1, 34, 284, -34, -66)
-	_panel.add_child(scroll)
+	_scroll = ScrollContainer.new()
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_scroll.add_theme_constant_override("scrollbar_width", 6)
+	UIStyle.place(_scroll, 0, 0, 1, 1, 34, 284, -34, -66)
+	_panel.add_child(_scroll)
 	_list = GridContainer.new()
 	_list.columns = 2
 	_list.add_theme_constant_override("h_separation", 10)
 	_list.add_theme_constant_override("v_separation", 8)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(_list)
+	_scroll.add_child(_list)
 
 	var foot := HBoxContainer.new()
 	foot.add_theme_constant_override("separation", 10)
@@ -128,9 +130,7 @@ func _ready() -> void:
 	var nav_key := UIStyle.keycap("↑↓", ACCENT, 9)
 	nav_key.visible = Settings.key_hints
 	foot.add_child(nav_key)
-	var nav_lbl := UIStyle.label("滚轮 / 方向键  浏览成就", 10, UIStyle.TXT_DIM)
-	nav_lbl.visible = Settings.key_hints
-	foot.add_child(nav_lbl)
+	foot.add_child(UIStyle.label("滚轮 / 方向键 / 右摇杆  浏览成就", 10, UIStyle.TXT_DIM))
 	var foot_fill := UIStyle.spacer()
 	foot.add_child(foot_fill)
 	foot.add_child(UIStyle.label_tracked("全部 %d 项成就  ·  免费游玩" % ProfileStore.achievements_total(),
@@ -300,6 +300,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			or (event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE):
 		_close()
 		get_viewport().set_input_as_handled()
+
+
+## 成就墙内容超过一屏：方向键 / 左摇杆 / 右摇杆都能滚动。
+func _process(delta: float) -> void:
+	if _scroll == null:
+		return
+	var dir := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down").y
+	dir += InputSetup.right_stick().y
+	if absf(dir) > 0.01:
+		_scroll.scroll_vertical += int(dir * SCROLL_SPEED * delta)
 
 
 func _close() -> void:

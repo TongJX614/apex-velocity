@@ -608,6 +608,9 @@ func _build_actions() -> void:
 	var space_key := UIStyle.keycap("SPACE", UIStyle.ACCENT, 10)
 	space_key.visible = Settings.key_hints
 	race_row.add_child(space_key)
+	var pad_key := UIStyle.keycap("Ⓧ", UIStyle.ACCENT, 10)
+	pad_key.visible = Settings.key_hints
+	race_row.add_child(pad_key)
 	race_row.add_child(UIStyle.label_display("上赛道   /   START RACE", 14, UIStyle.TXT,
 		HORIZONTAL_ALIGNMENT_LEFT, 2))
 	race_row.add_child(UIStyle.spacer())
@@ -621,7 +624,7 @@ func _build_actions() -> void:
 		refresh())
 	actions.add_child(reset)
 
-	var back := UIStyle.make_button("START / ESC   返回", UIStyle.ACCENT, "ghost", 10, 27.0)
+	var back := UIStyle.make_button("B / START / ESC   返回", UIStyle.ACCENT, "ghost", 10, 27.0)
 	UIStyle.place(back, 0, 0, 0, 0, 388, 0, 568, 27)
 	back.pressed.connect(func() -> void: closed.emit())
 	actions.add_child(back)
@@ -633,8 +636,9 @@ func _build_actions() -> void:
 
 func _build_hint_row() -> void:
 	var hints := [
-		["拖拽", "旋转车身"], ["TAB / Ⓨ", "网格·改装"], ["←→↑↓", "选择"],
-		["Ⓐ / ENTER", "选车·升级"], ["SPACE", "上赛道"], ["START", "返回"],
+		["拖拽/右摇杆", "旋转车身"], ["TAB / Ⓨ", "网格·改装"], ["十字 / 摇杆", "选择"],
+		["Ⓐ / ENTER", "选车·升级"], ["LB/RB", "切换改装项"], ["SPACE / Ⓧ", "上赛道"],
+		["START / B", "返回"],
 	]
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
@@ -897,11 +901,24 @@ func refresh() -> void:
 
 	_car_swatch.color = Garage.paint_color(car_id)
 	car_name_label.text = String(spec.get("name", car_id))
-	car_cn_label.text = "%s   ·   %s" % [String(spec.get("cn", "")), String(spec.get("badge", ""))]
-	car_footer_label.text = "%s   ·   极速 %d km/h   ·   零百 %.1fs   ·   %s" % [
-		String(spec.get("brand", "")), int(spec.get("topKph", 0)),
-		float(spec.get("zeroTo100", 0.0)), String(spec.get("tag", ""))]
-	_index_label.text = "车辆  %02d / %02d   ·   右侧网格直接选车   ·   TAB / Ⓨ 切换改装条   ·   拖拽车身旋转" % [
+	var cn_bits: Array[String] = []
+	for key in ["cn", "badge"]:
+		var part := String(spec.get(key, ""))
+		if not part.is_empty():
+			cn_bits.append(part)
+	car_cn_label.text = "   ·   ".join(cn_bits)
+	# 数据里 brand 可能缺省，固定格式串会在行首留下悬空的分隔符。
+	var footer_bits: Array[String] = []
+	var brand := String(spec.get("brand", ""))
+	if not brand.is_empty():
+		footer_bits.append(brand)
+	footer_bits.append("极速 %d km/h" % int(spec.get("topKph", 0)))
+	footer_bits.append("零百 %.1fs" % float(spec.get("zeroTo100", 0.0)))
+	var tag := String(spec.get("tag", ""))
+	if not tag.is_empty():
+		footer_bits.append(tag)
+	car_footer_label.text = "   ·   ".join(footer_bits)
+	_index_label.text = "车辆  %02d / %02d   ·   右侧网格直接选车   ·   TAB / Ⓨ 切换改装条   ·   拖拽 / 右摇杆旋转车身" % [
 		car_index + 1, GameData.cars_specs.size()]
 	if _grid_count != null:
 		var profile := ProfileStore.load_profile()
@@ -975,7 +992,7 @@ func _refresh_upgrades(car_id: String) -> void:
 		_upgrade_bars[i].segments = maxi(max_level, 1)
 		_upgrade_bars[i].set_value(0.0 if max_level <= 0 else float(level) / float(max_level), true)
 	if _credit_label != null:
-		_credit_label.text = "积分  %d XP" % ProfileStore.credit_balance()
+		_credit_label.text = "积分  %s" % ProfileStore.credit_text()
 	_refresh_upgrade_styles()
 	_refresh_upgrade_note(car_id)
 
@@ -1016,12 +1033,12 @@ func _refresh_upgrade_note(car_id: String) -> void:
 			_upgrade_note.text = "%s 已满级   ·   旧存档改装无退款余额" % label
 		_upgrade_note.add_theme_color_override("font_color", UIStyle.TXT_FAINT)
 	elif cost == 0:
-		_upgrade_note.text = "%s  Lv.%d → %d   ·   首档免费   ·   余额 %d XP" % [
-			label, level, level + 1, balance]
+		_upgrade_note.text = "%s  Lv.%d → %d   ·   首档免费   ·   余额 %s" % [
+			label, level, level + 1, ProfileStore.credit_text_from(balance)]
 		_upgrade_note.add_theme_color_override("font_color", UIStyle.GREEN)
 	else:
-		_upgrade_note.text = "%s  Lv.%d → %d   ·   需要 %d XP   ·   余额 %d XP" % [
-			label, level, level + 1, cost, balance]
+		_upgrade_note.text = "%s  Lv.%d → %d   ·   需要 %d XP   ·   余额 %s" % [
+			label, level, level + 1, cost, ProfileStore.credit_text_from(balance)]
 		_upgrade_note.add_theme_color_override("font_color",
 			UIStyle.GREEN if balance >= cost else UIStyle.RED)
 
@@ -1225,6 +1242,8 @@ func _input(event: InputEvent) -> void:
 		match (event as InputEventJoypadButton).button_index:
 			JOY_BUTTON_A:
 				_confirm()
+			JOY_BUTTON_X:
+				race_requested.emit(_current_car_id())
 			JOY_BUTTON_Y:
 				_toggle_panel_focus()
 			JOY_BUTTON_LEFT_SHOULDER:

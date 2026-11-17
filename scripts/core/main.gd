@@ -44,8 +44,6 @@ var _venue_stats: Dictionary = {}
 var _env: Environment
 var _sun: DirectionalLight3D
 var _sun_glare: Node3D
-var _glow_base := 0.5
-var _glow_restore := 0.0
 var _theme_ssr_allowed := true
 var _theme_sdfgi_allowed := false
 var _volumetric_allowed := false
@@ -54,6 +52,7 @@ var streamer
 var _last_blur_amount := 0.0
 var _post_grade: Dictionary = {}
 var _post_grade_active := false
+var _post_vignette := 0.0
 var _base_fog_density := 0.0008
 var _base_vol_density := 0.0016
 var _base_fog_color := Color(0.7, 0.78, 0.85)
@@ -127,6 +126,9 @@ var _bake_menu_active := false
 var _menu_preload_started: Dictionary = {}
 var loading_screen: LoadingScreen
 var pause_screen: PauseScreen
+var cone_field: ConeField = null
+var cone_editor: ConeEditor = null
+var _cone_knocked := 0
 var photo_mode: Node
 var tutorial: CanvasLayer = null
 var _tutorial_session := false
@@ -141,8 +143,8 @@ var menu_cam: Camera3D
 var menu_time := 0.0
 var menu_car_angle := 0.0
 var menu_dragging := false
+var _menu_stick_active := false
 var _menu_kicker: SpotLight3D
-var _menu_kicker_base := 20.0
 var _menu_sweep_t := 0.0
 var menu_track_id := ""
 var menu_car_id := ""
@@ -187,6 +189,7 @@ var _backdrop_cam: Camera3D
 var _shot_dist := 0.0
 var _shot_reset_applied := false
 var _shot_delay := 0.0
+var _shot_wall := 0.0
 var _shot_results_done := false
 var _movie_frames := 0
 var _pano_dist := 0.0
@@ -1057,24 +1060,14 @@ func _process(dt: float) -> void:
 		var e := k * k * (3.0 - 2.0 * k)
 		intro_cam.global_position = intro_from_pos.lerp(intro_to_pos, e)
 		intro_cam.look_at(intro_from_look.lerp(intro_to_look, e), Vector3.UP)
-		# 开场镜头会逆光扫过太阳，整屏泛光容易糊成白雾（Windows 上尤其明显）。
-		# 入场期间把泛光压到 30%，切回追车视角后再缓慢恢复。
-		if _env != null:
-			_env.glow_intensity = lerpf(
-				_env.glow_intensity, _glow_base * 0.30, 1.0 - exp(-dt * 3.5))
+		# 亮度锁定：开场不再压暗/恢复泛光。整屏泛光糊白的问题改由太阳眩光
+		# 收窄全屏薄雾解决（sun_glare.gd），泛光强度全程保持主题锁定值。
 		if k >= 1.0 or race.state != RaceManager.State.COUNTDOWN:
 			intro_cam.queue_free()
 			intro_cam = null
-			_glow_restore = 0.8
 			if cam != null:
 				cam.current = true
 				cam.snap()
-	elif _glow_restore > 0.0 and _env != null:
-		_glow_restore = maxf(_glow_restore - dt, 0.0)
-		var gk := 1.0 - _glow_restore / 0.8
-		_env.glow_intensity = _glow_base * lerpf(0.30, 1.0, gk * gk * (3.0 - 2.0 * gk))
-		if _glow_restore <= 0.0:
-			_env.glow_intensity = _glow_base
 	if state == AppState.MENU and menu_world != null:
 		menu_time += dt
 		_animate_menu_showroom(dt)
@@ -1085,6 +1078,7 @@ func _process(dt: float) -> void:
 		governor.tick(dt)
 		return
 	_shot_frames += 1
+	_shot_wall += dt
 	# _start_race 是 async：_ready 里立即 reset 时 car 还没生成。等车真的进树后
 	# 再按 --shot-dist 定位，否则所有赛道截图都会落回起跑线（2026-11 修复）。
 	if _shot_dist > 0.0 and not _shot_reset_applied and car != null and race != null:
@@ -1109,8 +1103,14 @@ func _process(dt: float) -> void:
 		car.vel = car.forward() * (_arg_shot_speed / 3.6)
 	var ready := false
 	match shot_scene:
-		"menu", "results", "settings":
-			ready = _shot_frames >= 45
+		"menu":
+			# 按墙钟等 delay：展车自转与轮廓扫光都走 dt，若按帧数等，低帧率
+			# （别的进程抢 GPU）会让同一 --shot-delay 拍出不同转角/扫光相位，
+			# 前后对比全被污染。45 帧下限在慢机上反而晚于墙钟，压到 12 帧
+			# 只做渲染预热，拍摄时刻完全由 _shot_wall 决定。
+			ready = _shot_frames >= 12 and _shot_wall >= _shot_delay + 0.75
+		"results", "settings":
+			ready = _shot_frames >= 45 + int(round(_shot_delay * 60.0))
 		"garage":
 			if _shot_frames == 26 and garage_screen != null:
 				for a in OS.get_cmdline_user_args():
@@ -1413,6 +1413,13 @@ func _physics_process(dt: float) -> void:
 	if haptics != null and haptics.has_method("update_state"):
 		haptics.update_state(dt, car, race.state)
 	race.update(dt)
+	if cone_field != null and cone_editor == null and race.state == RaceManager.State.RACING:
+		var cone_half := CarContacts.half_extents(current_car_id)
+		var knocked_now := cone_field.update_knock(Vector2(car.pos.x, car.pos.z), car.heading, cone_half)
+		if knocked_now > 0:
+			_cone_knocked += knocked_now
+			if hud != null:
+				hud.show_message("碰倒锥桶  ×%d" % _cone_knocked, UIStyle.GOLD, 1.6)
 	if _prev_race_state == RaceManager.State.COUNTDOWN \
 			and race.state == RaceManager.State.RACING:
 		_apply_start_bonus()
@@ -1522,16 +1529,35 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 	if state != AppState.RACE:
 		return
+	if cone_editor != null:
+		return
 	if event.is_action_pressed("reset_car"):
 		_start_race(current_track_id, current_car_id, current_mode)
 		get_viewport().set_input_as_handled()
 		return
-	if event.is_action_pressed("camera_mode") and cam != null:
+	if event.is_action_pressed("camera_mode") and cam != null \
+			and (race == null or race.state != RaceManager.State.RESULTS):
 		var cam_label := cam.cycle_mode()
 		if hud != null and hud.has_method("set_camera_name"):
 			hud.set_camera_name(cam_label)
 		get_viewport().set_input_as_handled()
 		return
+	if event.is_action_pressed("camera_reset") and cam != null:
+		cam.recenter_look()
+		get_viewport().set_input_as_handled()
+		return
+	# 十字键左右：拍照 / 快速设置。上下已绑定升/降挡，不在这里拦截。
+	if event is InputEventJoypadButton and (event as InputEventJoypadButton).pressed \
+			and race != null and race.state != RaceManager.State.RESULTS:
+		var dpad_btn := (event as InputEventJoypadButton).button_index
+		if dpad_btn == JOY_BUTTON_DPAD_LEFT:
+			_open_race_photo()
+			get_viewport().set_input_as_handled()
+			return
+		if dpad_btn == JOY_BUTTON_DPAD_RIGHT:
+			_open_settings()
+			get_viewport().set_input_as_handled()
+			return
 	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F2:
 		_open_settings()
 		return
@@ -1540,7 +1566,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if race != null and race.state == RaceManager.State.RESULTS \
 			and event is InputEventJoypadButton and (event as InputEventJoypadButton).pressed:
 		var btn := (event as InputEventJoypadButton).button_index
-		if btn == JOY_BUTTON_A or btn == JOY_BUTTON_START:
+		if btn == JOY_BUTTON_A or btn == JOY_BUTTON_START or btn == JOY_BUTTON_B:
 			_show_menu()
 			get_viewport().set_input_as_handled()
 			return
@@ -1564,6 +1590,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		elif key == KEY_M:
 			_show_menu()
+			get_viewport().set_input_as_handled()
+		elif key == KEY_P:
+			_open_race_photo()
+			get_viewport().set_input_as_handled()
+		elif key == KEY_V and track_path != null and track_path.open_field:
+			_toggle_cone_editor()
 			get_viewport().set_input_as_handled()
 		elif key == KEY_ENTER and race != null and race.state == RaceManager.State.RESULTS:
 			var next_track := _next_track_id(current_track_id)
@@ -1676,6 +1708,12 @@ func _instantiate_menu_scene(packed: PackedScene, track_id: String, car_id: Stri
 	_menu_build_car(car_id)
 	_decorate_menu_scene()
 	_apply_menu_camera_attributes()
+	# 截图计时从"装饰完成"起算：展车自转与轮廓扫光都从这一刻开始走 dt，
+	# 与 _shot_wall 严格同步。慢机/加载耗时不再让拍摄时的转角和扫光相位漂移。
+	_shot_wall = 0.0
+	_menu_sweep_t = 0.0
+	if menu_car_pivot != null:
+		menu_car_angle = menu_car_pivot.rotation.y
 	return true
 
 
@@ -1710,7 +1748,9 @@ func _decorate_menu_scene() -> void:
 				"glow_hdr": env.glow_hdr_threshold,
 				"volumetric": env.volumetric_fog_enabled,
 			}
-		var expo_mul := 1.75 if dark_menu else 1.10
+		# 展厅曝光：暗色赛道只抬到能读懂车形的程度，不再 ×1.75 把车漆推过曝。
+		# 白天赛道用 1.0（与比赛锁定亮度一致），暗色 1.25 保留展厅可读性。
+		var expo_mul := 1.25 if dark_menu else 1.0
 		if menu_track_id == "alpine":
 			expo_mul = 0.88
 		env.tonemap_exposure = minf(env.tonemap_exposure * expo_mul, 2.1)
@@ -1722,6 +1762,8 @@ func _decorate_menu_scene() -> void:
 		env.ssr_fade_in = 0.10
 		env.ssr_fade_out = 2.2
 		env.ssr_depth_tolerance = 0.45
+		if OS.get_environment("APEX_Q_MENU_SSR") == "0":
+			env.ssr_enabled = false
 		env.ssil_enabled = false
 		env.sdfgi_enabled = false
 		# 体积雾是半分辨率 + 时间重投影，静态展厅里会随每帧抖动；
@@ -1730,15 +1772,19 @@ func _decorate_menu_scene() -> void:
 		# 展厅是静态机位，SSAO 不会像比赛里那样闪；开着让车底/展台接缝有接触阴影。
 		env.ssao_enabled = true
 		env.ssao_intensity = minf(env.ssao_intensity, 2.2)
-		env.adjustment_brightness = maxf(env.adjustment_brightness, 1.06 if not dark_menu else 1.16)
-		# 展台车漆高光收紧：白车/亮色车不再糊成一团发光，暗部保留。
-		env.glow_hdr_threshold = maxf(env.glow_hdr_threshold, 1.42)
+		env.adjustment_brightness = maxf(env.adjustment_brightness, 1.0 if not dark_menu else 1.05)
+		# 展台车漆高光收紧：亮色车漆被辅助灯推到 HDR 高区后，泛光会把车头
+		# 糊成一团白（车缓转时尤其明显）。阈值 2.6 只让真正的亮源发光
+		# （路灯/霓虹/尾灯 HDR 3~8 仍泛光，拍板夜景不受影响）。
+		env.glow_hdr_threshold = maxf(env.glow_hdr_threshold, 2.6)
 		env.glow_intensity *= 0.78
 		env.glow_bloom = minf(env.glow_bloom, 0.04)
+		if OS.get_environment("APEX_Q_MENU_GLOW") == "0":
+			env.glow_enabled = false
 		env.glow_map = _lens_dirt_texture() if Settings.index >= 2 else null
 		env.glow_map_strength = 0.28 if Settings.index >= 3 else 0.18
 		if dark_menu:
-			env.ambient_light_energy = minf(env.ambient_light_energy + 0.34, 0.95)
+			env.ambient_light_energy = minf(env.ambient_light_energy + 0.18, 0.95)
 			env.fog_light_color = env.fog_light_color.lightened(0.14)
 			env.fog_density *= 0.72
 		if menu_track_id == "alpine":
@@ -1760,8 +1806,23 @@ func _decorate_menu_scene() -> void:
 		if menu_decor_lights.has(baked):
 			continue
 		baked.light_energy = minf(baked.light_energy, 1.4)
+		baked.light_specular = 0.0
 		if scene_sun != null:
 			baked.light_color = scene_sun.light_color
+	# 烘焙场景里还带着一份旧车底氛围灯：运行时又会新建一盏，两盏叠加把车侧
+	# 下半部推到 HDR 2~6，泛光在镜壳/A 柱烧出死白光斑。只压车身边 3m 内的
+	# 旧 Omni（街灯等环境 Omni 离车远，不受影响）。
+	# 街灯 Omni 的镜面镜像在挡风玻璃/镜壳上是 HDR 几十的圆光斑（玻璃粗糙度
+	# 近 0），留 10% 都仍过泛光阈值烧成白球；湿路暖光池同理。烘焙 Omni 统一
+	# 关 specular：湿地反光交给 SSR 与霓虹自发光，漫反射光池保留。
+	for node in menu_world.find_children("*", "OmniLight3D", true, false):
+		var baked_omni := node as OmniLight3D
+		if menu_decor_lights.has(baked_omni):
+			continue
+		baked_omni.light_specular = 0.0
+		var dp := baked_omni.global_position - car_pos
+		if dp.length() < 3.0 and dp.y < 1.0:
+			baked_omni.light_energy = minf(baked_omni.light_energy, 0.35)
 	var toward_sun := Vector3(0.42, 0.62, 0.2).normalized()
 	var key_color := Color(1.0, 0.94, 0.85)
 	if scene_sun != null:
@@ -1770,8 +1831,9 @@ func _decorate_menu_scene() -> void:
 	var key := SpotLight3D.new()
 	var key_from := toward_sun * 9.0 + Vector3(0.0, 4.0, 0.0)
 	# 聚光按平方反比衰减：9m 外能量个位数几乎不可见；但几十的能量会把
-	# 清漆高光打成死白、在地面留下影棚光池。辅助级取「环境光的一小部分」。
-	var key_energy := 26.0 if dark_menu else 12.0
+	# 亮色车漆推过泛光阈值，车头糊成一团白光。数值按白漆车收敛到「能读懂
+	# 车形、又不触发泛光」的量级，主光仍是场景太阳。
+	var key_energy := 13.5 if dark_menu else 6.2
 	if night and menu_cam != null:
 		# 夜景：月光方向往往背着相机，顺月亮打车会让展车正面全黑。
 		# 改从相机侧打一盏暖色「路灯感」主光，和街灯色温一致。
@@ -1780,23 +1842,30 @@ func _decorate_menu_scene() -> void:
 		if to_cam.length_squared() > 0.01:
 			key_from = to_cam.normalized() * 8.0 + Vector3(0.0, 5.0, 0.0)
 			key_color = Color(1.0, 0.86, 0.64)
-			key_energy = 22.0
+			key_energy = 11.5
 	key.position = car_pos + key_from
 	key.light_color = key_color
 	key.light_energy = key_energy
 	key.spot_range = 32.0
 	key.spot_angle = 38.0
-	key.shadow_enabled = false
+	# 主光开阴影：展车在展台/地面上落下一道柔和接触影，车形立体、不「贴」在场景里。
+	key.shadow_enabled = true
+	key.shadow_blur = 1.6
+	# 补光只做漫反射：点光源在玻璃/清漆里的镜像是一个过曝死白点，泛光把它
+	# 放大成光晕、湿路 SSR 再铺到地面——亮漆车因此比暗漆车「整片地更亮」。
+	# 镜面高光交给太阳/天空/霓虹，五盏补光统一关 specular。
+	key.light_specular = 0.0
 	menu_world.add_child(key)
 	key.look_at(car_pos + Vector3(0.0, 0.8, 0.0), Vector3.UP)
 	menu_decor_lights.append(key)
 	var rim := SpotLight3D.new()
 	rim.position = car_pos + Vector3(-6.0, 3.2, -6.0)
 	rim.light_color = Color(0.55, 0.82, 1.0)
-	rim.light_energy = 12.0 if night else (16.0 if dark_menu else 7.0)
+	rim.light_energy = 6.2 if night else (8.2 if dark_menu else 3.6)
 	rim.spot_range = 26.0
 	rim.spot_angle = 42.0
 	rim.shadow_enabled = false
+	rim.light_specular = 0.0
 	menu_world.add_child(rim)
 	rim.look_at(car_pos + Vector3(0.0, 0.9, 0.0), Vector3.UP)
 	menu_decor_lights.append(rim)
@@ -1810,15 +1879,17 @@ func _decorate_menu_scene() -> void:
 	# 只拍环境层：车体已统一在层 2，避免车漆反射自己的车身/内饰。
 	probe.cull_mask = 1
 	probe.max_distance = 120.0
-	menu_world.add_child(probe)
-	menu_decor_lights.append(probe)
+	if OS.get_environment("APEX_Q_MENU_PROBE") != "0":
+		menu_world.add_child(probe)
+		menu_decor_lights.append(probe)
 	var fill := SpotLight3D.new()
 	fill.position = car_pos + Vector3(-5.0, 4.5, -4.5)
 	fill.light_color = accent
-	fill.light_energy = 8.0 if night else (10.0 if dark_menu else 4.0)
+	fill.light_energy = 4.4 if night else (5.2 if dark_menu else 2.2)
 	fill.spot_range = 26.0
 	fill.spot_angle = 50.0
 	fill.shadow_enabled = false
+	fill.light_specular = 0.0
 	menu_world.add_child(fill)
 	fill.look_at(car_pos + Vector3(0.0, 0.8, 0.0), Vector3.UP)
 	menu_decor_lights.append(fill)
@@ -1826,25 +1897,26 @@ func _decorate_menu_scene() -> void:
 	var under := OmniLight3D.new()
 	under.position = car_pos + Vector3(0.0, 0.30, 0.0)
 	under.light_color = accent
-	under.light_energy = 1.2 if dark_menu else 0.22
+	under.light_energy = 0.55 if dark_menu else 0.13
 	under.omni_range = 6.0 if not dark_menu else 7.5
 	under.omni_attenuation = 1.7
 	under.shadow_enabled = false
+	under.light_specular = 0.0
 	menu_world.add_child(under)
 	menu_decor_lights.append(under)
 	# 顶后轮廓光：勾出发动机盖、尾翼和车顶的高光边，车漆更有金属感。
 	var kicker := SpotLight3D.new()
 	kicker.position = car_pos + Vector3(2.5, 8.5, -7.0)
 	kicker.light_color = Color(0.95, 0.97, 1.0)
-	kicker.light_energy = 14.0 if night else (20.0 if dark_menu else 9.0)
+	kicker.light_energy = 7.5 if night else (10.5 if dark_menu else 5.0)
 	kicker.spot_range = 32.0
 	kicker.spot_angle = 34.0
 	kicker.shadow_enabled = false
+	kicker.light_specular = 0.0
 	menu_world.add_child(kicker)
 	kicker.look_at(car_pos + Vector3(0.0, 0.9, 0.0), Vector3.UP)
 	menu_decor_lights.append(kicker)
 	_menu_kicker = kicker
-	_menu_kicker_base = kicker.light_energy
 	_menu_sweep_t = 0.0
 	_setup_menu_glare(theme, dark_menu)
 	_add_menu_weather(theme)
@@ -1876,6 +1948,9 @@ func _add_menu_weather(theme: Dictionary) -> void:
 
 ## 菜单展厅的太阳眩光：优先用烘焙场景里的 Sun 光方向，没 Sun 时退回主题 sunDir。
 func _setup_menu_glare(theme: Dictionary, dark_menu: bool) -> void:
+	if OS.get_environment("APEX_Q_SUN_GLARE") == "0":
+		_setup_sun_glare(Vector3.ZERO, Color.WHITE, 0.0)
+		return
 	var dir := Vector3(0.42, 0.52, 0.2)
 	var color := Color(1.0, 0.95, 0.86)
 	var sun := menu_world.find_child("Sun", true, false) as DirectionalLight3D if menu_world != null else null
@@ -1905,7 +1980,7 @@ func _setup_race_sun_glare() -> void:
 		_setup_sun_glare(Vector3.ZERO, Color.WHITE, 0.0)
 		return
 	var theme: Dictionary = track_def.get("theme", {}) if not track_def.is_empty() else {}
-	var strength := 0.22 if SceneryKit.is_night_theme(theme) else 1.0
+	var strength := 0.22 if SceneryKit.is_night_theme(theme) else 0.72
 	if theme.has("sunGlare"):
 		strength = clampf(float(theme["sunGlare"]), 0.0, 2.0)
 	if String(theme.get("weather", "none")) in ["rain", "snow"]:
@@ -2360,7 +2435,12 @@ func _menu_build_car(car_id: String) -> void:
 
 func _animate_menu_showroom(dt: float) -> void:
 	if menu_car_pivot != null:
-		if not menu_dragging:
+		# 手柄右摇杆直接转车；没有输入时保留展厅自动慢转。
+		var rs := InputSetup.right_stick()
+		_menu_stick_active = rs.length_squared() > 0.0
+		if _menu_stick_active:
+			menu_car_angle += rs.x * 2.4 * dt
+		elif not menu_dragging:
 			menu_car_angle += 0.18 * dt
 		menu_car_pivot.rotation.y = menu_car_angle
 	# 顶后轮廓光缓慢左右扫过车身：静止展厅里也能看到一条高光沿车漆流动。
@@ -2369,7 +2449,7 @@ func _animate_menu_showroom(dt: float) -> void:
 		var car_pos := menu_car_pivot.global_position
 		var drift := sin(_menu_sweep_t * 0.55)
 		_menu_kicker.global_position = car_pos + Vector3(2.5 + drift * 6.5, 8.5, -7.0 + drift * 2.5)
-		_menu_kicker.light_energy = _menu_kicker_base * (1.0 + drift * 0.28)
+		# 亮度锁定：轮廓光只移动位置扫高光，不再随时间泵能量（避免整车亮度呼吸）。
 		_menu_kicker.look_at(car_pos + Vector3(0.0, 0.9, 0.0), Vector3.UP)
 	# 相机保持完全静止，避免细微抖动造成地面高光闪烁
 
@@ -2697,6 +2777,11 @@ func _start_race(track_id: String, car_id: String, mode: String) -> void:
 	hud = RaceHUD.new()
 	hud.name = "RaceHUD"
 	add_child(hud)
+	hud.result_restart_requested.connect(func() -> void:
+		_start_race(current_track_id, current_car_id, current_mode))
+	hud.result_next_requested.connect(func() -> void:
+		_start_race(_next_track_id(current_track_id), current_car_id, current_mode))
+	hud.result_menu_requested.connect(_show_menu)
 	# 全景电影镜头不要赛车 HUD
 	hud.visible = not (shot_mode and shot_scene == "panorama")
 	hud.set_camera_name(cam.mode_label())
@@ -2713,6 +2798,12 @@ func _start_race(track_id: String, car_id: String, mode: String) -> void:
 	race.setup(track_path, track_def, laps, race_mode, car, ais)
 	duel_total_laps = laps
 	hud.bind_race(race, car, track_path)
+	if bool(track_def.get("openField", false)):
+		cone_field = ConeField.new()
+		cone_field.name = "ConeField"
+		race_root.add_child(cone_field)
+		cone_field.set_layout(ConeStore.load_layout())
+		_cone_knocked = 0
 	if _tutorial_session:
 		if tutorial == null:
 			tutorial = TutorialScript.new()
@@ -2742,6 +2833,7 @@ func _start_race(track_id: String, car_id: String, mode: String) -> void:
 		_load_mark(load_t0, "bgm")
 		audio.start_engine()
 		_load_mark(load_t0, "engine")
+		audio.start_ambience()
 		if audio.has_method("set_engine_profile") and car != null:
 			audio.set_engine_profile(car.spec)
 	_load_mark(load_t0, "audio")
@@ -2885,7 +2977,6 @@ func _setup_race_intro_camera() -> void:
 	intro_to_pos = car.global_position - fwd * 5.2 + Vector3(0.0, 1.55, 0.0)
 	intro_to_look = car.global_position + fwd * 6.0 + Vector3(0.0, 0.85, 0.0)
 	intro_t = 0.0
-	_glow_restore = 0.0
 	intro_cam = Camera3D.new()
 	intro_cam.name = "RaceIntroCamera"
 	intro_cam.fov = 50.0
@@ -3127,6 +3218,12 @@ func _set_ghost_delta(value: float) -> void:
 
 
 func _clear_race() -> void:
+	if cone_editor != null:
+		cone_editor.queue_free()
+		cone_editor = null
+		get_tree().paused = false
+	cone_field = null
+	_cone_knocked = 0
 	if photo_mode != null:
 		if is_instance_valid(photo_mode):
 			photo_mode.queue_free()
@@ -3146,6 +3243,7 @@ func _clear_race() -> void:
 		streamer.clear()
 	if audio != null:
 		audio.stop_engine()
+		audio.stop_ambience()
 	if garage_screen != null:
 		garage_screen.queue_free()
 		garage_screen = null
@@ -3901,7 +3999,6 @@ func _setup_environment(parent: Node3D, def: Dictionary) -> void:
 	if not night:
 		env.glow_hdr_threshold = maxf(env.glow_hdr_threshold, 1.32)
 		env.glow_bloom = 0.045
-	_glow_base = env.glow_intensity
 	env.ssao_enabled = true
 	env.fog_enabled = true
 	# 远景清晰度基线：雾色不再压暗 55%，雾密度降约 30%；far_clarity 可在设置里再调
@@ -4053,12 +4150,50 @@ func _bind_world_environment(root: Node3D, def: Dictionary) -> void:
 		_volumetric_allowed = bool(theme.get("volumetric", true))
 		_theme_sdfgi_allowed = false
 		_env.sdfgi_enabled = false
-		_glow_base = _env.glow_intensity
 		_base_fog_color = _env.fog_light_color
 		_base_fog_density = _env.fog_density
 		_base_vol_density = _env.volumetric_fog_density
 	if _sun != null:
 		_sun.shadow_blur = clampf(float(theme.get("shadowBlur", 1.35)), 0.0, 4.0)
+
+
+func _toggle_cone_editor() -> void:
+	if cone_editor != null:
+		_close_cone_editor()
+		return
+	if cone_field == null or car == null or track_path == null:
+		return
+	cone_editor = ConeEditor.new()
+	cone_editor.name = "ConeEditor"
+	cone_editor.setup(cone_field, car, track_path.field_half)
+	cone_editor.closed.connect(_close_cone_editor)
+	add_child(cone_editor)
+	get_tree().paused = true
+
+
+func _close_cone_editor() -> void:
+	if cone_editor == null:
+		return
+	if cone_field != null:
+		ConeStore.save_layout(cone_field.get_layout())
+		if hud != null:
+			hud.show_message("已保存 %d 个锥桶" % cone_field.positions.size(), UIStyle.GREEN, 1.8)
+	cone_editor.queue_free()
+	cone_editor = null
+	get_tree().paused = false
+
+
+## 比赛中直接进拍照（P / 十字左）：先冻结比赛，再切到自由机位。
+## 退出时由 _on_photo_closed 回到暂停菜单。
+func _open_race_photo() -> void:
+	if state != AppState.RACE or race == null or race.state == RaceManager.State.RESULTS:
+		return
+	if photo_mode != null or pause_screen != null:
+		return
+	_open_pause()
+	if pause_screen == null:
+		return
+	_on_pause_photo()
 
 
 func _open_pause() -> void:
@@ -4437,6 +4572,8 @@ func _set_post_grade(theme: Dictionary) -> void:
 		theme = {}
 	var mix := clampf(float(theme.get("gradeMix", 0.0)), 0.0, 1.0)
 	var grain := clampf(float(theme.get("filmGrain", 0.0)), 0.0, 0.05)
+	# 电影暗角：比赛逐图默认 0.12（只压四角、中心亮度不变），菜单/空主题不加。
+	_post_vignette = 0.0 if theme.is_empty() else clampf(float(theme.get("vignette", 0.16)), 0.0, 0.5)
 	if mix <= 0.001 and grain <= 0.0005:
 		_post_grade = {}
 		_post_grade_active = false
@@ -4473,9 +4610,10 @@ func _sync_post_params() -> void:
 	motion_blur_mat.set_shader_parameter("grade_highlight",
 		_post_grade.get("highlight", Color(1.0, 1.0, 1.0)))
 	motion_blur_mat.set_shader_parameter("film_grain", float(_post_grade.get("grain", 0.0)))
+	motion_blur_mat.set_shader_parameter("vignette", _post_vignette)
 	if motion_blur_rect != null:
 		motion_blur_rect.visible = Settings.sharpen > 0.001 or _last_blur_amount > 0.004 \
-			or _post_grade_active
+			or _post_grade_active or _post_vignette > 0.001
 
 
 ## 换画质档时把全场几何的 LOD 偏移同步到当前档位：
@@ -4497,7 +4635,7 @@ func _sync_post_amount(amount: float) -> void:
 	motion_blur_mat.set_shader_parameter("amount", amount)
 	if motion_blur_rect != null:
 		motion_blur_rect.visible = amount > 0.004 or Settings.sharpen > 0.001 \
-			or _post_grade_active
+			or _post_grade_active or _post_vignette > 0.001
 
 
 static var _lens_dirt_cache: Texture2D = null

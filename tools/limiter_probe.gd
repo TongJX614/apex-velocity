@@ -7,7 +7,7 @@ extends Node
 ## 产生，而限速器状态来自 car.gd 的 limiter_active。
 ##
 ## 之前 car.gd 的断油阈值是 redline × 1.002，而：
-##   · 顶挡的极速占比 GEAR_TOPS 末位 = 1.0 → 车跑到极速时正好是红线；
+##   · 顶挡的极速占比 gear_tops 末位 = 1.0 → 车跑到极速时正好是红线；
 ##   · 车速被 _speed_cap() 硬钳在 max_speed，永远超不过去；
 ##   · 默认是自动挡（var manual := false）。
 ## 三个条件叠在一起 → rpm > redline × 1.002 在自动挡下永远不成立，

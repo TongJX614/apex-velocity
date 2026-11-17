@@ -115,7 +115,7 @@ static func build(spec: Dictionary, parent: Node3D, paint: Color = Color.TRANSPA
 	_fix_white_materials(model)
 	_prepare_car_materials(model)
 	setup_brake_lights(model, spec)
-	_center_spin_wheels(spins)
+	_center_spin_wheels(spins, float(result["wheel_radius"]))
 	_apply_lod_bias(model)
 
 	if paint.a > 0.001:
@@ -520,6 +520,11 @@ static func apply_paint(root: Node, color: Color, matte: bool = false, authored_
 	## color.a <= 0 表示「原厂漆」：保留 Blender 原件里的车漆贴图/拉花/清漆，
 	## 只把清漆/金属度调成游戏灯光下好看的值。否则按配置颜色覆盖（丢拉花换纯色）。
 	## authored_fallback：原厂漆材质若没有贴图（少数车/旧模型），用调色板里的原厂色兜底。
+	var cc_mode := OS.get_environment("APEX_Q_PAINT_CC")
+	# 清漆粗糙度：0.02 是纯镜面，晴天下太阳在展车漆面上会烧出一块移动的死白
+	# 反光（车缓缓自转时尤其明显，像自发光）。0.09 仍是高光车漆，但把太阳
+	# 镜反射的峰值摊开一个数量级，只留柔和高光条。
+	var cc_rough := 0.03 if cc_mode == "flat" else 0.09
 	for node in root.find_children("*", "MeshInstance3D", true, false):
 		var mi := node as MeshInstance3D
 		var mesh := mi.mesh
@@ -547,10 +552,10 @@ static func apply_paint(root: Node, color: Color, matte: bool = false, authored_
 				dup.metallic = clampf(dup.metallic, 0.0, 0.45)
 				dup.roughness = clampf(dup.roughness, 0.10, 0.35)
 			if dup.get("clearcoat_enabled") != null:
-				var cc := not matte
+				var cc := not matte and cc_mode != "0"
 				dup.set("clearcoat_enabled", cc)
 				dup.set("clearcoat", 1.0 if cc else 0.0)
-				dup.set("clearcoat_roughness", 0.02)
+				dup.set("clearcoat_roughness", cc_rough)
 			# 菲涅尔边缘高光：车漆在暗背景/夜景里靠轮廓反光把体积勾出来，
 			# 数值压得很低，只加边缘不把整块车身提亮。
 			dup.set("rim_enabled", true)
@@ -783,7 +788,7 @@ static func _fix_reversed_steers(model: Node3D, steers: Array[Node3D]) -> void:
 		steers[i] = pivot
 
 
-static func _center_spin_wheels(spins: Array[Node3D]) -> void:
+static func _center_spin_wheels(spins: Array[Node3D], wheel_radius: float) -> void:
 	for spin in spins:
 		if spin == null:
 			continue
@@ -811,6 +816,14 @@ static func _center_spin_wheels(spins: Array[Node3D]) -> void:
 		var raw_rim := AABB()
 		if rim_meshes.size() > 0:
 			raw_rim = _meshes_aabb_rel(rim_meshes, spin)
+		var raw_tyre := AABB()
+		if tyre_meshes.size() > 0:
+			raw_tyre = _meshes_aabb_rel(tyre_meshes, spin)
+		# 重建外径取对齐前 胎体/轮毂 包围盒的最大 Y/Z（= 原厂轮外径）。manifest 的
+		# wheelRadius 对宽体车偏小，直接用会让重建轮比原厂小、轮拱空、远侧轮露出。
+		var outer_r := maxf(maxf(raw_rim.size.y, raw_rim.size.z), maxf(raw_tyre.size.y, raw_tyre.size.z)) * 0.5
+		if outer_r < 0.10:
+			outer_r = wheel_radius
 		_align_wheel_group(tyre_meshes, spin, target)
 		_align_wheel_group(rim_meshes, spin, target)
 		var box := _subtree_aabb(spin)
@@ -825,10 +838,16 @@ static func _center_spin_wheels(spins: Array[Node3D]) -> void:
 				if k is Node3D:
 					(k as Node3D).position -= target
 		# 仿射修正后仍非正圆/轮心漂移的胎体（网格本身是不一致椭圆环或带歪斜子网格）
-		# → 重建为标准圆环。
-		var rm := _tyre_roll_metrics(spin)
-		if rm["var"] > TYRE_REBUILD_VAR or rm["drift"] > TYRE_REBUILD_DRIFT:
-			_rebuild_tyre(spin, tyre_meshes, raw_rim)
+		# → 重建为标准圆环。轮毂若也碎成错位连通块（rolling var 高，如 m4_adro_kit
+		# 后轮辋），仿射同样修不好 → 整轮重建（干净胎体 + 干净辐条轮毂）。
+		var tm := _roll_metrics_of(tyre_meshes, spin)
+		var rm := _roll_metrics_of(rim_meshes, spin)
+		var tyre_bad: bool = tm["var"] > TYRE_REBUILD_VAR or tm["drift"] > TYRE_REBUILD_DRIFT
+		var rim_bad: bool = rm["var"] > TYRE_REBUILD_VAR
+		if rim_bad:
+			_rebuild_wheel(spin, tyre_meshes, rim_meshes, outer_r, raw_rim)
+		elif tyre_bad:
+			_rebuild_tyre(spin, tyre_meshes, raw_rim, outer_r)
 		spin.set_meta("wheel_fixed", true)
 
 
@@ -877,17 +896,14 @@ static func _align_wheel_group(meshes: Array[MeshInstance3D], spin: Node3D, targ
 		mi.transform = parent_rel.affine_inverse() * k * rel
 
 
-## 模拟绕 X 滚转一圈，量胎体最大(Y,Z)外径变化率（var，%）与轮心漂移（drift，m）。
-## 与运行时探针同口径，用于判定仿射修正后胎体是否仍非正圆/偏心（网格本身损坏）。
-static func _tyre_roll_metrics(spin: Node3D) -> Dictionary:
+## 模拟绕 X 滚转一圈，量一组网格最大(Y,Z)外径变化率（var，%）与轮心漂移（drift，m）。
+## 与运行时探针同口径，用于判定仿射修正后胎体/轮毂是否仍非正圆/偏心（网格本身损坏）。
+static func _roll_metrics_of(meshes: Array[MeshInstance3D], spin: Node3D) -> Dictionary:
 	var pts := PackedVector3Array()
-	for node in spin.find_children("*", "MeshInstance3D", true, false):
-		var mi := node as MeshInstance3D
+	for mi in meshes:
 		if mi.mesh == null:
 			continue
-		var nm := String(mi.name).to_lower()
-		if nm.contains("tyre") or nm.contains("tire") or nm.contains("胎"):
-			pts.append_array(_mesh_verts_rel(mi, spin))
+		pts.append_array(_mesh_verts_rel(mi, spin))
 	if pts.size() < 16:
 		return {"var": 0.0, "drift": 0.0}
 	var ext_min := INF
@@ -930,17 +946,13 @@ static func _tyre_roll_metrics(spin: Node3D) -> Dictionary:
 ## 胎体网格本身是不一致椭圆环、仿射修不好时，用标准圆环重建胎体（保留轮毂）。
 ## 外径/宽度取自对齐前的轮毂原始包围盒（短轴=真实半径，避免被放大后的胎体包围盒
 ## 撑出 oversized 圆环），同心于轮心、滚转轴 X，保证正圆滚动且与轮毂同心。
-static func _rebuild_tyre(spin: Node3D, tyre_meshes: Array[MeshInstance3D], raw_rim: AABB) -> void:
+static func _rebuild_tyre(spin: Node3D, tyre_meshes: Array[MeshInstance3D], raw_rim: AABB, outer_r: float) -> void:
 	var box := _tyre_subtree_aabb(spin)
 	if box.size.y < 0.01 or box.size.z < 0.01:
 		return
-	var r := 0.0
-	var w := 0.0
-	if raw_rim.size.y > 0.01 and raw_rim.size.z > 0.01:
-		r = minf(raw_rim.size.y, raw_rim.size.z) * 0.5 * 1.10
-		w = clampf(raw_rim.size.x, r * 0.5, r * 1.2)
-	else:
-		r = maxf(box.size.y, box.size.z) * 0.5
+	var r := maxf(outer_r, 0.10)
+	var w := clampf(raw_rim.size.x, r * 0.5, r * 1.2)
+	if raw_rim.size.x <= 0.02:
 		w = clampf(box.size.x, r * 0.5, r * 1.2)
 	var center := box.get_center()
 	var mat: Material = null
@@ -977,6 +989,115 @@ static func _rebuild_tyre(spin: Node3D, tyre_meshes: Array[MeshInstance3D], raw_
 	var lin := Basis(Vector3(axial, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1)) * rz
 	rebuilt.transform = Transform3D(lin, center)
 	spin.add_child(rebuilt)
+
+
+## 轮毂网格本身碎成错位连通块（rolling var 高，仿射修不好，如 m4_adro_kit 后轮辋）
+## 时，整轮重建：干净圆环胎体 + 5 辐条轮毂，按 manifest wheelRadius 定尺寸，同心于
+## 滚转枢轴、滚转轴 X。胎体命名 Tyre_Rebuilt、轮毂命名 Rim_Rebuilt，兼容探针与 wheel_dims。
+static func _rebuild_wheel(spin: Node3D, tyre_meshes: Array[MeshInstance3D],
+		rim_meshes: Array[MeshInstance3D], outer_r: float, raw_rim: AABB) -> void:
+	var r := maxf(outer_r, 0.20)
+	var w := r * 0.72
+	if raw_rim.size.x > 0.02:
+		w = clampf(raw_rim.size.x, r * 0.5, r * 1.0)
+	# 材质：胎体沿用原胎材质；轮毂用枪灰金属（辐条）+ 亮抛边。
+	var rubber: Material = null
+	for mi in tyre_meshes:
+		if mi.mesh != null and mi.mesh.get_surface_count() > 0:
+			rubber = mi.get_active_material(0)
+			if rubber != null:
+				break
+	if rubber == null:
+		var rubber_new := StandardMaterial3D.new()
+		rubber_new.albedo_color = Color(0.02, 0.02, 0.022)
+		rubber_new.roughness = 0.94
+		rubber = rubber_new
+	var rim_mat := StandardMaterial3D.new()
+	rim_mat.albedo_color = Color(0.16, 0.17, 0.19)
+	rim_mat.metallic = 0.9
+	rim_mat.roughness = 0.3
+	var rim_bright := StandardMaterial3D.new()
+	rim_bright.albedo_color = Color(0.35, 0.36, 0.38)
+	rim_bright.metallic = 1.0
+	rim_bright.roughness = 0.18
+	# 移除整组碎裂的原车轮网格（胎体 + 轮毂；刹车件在转向节点下，不动）。
+	var doomed: Array[MeshInstance3D] = []
+	for node in spin.find_children("*", "MeshInstance3D", true, false):
+		var mi := node as MeshInstance3D
+		var nm := String(mi.name).to_lower()
+		if nm.contains("brake") or nm.contains("disc") or nm.contains("caliper"):
+			continue
+		doomed.append(mi)
+	_free_meshes(doomed, rubber)
+	# 胎体（圆环，轴 X，拉宽到胎宽 w）。
+	var torus := TorusMesh.new()
+	torus.inner_radius = r * 0.70
+	torus.outer_radius = r
+	torus.rings = 24
+	torus.ring_segments = 48
+	var tyre := MeshInstance3D.new()
+	tyre.name = "Tyre_Rebuilt"
+	tyre.mesh = torus
+	tyre.material_override = rubber
+	var rz := Basis(Vector3(0, -1, 0), Vector3(1, 0, 0), Vector3(0, 0, 1))
+	var axial := w / maxf(r - torus.inner_radius, 0.001)
+	tyre.transform = Transform3D(Basis(Vector3(axial, 0, 0), Vector3(0, 1, 0), Vector3(0, 0, 1)) * rz, Vector3.ZERO)
+	spin.add_child(tyre)
+	# 轮毂（抛边 + 辐条 +  hub，挂在滚转枢轴下随轮滚转）。
+	var rim_root := Node3D.new()
+	rim_root.name = "Rim_Rebuilt"
+	spin.add_child(rim_root)
+	var rim_r := r * 0.72
+	for sx in [-1.0, 1.0]:
+		var lip := TorusMesh.new()
+		lip.inner_radius = rim_r * 0.90
+		lip.outer_radius = rim_r * 1.03
+		lip.rings = 10
+		lip.ring_segments = 40
+		var li := MeshInstance3D.new()
+		li.name = "Rim_Lip" if sx > 0.0 else "Rim_Lip_In"
+		li.mesh = lip
+		li.material_override = rim_bright
+		li.transform = Transform3D(rz, Vector3(sx * w * 0.42, 0, 0))
+		rim_root.add_child(li)
+	# 辐条双面布置：从车外/车内任一侧看都是完整辐条轮，避免远侧轮露出空轮辋圈。
+	var spokes := 5
+	for i in spokes:
+		var pivot := Node3D.new()
+		pivot.rotation.x = TAU * float(i) / float(spokes)
+		rim_root.add_child(pivot)
+		for fx in [w * 0.30, -w * 0.30]:
+			var sp := BoxMesh.new()
+			sp.size = Vector3(w * 0.18, rim_r * 1.0, r * 0.11)
+			var smi := MeshInstance3D.new()
+			smi.name = "Rim_Spoke" if fx > 0.0 else "Rim_Spoke_In"
+			smi.mesh = sp
+			smi.material_override = rim_mat
+			smi.position = Vector3(fx, rim_r * 0.5, 0)
+			pivot.add_child(smi)
+	var hub := CylinderMesh.new()
+	hub.top_radius = rim_r * 0.26
+	hub.bottom_radius = rim_r * 0.26
+	hub.height = w * 0.62
+	hub.radial_segments = 24
+	var hmi := MeshInstance3D.new()
+	hmi.name = "Rim_Hub"
+	hmi.mesh = hub
+	hmi.material_override = rim_mat
+	hmi.transform = Transform3D(rz, Vector3.ZERO)
+	rim_root.add_child(hmi)
+
+
+## 释放一组网格：先给每个 surface 有效材质再 free，避免渲染服务器拆解 null 材质报错。
+static func _free_meshes(meshes: Array[MeshInstance3D], mat: Material) -> void:
+	for mi in meshes:
+		if mi.mesh != null:
+			for s in mi.mesh.get_surface_count():
+				mi.set_surface_override_material(s, mat)
+		var p := mi.get_parent()
+		if p != null:
+			p.remove_child(mi)
+		mi.free()
 
 
 static func _mesh_verts_rel(mi: MeshInstance3D, ancestor: Node3D) -> PackedVector3Array:
@@ -1114,13 +1235,13 @@ static func _blob_shadow_texture() -> ImageTexture:
 				Vector2((u - 0.5) / 0.45, (v - 0.5) / 0.58).length())
 			var body := 1.0 - smoothstep(0.55, 1.00,
 				Vector2((u - 0.5) / 0.35, (v - 0.5) / 0.47).length())
-			var alpha := outer * 0.09 + body * 0.15
+			var alpha := outer * 0.12 + body * 0.20
 			# 四轮接地点
 			for wx: float in [0.30, 0.70]:
 				for wy: float in [0.24, 0.76]:
 					var d := Vector2((u - wx) / 0.085, (v - wy) / 0.115).length()
 					alpha += (1.0 - smoothstep(0.65, 1.10, d)) * 0.30
-			alpha = clampf(alpha, 0.0, 0.60)
+			alpha = clampf(alpha, 0.0, 0.66)
 			img.set_pixel(x, y, Color(0.0, 0.0, 0.0, alpha))
 	img.generate_mipmaps()
 	_blob_tex = ImageTexture.create_from_image(img)

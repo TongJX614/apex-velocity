@@ -9,6 +9,10 @@ extends CanvasLayer
 ## 对外 API 完全保持：refresh(race, car, path) / bind_race / show_results /
 ## hide_results / set_camera_name，以及现有公开字段。
 
+signal result_restart_requested
+signal result_next_requested
+signal result_menu_requested
+
 var time_label: Label
 var lap_label: Label
 var lap_time_label: Label
@@ -25,6 +29,7 @@ var countdown_label: Label
 var toast_label: Label
 var camera_label: Label
 var minimap: Minimap
+var _is_field := false
 
 var results_root: Control
 var results_title: Label
@@ -35,7 +40,7 @@ var results_hint: Label
 
 var _prev_position := 0
 var _toast_timer := 0.0
-var camera_name := "追尾"
+var camera_name := "近身"
 var ghost_delta := NAN
 
 var _accent := UIStyle.ACCENT
@@ -94,6 +99,7 @@ var _vignette: TextureRect
 var _results_panel: Control
 var _result_stat_values: Array[Label] = []
 var _result_medal_label: Label
+var _result_buttons: Array[Button] = []
 var _duel_panel: Panel
 var _duel_label: Label
 var _duel_mode := false
@@ -227,7 +233,7 @@ func bind_duel(other: Car) -> void:
 	_duel_other = other
 	if _duel_panel != null:
 		_duel_panel.visible = true
-		_duel_label.text = "本地双人  ·  P1 方向键 / Shift 氮气     P2 WASD / L 氮气"
+		_duel_label.text = "本地双人  ·  P1 方向键 / 手柄1     P2 WASD / 手柄2     A 手刹 · X 氮气"
 
 
 func update_duel(p1_laps: int, p2_laps: int, p2_kph: float, winner: String) -> void:
@@ -249,7 +255,7 @@ func show_duel_result(winner: String, p1_time: float, p2_time: float) -> void:
 	if p2_time > 0.0:
 		line += "      P2 %s" % RaceManager.format_time(p2_time)
 	if results_records != null:
-		results_records.text = (results_records.text + "        " + line) if not results_records.text.is_empty() else line
+		results_records.text = (results_records.text + "\n" + line) if not results_records.text.is_empty() else line
 
 
 func _build_track_plate(root: Control) -> void:
@@ -1032,12 +1038,14 @@ func _refresh_common() -> void:
 	var joy := InputSetup.last_input_was_joy
 	if camera_label != null:
 		camera_label.visible = Settings.key_hints
-		_set_text(camera_label, ("相机  %s      ·      START 暂停     Ⓑ 切视角" if joy \
-			else "相机  %s      ·      START 暂停     M 主菜单") % camera_name)
+		_set_text(camera_label, ("相机  %s      ·      Ⓑ 切视角   R3 回头   L3 回正   START 暂停" if joy \
+			else "相机  %s      ·      C 切视角   H 回头   M 主菜单") % camera_name)
 	if hint_label != null:
 		hint_label.visible = Settings.key_hints
-		_set_text(hint_label, "左摇杆 转向   RT 油门   LT 刹车·倒车   Ⓐ 手刹   Ⓧ 氮气   LB/RB 升降档   Ⓨ 手动/自动   BACK 复位   Ⓑ 相机" if joy \
-			else "W/↑ 油门   S/↓ 刹车·倒车   A/D 转向   SPACE 手刹   左SHIFT 氮气   E/Q 升降档   T 手动/自动   R 复位   C 相机")
+		_set_text(hint_label, "左摇杆 转向   RT 油门   LT 刹车·倒车   Ⓐ 手刹   Ⓧ 氮气   LB/RB·十字↑↓ 升降档   Ⓨ 手动/自动   BACK 复位   右摇杆 环视   R3 回头   L3 回正   十字←→ 拍照·设置   START 暂停" if joy \
+			else "W/↑ 油门   S/↓ 刹车·倒车   A/D 转向   SPACE 手刹   左SHIFT 氮气   E/Q 升降档   T 手动/自动   R 复位   C 相机   H 回头   P 拍照   F2 设置   ESC 暂停")
+		if _is_field and not joy:
+			_set_text(hint_label, hint_label.text + "   V 摆桩编辑")
 	if _fps_label != null:
 		_fps_label.visible = Settings.show_fps
 		if Settings.show_fps:
@@ -1047,6 +1055,7 @@ func _refresh_common() -> void:
 func bind_race(rm: RaceManager, car: Car, track: TrackPath) -> void:
 	minimap.setup(track, car, rm.ais)
 	minimap.show_start_line = track == null or not track.open_field
+	_is_field = track != null and track.open_field
 	_prev_position = rm.player_position
 	_seen_laps = rm.player_laps
 	_lap_max_kph = 0.0
@@ -1288,16 +1297,16 @@ func show_profile_progress(summary: Dictionary) -> void:
 			int(mastery.get("xp", 0))])
 	var credits := int(summary.get("credit_balance", -1))
 	if credits >= 0:
-		bits.append("可用积分  %d XP" % credits)
+		bits.append("可用积分  %s" % ProfileStore.credit_text_from(credits))
 	if not bits.is_empty():
-		var line := "成长  ·  " + "      ".join(bits)
-		results_records.text = (results_records.text + "        " + line) if not results_records.text.is_empty() else line
+		var line := "成长  ·  " + "  ·  ".join(bits)
+		results_records.text = (results_records.text + "\n" + line) if not results_records.text.is_empty() else line
 
 
 func append_result_line(line: String) -> void:
 	if results_records == null or line.is_empty():
 		return
-	results_records.text = (results_records.text + "        " + line) if not results_records.text.is_empty() else line
+	results_records.text = (results_records.text + "\n" + line) if not results_records.text.is_empty() else line
 
 
 func show_results(rm: RaceManager) -> void:
@@ -1403,17 +1412,22 @@ func show_results(rm: RaceManager) -> void:
 		holder.create_tween().tween_property(holder, "modulate:a", 1.0, 0.22).set_delay(0.03 * row_index)
 		row_index += 1
 
-	var record_bits: Array[String] = []
+	# 纪录按行排版：整段自动换行会把「S3 00:34.742」这类词组拦腰折断。
+	var record_lines: Array[String] = []
+	var headline: Array[String] = []
 	if rm.record_summary.get("new_total", false):
-		record_bits.append("★ 新纪录  总时间 %s" % RaceManager.format_time(float(rm.record_summary["best_total"])))
+		headline.append("★ 新纪录  总时间 %s" % RaceManager.format_time(float(rm.record_summary["best_total"])))
 	elif float(rm.record_summary.get("best_total", -1.0)) > 0.0:
-		record_bits.append("最佳总时间  %s" % RaceManager.format_time(float(rm.record_summary["best_total"])))
+		headline.append("最佳总时间  %s" % RaceManager.format_time(float(rm.record_summary["best_total"])))
 	if rm.record_summary.get("new_lap", false):
-		record_bits.append("★ 新纪录  单圈 %s" % RaceManager.format_time(float(rm.record_summary["best_lap"])))
+		headline.append("★ 新纪录  单圈 %s" % RaceManager.format_time(float(rm.record_summary["best_lap"])))
 	elif float(rm.record_summary.get("best_lap", -1.0)) > 0.0:
-		record_bits.append("最佳单圈  %s" % RaceManager.format_time(float(rm.record_summary["best_lap"])))
+		headline.append("最佳单圈  %s" % RaceManager.format_time(float(rm.record_summary["best_lap"])))
+	if not headline.is_empty():
+		record_lines.append("   ·   ".join(headline))
+	var pace: Array[String] = []
 	if rm.ai_fastest_lap > 0.0:
-		record_bits.append("对手最快圈  %s（%s）" % [
+		pace.append("对手最快圈  %s（%s）" % [
 			RaceManager.format_time(rm.ai_fastest_lap), rm.ai_fastest_name])
 	if rm.best_sector_times.size() == RaceManager.SECTOR_COUNT:
 		var sector_bits: Array[String] = []
@@ -1422,9 +1436,11 @@ func show_results(rm: RaceManager) -> void:
 			if split > 0.0:
 				sector_bits.append("S%d %s" % [i + 1, RaceManager.format_time(split)])
 		if sector_bits.size() == rm.best_sector_times.size():
-			record_bits.append("最佳分段  " + "   ·   ".join(sector_bits))
-	results_records.text = "        ".join(record_bits)
-	results_hint.text = "Ⓐ  返回菜单      ·      Ⓧ  重新比赛      ·      Ⓨ  下一场比赛" if InputSetup.last_input_was_joy \
+			pace.append("最佳分段  " + " · ".join(sector_bits))
+	if not pace.is_empty():
+		record_lines.append("   ·   ".join(pace))
+	results_records.text = "\n".join(record_lines)
+	results_hint.text = "Ⓐ / Ⓑ  返回菜单      ·      Ⓧ  重新比赛      ·      Ⓨ  下一场比赛" if InputSetup.last_input_was_joy \
 		else "R  重新比赛      ·      M  返回菜单      ·      ENTER  下一场比赛"
 	_results_panel.pivot_offset = _results_panel.size * 0.5
 	_results_panel.scale = Vector2(0.96, 0.96)
@@ -1465,7 +1481,7 @@ func _build_results(root: Control) -> void:
 	var panel := Panel.new()
 	panel.add_theme_stylebox_override("panel",
 		UIStyle.glass_style(UIStyle.ACCENT, 0.95, UIStyle.R_LG, 0.32))
-	UIStyle.place(panel, 0.5, 0.5, 0.5, 0.5, -490, -268, 490, 268)
+	UIStyle.place(panel, 0.5, 0.5, 0.5, 0.5, -490, -325, 490, 325)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	results_root.add_child(panel)
 	_results_panel = panel
@@ -1502,7 +1518,7 @@ func _build_results(root: Control) -> void:
 
 	var stats_row := HBoxContainer.new()
 	stats_row.add_theme_constant_override("separation", 8)
-	stats_row.custom_minimum_size = Vector2(0, 72)
+	stats_row.custom_minimum_size = Vector2(0, 68)
 	vbox.add_child(stats_row)
 	var stat_captions := ["名次  POSITION", "完赛时间  TOTAL", "最快单圈  BEST LAP", "奖牌  MEDAL"]
 	for i in 4:
@@ -1535,6 +1551,67 @@ func _build_results(root: Control) -> void:
 	results_records.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vbox.add_child(results_records)
 
+	# 结算操作按钮：鼠标玩家此前在结算页没有任何可点目标，只能靠键盘/手柄。
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 10)
+	actions.custom_minimum_size = Vector2(0, 56)
+	actions.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	vbox.add_child(actions)
+	_add_result_button(actions, "重新比赛", "RETRY", UIStyle.SILVER, false,
+		result_restart_requested)
+	_add_result_button(actions, "下一场比赛", "NEXT RACE", UIStyle.ACCENT, true,
+		result_next_requested)
+	_add_result_button(actions, "返回菜单", "MAIN MENU", UIStyle.RED, false,
+		result_menu_requested)
+
 	results_hint = UIStyle.label_tracked("", 10, Color(0.62, 0.76, 0.85, 1.0),
 		HORIZONTAL_ALIGNMENT_LEFT, 1)
 	vbox.add_child(results_hint)
+
+
+func _add_result_button(parent: Control, cn: String, en: String, accent: Color,
+		primary: bool, sig: Signal) -> void:
+	var btn := Button.new()
+	btn.text = ""
+	btn.custom_minimum_size = Vector2(0, 56)
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# 手柄 A/X/Y 与键盘 R/M/Enter 由 main 统一处理，按钮只服务鼠标，避免抢焦点冲突。
+	btn.focus_mode = Control.FOCUS_NONE
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	UIStyle.apply_button(btn, accent, "primary" if primary else "ghost", 15)
+	btn.pressed.connect(func() -> void: sig.emit())
+	parent.add_child(btn)
+	_result_buttons.append(btn)
+
+	var row := HBoxContainer.new()
+	row.set_anchors_preset(Control.PRESET_FULL_RECT)
+	row.offset_left = 16
+	row.offset_right = -16
+	row.add_theme_constant_override("separation", 10)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	btn.add_child(row)
+	var text := VBoxContainer.new()
+	text.add_theme_constant_override("separation", 0)
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text.alignment = BoxContainer.ALIGNMENT_CENTER
+	text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(text)
+	var cn_label := UIStyle.label(cn, 15, UIStyle.TXT)
+	text.add_child(cn_label)
+	var en_label := UIStyle.label_tracked(en, 8, Color(0.56, 0.68, 0.77, 0.95),
+		HORIZONTAL_ALIGNMENT_LEFT, 2)
+	text.add_child(en_label)
+	var arrow := UIStyle.label("›", 18, UIStyle.a(accent, 0.85), HORIZONTAL_ALIGNMENT_RIGHT)
+	arrow.custom_minimum_size = Vector2(20, 0)
+	row.add_child(arrow)
+
+	var animate := func(active: bool) -> void:
+		if not is_instance_valid(btn):
+			return
+		var tw := btn.create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(cn_label, "modulate", Color(1.10, 1.10, 1.10, 1.0) if active else Color.WHITE, 0.14)
+		tw.tween_property(arrow, "modulate:a", 1.0 if active else 0.45, 0.14)
+		tw.tween_property(arrow, "position:x", 3.0 if active else 0.0, 0.14)
+	btn.mouse_entered.connect(func() -> void: animate.call(true))
+	btn.mouse_exited.connect(func() -> void: animate.call(false))

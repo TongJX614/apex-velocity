@@ -16,9 +16,9 @@
 GODOT=~/Applications/Godot.app/Contents/MacOS/Godot
 mkdir -p /tmp/apex_shots
 
-# 菜单
+# 菜单（--shot-delay=N 让展车多转 N 秒再拍；计时从装饰完成起算，低帧率下转角/扫光相位也稳定）
 "$GODOT" --path "$PWD" --resolution 1600x900 -- \
-  --shot=/tmp/apex_shots/menu_city.png --shot-scene=menu --track=city
+  --shot=/tmp/apex_shots/menu_city.png --shot-scene=menu --track=city --shot-delay=12
 
 # 比赛（--shot-dist 把车放到赛道中段，避免每张都停在起跑线）
 "$GODOT" --path "$PWD" --resolution 1600x900 -- \
@@ -47,10 +47,28 @@ mkdir -p /tmp/apex_shots
    `_bind_world_environment` 直接隐藏全部烘焙 SpotLight3D。运行时辅助光
    （key/rim/fill/kicker/车底 Omni）按平方反比标能量：8~10m 距离个位数能量
    几乎不可见，但几十的能量会把清漆高光打成死白、在地面留下影棚光池。
-   现值：key 12（白天）/26（暗主题）/22（夜城相机侧暖光），rim 7/16/12、
-   fill 4/10/8、kicker 9/20/14，车底 Omni 白天 0.22、key 锥角 38° 收光池。
+   现值：key 7（白天）/15.5（暗主题）/13（夜城相机侧暖光），rim 4/9.5/7、
+   fill 2.5/6/5、kicker 5.5/12/8.5，车底 Omni 白天 0.13、key 锥角 38° 收光池。
    key 方向对齐场景太阳（`Sun.basis.z`），夜城改为相机侧暖光，保证车与
    环境同一套光影逻辑。
+7. 亮色车漆「炫光」与镜壳死白光球：白漆在补光下容易被推过泛光阈值，车头糊成
+   一团白；深色车漆上则表现为镜壳/A 柱一颗死白光球，看起来像「换车地图亮度
+   不同」（实测地图远场亮度与车无关，差的是车漆+光晕）。三道闸：
+   辅助灯能量只到「读懂车形」的量级（上一节）；菜单 `glow_hdr_threshold`
+   抬到 2.6；所有补光与烘焙灯 `light_specular = 0`。
+   光球根因是烘焙街灯 Omni 的镜面镜像：玻璃粗糙度近 0，镜像点 HDR 几十，
+   湿路掠射再铺成整片暖光池，specular 留 10% 都仍过阈值，只能归零；湿地反光
+   交给 SSR 与霓虹自发光。烘焙旧车底 Omni 与运行时新灯叠加也要钳（车身 3m
+   内 energy ≤ 0.35）。排查顺序：`APEX_Q_MENU_GLOW=0` 确认泛光只是放大器 →
+   看 bloom-off 原图找 HDR 源（光池/镜像点）→ 逐类灯关 specular 定位。
+   车漆清漆粗糙度 0.09（0.02 纯镜面，太阳/天空反光会烧成移动死白斑）。
+   对比截图必须同转角：菜单 shot ready 走墙钟（`_shot_wall`），且 45 帧下限
+   在慢机（<3.5fps）会晚于墙钟、拍出不同转角/扫光相位；帧数下限已压到 12
+   帧纯预热。两个时钟（自转角度、轮廓扫光 `_menu_sweep_t`）在
+   `_instantiate_menu_scene` 末尾同点归零。仍有噪声源：菜单轮廓扫光
+   （11.4s 周期，地面光池跟着移动，单次拍完隔 2s 重拍差异可达 4%）与
+   雨滴随机种子——判「车与地图亮度」时只比同批连拍的读数，或先看
+   地面环形区域是否逐车一致（0.0001 级）。
 
 ### 车库影棚
 
@@ -130,6 +148,8 @@ mkdir -p /tmp/apex_shots
 | `APEX_Q_GLOW_MAP=0` | 关闭镜头脏污 glow map |
 | `APEX_Q_RAIN_STREAKS_OFF=1` / `APEX_Q_RAIN_SPLASH_OFF=1` / `APEX_Q_RAIN_SPRAY_OFF=1` | 单独关闭雨丝/地面溅水/车尾水雾 |
 | `APEX_Q_GRADE=0` | 关闭逐图电影调色，看原始色 |
+| `APEX_Q_MENU_GLOW=0` / `APEX_Q_MENU_SSR=0` / `APEX_Q_SUN_GLARE=0` / `APEX_Q_MENU_PROBE=0` | 菜单环境单项关闭：泛光/SSR/太阳眩光/反射探针 |
+| `APEX_Q_PAINT_CC=0` / `=flat` | 车漆清漆关闭 / 镜面（0.03）对比，默认 0.09 |
 | `APEX_PERF_OVERRIDE=1` + `APEX_Q_SSIL/Q_SSAO/Q_VOL/Q_TAA` | 性能审计时单独开关后处理 |
 
 ## 性能基线（本机 1600×900 / ULTRA / Retina 0.7 渲染比例）

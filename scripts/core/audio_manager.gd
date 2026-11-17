@@ -16,6 +16,10 @@ var current_bgm := ""
 var muted := false
 var engine_profile_spec: Dictionary = {}
 
+## 风噪/胎噪循环属于"车内环境声"，只在比赛内播放（菜单与启动阶段完全静音）。
+var ambience_active := false
+var _ambience_fade: Tween
+
 ## 音乐 ducking：用 Music bus 上的独立 AudioEffectAmplify 叠一层临时增益，
 ## 不写 bus 的 volume_db / mute，所以 Settings 的 Music 音量始终是基准，不会被覆盖。
 const DUCK_EFFECT_NAME := "GameFeelDuck"
@@ -44,7 +48,6 @@ func _ready() -> void:
 	wind_player.stream = _make_loop_noise("wind")
 	wind_player.volume_db = -80.0
 	add_child(wind_player)
-	wind_player.play()
 
 	tire_player = AudioStreamPlayer.new()
 	tire_player.name = "Tire"
@@ -52,7 +55,6 @@ func _ready() -> void:
 	tire_player.stream = _make_loop_noise("tire")
 	tire_player.volume_db = -80.0
 	add_child(tire_player)
-	tire_player.play()
 
 	impact_player = AudioStreamPlayer.new()
 	impact_player.name = "Impact"
@@ -79,7 +81,7 @@ func ensure_audio_buses() -> void:
 
 
 ## 总线处理：Master 限幅 + 压缩避免碰撞/氮气叠加时爆音；
-## Wind/Tire 低通去掉刺耳的高频嘶声；Engine 高通清掉浑浊低频。
+## Wind/Tire 低通去掉刺耳的高频嘶声；Engine 高通清掉浑浊低频、低通压暗整体音色的尖顶。
 func _setup_bus_effects() -> void:
 	var master := AudioServer.get_bus_index("Master")
 	if master >= 0 and not _bus_has_effect(master, "SafetyLimiter"):
@@ -120,6 +122,16 @@ func _setup_bus_effects() -> void:
 		hp.cutoff_hz = 38.0
 		hp.resonance = 0.2
 		AudioServer.add_bus_effect(engine_bus, hp)
+	# 引擎总线末端的整体压暗低通：合成层的高阶谐波已经在 engine_audio.gd 里
+	# 按 tone_dark 减重了，这一层负责把**真实录音质感层**（motor_seamless_*.ogg
+	# 这类宽带素材，自带 4kHz 以上的嘶声）一起收进同一个音色里。
+	# 截止点取在排气中频之上、刺耳区之下：听感变沉但不发闷，基频与缸型特征不动。
+	if engine_bus >= 0 and not _bus_has_effect(engine_bus, "EngineDarkLowPass"):
+		var elp := AudioEffectLowPassFilter.new()
+		elp.resource_name = "EngineDarkLowPass"
+		elp.cutoff_hz = 4200.0
+		elp.resonance = 0.15
+		AudioServer.add_bus_effect(engine_bus, elp)
 
 
 func _bus_has_effect(bus_index: int, effect_name: String) -> bool:
@@ -328,8 +340,57 @@ func update_engine(rpm: float, throttle: float, speed01: float, gear: int,
 		engine.update_sound(rpm, throttle, speed01, gear, fuel_cut)
 
 
+## 开赛时启动风噪/胎噪循环；电平交给 update_ambience 按速度推。
+func start_ambience() -> void:
+	_cancel_ambience_fade()
+	ambience_active = true
+	for player in [wind_player, tire_player]:
+		if player != null:
+			player.volume_db = -80.0
+			player.play()
+
+
+## 离开比赛时收掉环境声。菜单里听到风噪就是这里没做干净：
+## 高速退场时循环停在 -30 dB 左右且没人再改写它，会一路吼到菜单。
+## 先淡出再停，避免满速退场时硬切成爆音。
+func stop_ambience() -> void:
+	ambience_active = false
+	_cancel_ambience_fade()
+	var audible := false
+	for player in [wind_player, tire_player]:
+		if player != null and player.playing and player.volume_db > -70.0:
+			audible = true
+			break
+	if not audible:
+		_halt_ambience()
+		return
+	_ambience_fade = create_tween()
+	_ambience_fade.set_parallel(true)
+	_ambience_fade.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	for player in [wind_player, tire_player]:
+		if player != null:
+			_ambience_fade.tween_property(player, "volume_db", -80.0, 0.22)
+	_ambience_fade.chain().tween_callback(_halt_ambience)
+
+
+func _halt_ambience() -> void:
+	for player in [wind_player, tire_player]:
+		if player != null:
+			player.stop()
+			player.volume_db = -80.0
+	_ambience_fade = null
+
+
+func _cancel_ambience_fade() -> void:
+	if _ambience_fade != null and _ambience_fade.is_valid():
+		_ambience_fade.kill()
+	_ambience_fade = null
+
+
 func update_ambience(speed01: float, slip01: float, offroad: bool,
 		dt: float = 1.0 / 120.0) -> void:
+	if not ambience_active:
+		return
 	var smooth := 1.0 - exp(-4.5 * clampf(dt, 0.0001, 0.1))
 	if wind_player != null:
 		# 风噪只做高速衬托：整体再压低，且随速度平滑过渡（旧版逐帧 0.18 插值会抽动）

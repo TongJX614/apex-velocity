@@ -1,6 +1,6 @@
 class_name DailyScreen
 extends CanvasLayer
-## 每日合约：每天 3 条随机目标，完成后领取 XP。ESC 关闭。
+## 每日合约：每天 3 条随机目标，完成后领取 XP。B / START / ESC 关闭，A 领取。
 
 signal closed
 
@@ -12,6 +12,8 @@ var _rows: VBoxContainer
 var _summary_label: Label
 var _toast: Label
 var _panel: Panel
+var _close_btn: Button
+var _claim_buttons: Array[Button] = []
 
 
 func _ready() -> void:
@@ -56,12 +58,13 @@ func _ready() -> void:
 	UIStyle.place(title, 0, 0, 1, 0, 40, 48, -300, 92)
 	_panel.add_child(title)
 
-	var sub := UIStyle.label_tracked("每日 0 点刷新   ·   完成目标领取 XP   ·   ESC 关闭", 10,
+	var sub := UIStyle.label_tracked("每日 0 点刷新   ·   完成目标领取 XP   ·   B / START / ESC 关闭", 10,
 		UIStyle.TXT_DIM, HORIZONTAL_ALIGNMENT_LEFT, 1)
 	UIStyle.place(sub, 0, 0, 1, 0, 42, 94, -300, 114)
 	_panel.add_child(sub)
 
 	var close_btn := Button.new()
+	_close_btn = close_btn
 	close_btn.focus_mode = Control.FOCUS_ALL
 	close_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	UIStyle.apply_button(close_btn, UIStyle.GOLD, "ghost", 11)
@@ -109,6 +112,7 @@ func _ready() -> void:
 	foot.add_theme_constant_override("separation", 10)
 	UIStyle.place(foot, 0, 1, 1, 1, 40, -52, -40, -24)
 	_panel.add_child(foot)
+	foot.add_child(UIStyle.keycap("A", UIStyle.GOLD, 9))
 	foot.add_child(UIStyle.keycap("ENTER", UIStyle.GOLD, 9))
 	foot.add_child(UIStyle.label("检查可领取的合约   ·   每日刷新后重新累计", 10, UIStyle.TXT_DIM))
 	foot.visible = Settings.key_hints
@@ -126,16 +130,36 @@ func _ready() -> void:
 	tw.tween_property(_panel, "modulate:a", 1.0, 0.22)
 
 
-func _refresh() -> void:
+func _refresh(focus_after := false) -> void:
 	var contracts := ProfileStore.daily_contracts()
 	var summary := ProfileStore.daily_summary()
 	_summary_label.text = "已完成  %d / %d    ·   可领取 %d 条 / %d XP" % [
 		int(summary["done"]), int(summary["total"]),
 		int(summary["claimable"]), int(summary["xp_ready"])]
+	_claim_buttons.clear()
 	for child in _rows.get_children():
 		child.queue_free()
 	for i in contracts.size():
 		_rows.add_child(_make_card(contracts[i], i + 1))
+	_wire_focus_navigation()
+	if focus_after:
+		if not _claim_buttons.is_empty():
+			_claim_buttons[0].grab_focus()
+		elif _close_btn != null:
+			_close_btn.grab_focus()
+
+
+## 关闭按钮与可领取按钮之间显式连焦点链：手柄上下键一路可达。
+func _wire_focus_navigation() -> void:
+	if _close_btn == null or _claim_buttons.is_empty():
+		return
+	_close_btn.focus_neighbor_bottom = _close_btn.get_path_to(_claim_buttons[0])
+	for i in _claim_buttons.size():
+		var btn := _claim_buttons[i]
+		var top := _close_btn if i == 0 else _claim_buttons[i - 1]
+		var bottom := _close_btn if i == _claim_buttons.size() - 1 else _claim_buttons[i + 1]
+		btn.focus_neighbor_top = btn.get_path_to(top)
+		btn.focus_neighbor_bottom = btn.get_path_to(bottom)
 
 
 func _make_card(contract: Dictionary, index: int) -> Control:
@@ -209,6 +233,7 @@ func _make_card(contract: Dictionary, index: int) -> Control:
 	elif complete:
 		claim.text = "领取奖励"
 		claim.pressed.connect(func() -> void: _claim(String(contract["id"])))
+		_claim_buttons.append(claim)
 	else:
 		claim.disabled = true
 		claim.text = "进行中"
@@ -227,7 +252,7 @@ func _claim(id: String) -> void:
 	var tw := _toast.create_tween()
 	tw.tween_interval(2.0)
 	tw.tween_property(_toast, "modulate:a", 0.0, 0.5)
-	_refresh()
+	_refresh(true)
 
 
 func _unhandled_input(event: InputEvent) -> void:

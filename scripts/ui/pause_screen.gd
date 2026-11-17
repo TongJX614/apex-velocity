@@ -17,6 +17,13 @@ var _sub: Label
 var _root: Control
 var _buttons: Array[Button] = []
 var _frame: UIFrame
+var _btn_meta: Dictionary = {}
+var _armed: Button = null
+var _arm_timer := 0.0
+var _hint_kb: HBoxContainer
+var _hint_pad: HBoxContainer
+
+const ARM_SECONDS := 3.0
 
 
 func _ready() -> void:
@@ -122,19 +129,32 @@ func _build() -> void:
 	_root.add_child(session)
 
 	# 右下：按键提示
-	var hint_row := HBoxContainer.new()
-	hint_row.add_theme_constant_override("separation", 8)
-	hint_row.alignment = BoxContainer.ALIGNMENT_END
-	UIStyle.place(hint_row, 1, 1, 1, 1, -560, -54, -48, -26)
-	hint_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root.add_child(hint_row)
-	hint_row.add_child(UIStyle.keycap("ESC", ACCENT, 9))
-	hint_row.add_child(UIStyle.label("继续比赛", 10, Color(0.60, 0.72, 0.81, 1.0)))
-	hint_row.add_child(UIStyle.keycap("M", ACCENT, 9))
-	hint_row.add_child(UIStyle.label("返回主菜单", 10, Color(0.60, 0.72, 0.81, 1.0)))
-	hint_row.add_child(UIStyle.keycap("P", UIStyle.GOLD, 9))
-	hint_row.add_child(UIStyle.label("拍照模式", 10, Color(0.60, 0.72, 0.81, 1.0)))
-	hint_row.visible = Settings.key_hints
+	# 键盘 / 手柄两套提示，按最近一次输入设备切换。
+	_hint_kb = HBoxContainer.new()
+	_hint_kb.add_theme_constant_override("separation", 8)
+	_hint_kb.alignment = BoxContainer.ALIGNMENT_END
+	UIStyle.place(_hint_kb, 1, 1, 1, 1, -560, -54, -48, -26)
+	_hint_kb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_hint_kb)
+	_hint_kb.add_child(UIStyle.keycap("ESC", ACCENT, 9))
+	_hint_kb.add_child(UIStyle.label("继续比赛", 10, Color(0.60, 0.72, 0.81, 1.0)))
+	_hint_kb.add_child(UIStyle.keycap("M", ACCENT, 9))
+	_hint_kb.add_child(UIStyle.label("返回主菜单", 10, Color(0.60, 0.72, 0.81, 1.0)))
+	_hint_kb.add_child(UIStyle.keycap("P", UIStyle.GOLD, 9))
+	_hint_kb.add_child(UIStyle.label("拍照模式", 10, Color(0.60, 0.72, 0.81, 1.0)))
+
+	_hint_pad = HBoxContainer.new()
+	_hint_pad.add_theme_constant_override("separation", 8)
+	_hint_pad.alignment = BoxContainer.ALIGNMENT_END
+	UIStyle.place(_hint_pad, 1, 1, 1, 1, -560, -54, -48, -26)
+	_hint_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_hint_pad)
+	_hint_pad.add_child(UIStyle.keycap("A", ACCENT, 9))
+	_hint_pad.add_child(UIStyle.label("确认", 10, Color(0.60, 0.72, 0.81, 1.0)))
+	_hint_pad.add_child(UIStyle.keycap("B/START", ACCENT, 9))
+	_hint_pad.add_child(UIStyle.label("继续比赛", 10, Color(0.60, 0.72, 0.81, 1.0)))
+	_hint_pad.add_child(UIStyle.keycap("X", UIStyle.GOLD, 9))
+	_hint_pad.add_child(UIStyle.label("拍照模式", 10, Color(0.60, 0.72, 0.81, 1.0)))
 
 	# 右侧按钮列
 	var panel := Panel.new()
@@ -159,17 +179,22 @@ func _build() -> void:
 	UIStyle.place(buttons_box, 0, 0, 1, 0, 16, 46, -16, 286)
 	panel.add_child(buttons_box)
 
-	_add_button(buttons_box, "01", "继续比赛", "RESUME RACE", resume_requested, ACCENT, true)
-	_add_button(buttons_box, "02", "重新开始", "RESTART", restart_requested, UIStyle.SILVER, false)
-	_add_button(buttons_box, "03", "设置", "SETTINGS", settings_requested, UIStyle.SILVER, false)
-	_add_button(buttons_box, "04", "返回主菜单", "MAIN MENU", menu_requested, UIStyle.RED, false)
+	_add_button(buttons_box, "01", "继续比赛", "RESUME RACE", resume_requested, ACCENT, true, false)
+	_add_button(buttons_box, "02", "重新开始", "RESTART", restart_requested, UIStyle.SILVER, false, true)
+	_add_button(buttons_box, "03", "设置", "SETTINGS", settings_requested, UIStyle.SILVER, false, false)
+	_add_button(buttons_box, "04", "返回主菜单", "MAIN MENU", menu_requested, UIStyle.RED, false, true)
 
 	# 拍照模式单独放在左侧，不挤占右侧 4 个主菜单按钮的高度。
-	_add_button(_root, "05", "拍照模式", "PHOTO MODE", photo_requested, UIStyle.GOLD, false)
+	_add_button(_root, "05", "拍照模式", "PHOTO MODE", photo_requested, UIStyle.GOLD, false, false)
 	var photo_btn: Button = _buttons[_buttons.size() - 1]
 	UIStyle.place(photo_btn, 0, 0, 0, 0, 62, 126, 362, 186)
+	# 拍照按钮在左侧独立摆放，显式补焦点链，保证纯手柄也能走到。
+	var resume_btn := _buttons[0]
+	photo_btn.focus_neighbor_right = photo_btn.get_path_to(resume_btn)
+	photo_btn.focus_neighbor_top = photo_btn.get_path_to(resume_btn)
+	resume_btn.focus_neighbor_left = resume_btn.get_path_to(photo_btn)
 
-	var note := UIStyle.label("HUD 与画质设置可在「设置」中即时调整。", 9,
+	var note := UIStyle.label("重新开始 / 返回主菜单 需再按一次确认 · HUD 与画质可在「设置」即时调整", 9,
 		Color(0.52, 0.64, 0.73, 0.95))
 	UIStyle.place(note, 0, 0, 1, 0, 22, 292, -20, 310)
 	panel.add_child(note)
@@ -205,14 +230,14 @@ func _build() -> void:
 
 
 func _add_button(parent: Control, num: String, cn: String, en: String, sig: Signal,
-		accent: Color, primary: bool) -> void:
+		accent: Color, primary: bool, destructive: bool) -> void:
 	var btn := Button.new()
 	btn.text = ""
 	btn.custom_minimum_size = Vector2(0, 60)
 	btn.focus_mode = Control.FOCUS_ALL
 	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	UIStyle.apply_button(btn, accent, "primary" if primary else "ghost", 15)
-	btn.pressed.connect(func() -> void: sig.emit())
+	btn.pressed.connect(func() -> void: _on_option_pressed(btn))
 	parent.add_child(btn)
 	_buttons.append(btn)
 
@@ -254,17 +279,96 @@ func _add_button(parent: Control, num: String, cn: String, en: String, sig: Sign
 	btn.focus_entered.connect(func() -> void: animate.call(true))
 	btn.focus_exited.connect(func() -> void: animate.call(false))
 
+	_btn_meta[btn] = {
+		"sig": sig, "destructive": destructive, "cn": cn, "en": en,
+		"cn_label": cn_label, "en_label": en_label,
+		"accent": accent, "primary": primary,
+	}
+
+
+func _on_option_pressed(btn: Button) -> void:
+	var meta: Dictionary = _btn_meta.get(btn, {})
+	if meta.is_empty():
+		return
+	if _armed != null and _armed != btn:
+		_disarm()
+	if bool(meta["destructive"]) and _armed != btn:
+		_arm(btn)
+		return
+	_disarm()
+	(meta["sig"] as Signal).emit()
+
+
+func _arm(btn: Button) -> void:
+	var meta: Dictionary = _btn_meta[btn]
+	_armed = btn
+	_arm_timer = ARM_SECONDS
+	UIStyle.apply_button(btn, UIStyle.RED, "ghost", 15)
+	var cn_label: Label = meta["cn_label"]
+	var en_label: Label = meta["en_label"]
+	cn_label.text = "确认%s？" % String(meta["cn"])
+	cn_label.add_theme_color_override("font_color", UIStyle.RED)
+	en_label.text = "再按一次确认 · 进度不会保留"
+	en_label.add_theme_color_override("font_color", UIStyle.a(UIStyle.RED, 0.9))
+
+
+func _disarm() -> void:
+	if _armed == null:
+		return
+	var btn := _armed
+	var meta: Dictionary = _btn_meta.get(btn, {})
+	_armed = null
+	_arm_timer = 0.0
+	if meta.is_empty():
+		return
+	UIStyle.apply_button(btn, meta["accent"], "primary" if bool(meta["primary"]) else "ghost", 15)
+	var cn_label: Label = meta["cn_label"]
+	var en_label: Label = meta["en_label"]
+	cn_label.text = String(meta["cn"])
+	cn_label.add_theme_color_override("font_color", UIStyle.TXT)
+	en_label.text = String(meta["en"])
+	en_label.add_theme_color_override("font_color", Color(0.56, 0.68, 0.77, 0.95))
+
+
+func _process(delta: float) -> void:
+	if _hint_kb != null and _hint_pad != null:
+		var joy := InputSetup.last_input_was_joy
+		_hint_kb.visible = Settings.key_hints and not joy
+		_hint_pad.visible = Settings.key_hints and joy
+	_tick_arm(delta)
+
+
+func _tick_arm(delta: float) -> void:
+	if _armed == null:
+		return
+	_arm_timer -= delta
+	if _arm_timer <= 0.0:
+		_disarm()
+
+
+func _handle_cancel() -> void:
+	if _armed != null:
+		_disarm()
+	else:
+		resume_requested.emit()
+
 
 func _input(event: InputEvent) -> void:
+	InputSetup.note_input(event)
 	if event.is_action_pressed("ui_cancel"):
 		get_viewport().set_input_as_handled()
-		resume_requested.emit()
+		_handle_cancel()
+		return
+	if event is InputEventJoypadButton and (event as InputEventJoypadButton).pressed \
+			and (event as InputEventJoypadButton).button_index == JOY_BUTTON_X:
+		get_viewport().set_input_as_handled()
+		_on_option_pressed(_buttons[4])
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		var key := (event as InputEventKey).keycode
 		if key == KEY_M:
 			get_viewport().set_input_as_handled()
-			menu_requested.emit()
+			_on_option_pressed(_buttons[3])
 		elif key == KEY_P:
 			get_viewport().set_input_as_handled()
-			photo_requested.emit()
+			_on_option_pressed(_buttons[4])

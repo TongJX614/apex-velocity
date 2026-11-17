@@ -21,6 +21,8 @@ uniform float grade_temp : hint_range(-1.0, 1.0) = 0.0;
 uniform vec3 grade_shadow = vec3(0.0);
 uniform vec3 grade_highlight = vec3(1.0);
 uniform float film_grain : hint_range(0.0, 0.05) = 0.0;
+// 电影暗角：只压四角、中心不动，把视线收向车身/前方路面。不改整体曝光。
+uniform float vignette : hint_range(0.0, 0.5) = 0.0;
 
 vec3 apply_grade(vec3 col, vec2 uv) {
 	if (grade_mix <= 0.001 && film_grain <= 0.0005) {
@@ -93,5 +95,10 @@ void fragment() {
 	}
 
 	col = apply_grade(col, uv);
+	if (vignette > 0.001) {
+		vec2 d = uv - vec2(0.5, 0.5);
+		float v = smoothstep(0.35, 0.85, length(d * vec2(1.0, 0.92)));
+		col *= 1.0 - vignette * v;
+	}
 	COLOR = vec4(col, 1.0);
 }

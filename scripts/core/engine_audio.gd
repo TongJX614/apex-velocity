@@ -13,6 +13,10 @@ extends AudioStreamPlayer
 ##   · 真实录音素材（cars/assets/audio/engine/*.wav）作为**燃烧质感层**叠加，
 ##     提供程序化合成难以得到的排气粗糙感与机械噪声。
 ##
+## 整体音色另有 `tone_dark`（低沉度）一个旋钮：把谐波上限、6 阶以上的权重、
+## 脉冲锐度、哨声与电机啸叫的天花板统一往下压。各车档案的 bright / growl /
+## pulseSharp 仍然生效，所以只平移音色、不抹平缸型差异，点火基频也完全不动。
+##
 ## 分档位（每档一张独立波表，音色目标不同）：
 ##   idle   怠速：低频 lope 明显、高频收敛、排气有"点火不齐"的颗粒感
 ##   cruise 低中转：谐波完整、涡轮开始建立
@@ -91,6 +95,20 @@ var ev_third := 0.030
 var ev_gear_whine := 0.038
 var ev_nvh := 0.13
 var ev_body := 0.18
+
+## 整体音色低沉度（0 = 原样，1 = 最沉）。
+##
+## 用户反馈原声线偏尖锐，要求整体压低、变沉重。这一个旋钮同时驱动：
+## 谐波频率上限、6 阶以上谐波的权重、点火脉冲锐度、机械噪声与泄压阀的高频量、
+## 涡轮哨声上限、EV 逆变器与齿轮啸叫的上限、真实录音质感层的音高。
+## Engine 总线末端还有一只配套的低通，见 audio_manager.gd 的 EngineDarkLowPass。
+##
+## 刻意只做**绝对频率**上的平移：各车档案里的 bright / growl / pulseSharp
+## 原样保留，前 5 阶谐波的阶次比例也不动（见 `_order_dark`），
+## 所以 V8 / V6 / I4 / I3 的相对区别不会被抹平。
+## 基频（点火频率 = rpm/60 × 缸数/2）完全不动 —— 那是物理真值，也是审计里
+## "实测点火基频误差 < 5%" 这条判定盯的东西；低沉感靠谐波配比实现。
+var tone_dark := 0.60
 
 # --- 波表 -------------------------------------------------------------------
 ## 按转速预生成的波表组：_speed_tables[step][band] = 一张波表。
@@ -212,10 +230,18 @@ func is_hybrid() -> bool:
 func motor_tone_hz() -> float:
 	if fuel_type != "hybrid":
 		return 0.0
+	return _ev_motor_hz()
+
+
+## 逆变器主音频率公式本体（不含燃料类型判断）。
+## 合成路径（ICE 末尾的电驱层、纯 EV 层）和审计期望值必须走同一份公式，
+## 低沉度对上限的平移也只在这里体现一次。
+func _ev_motor_hz() -> float:
+	var whine_top := ev_max_whine * lerpf(1.0, 0.74, tone_dark)
 	# 电机基频随车速平滑上扬（电机的关键听感特征），负载再抬一点
-	var w := lerpf(180.0, ev_max_whine, pow(clampf(_speed01, 0.0, 1.0), 0.82))
+	var w := lerpf(180.0, whine_top, pow(clampf(_speed01, 0.0, 1.0), 0.82))
 	w *= lerpf(0.94, 1.06, _throttle)
-	return clampf(w, 120.0, ev_max_whine)
+	return clampf(w, 120.0, whine_top)
 
 
 func set_profile(spec: Dictionary) -> void:
@@ -385,6 +411,19 @@ func _build_wavetables() -> void:
 	var lo_boost := [1.34, 1.05, 0.90, 0.82]
 	# 各档位的频谱上限（Hz）—— 怠速闷、大转亮、红区最亮但仍有上限
 	var cutoff := [2600.0, 3400.0, 4200.0, 4800.0]
+	# 低沉度只动**绝对频率**，不动**阶次比例**：缸型特征全在前几阶
+	# （十字 V8 靠 4 阶突出、V6 靠 2/3 阶、I3 靠奇数阶）。
+	# 实测教训：按 order>=3 一刀切减重会把 V8 的 H4/H1 从 0.331 压到 0.198，
+	# 低于 H2/H1 —— 四阶峰被抹平，V8 听起来就不再是 V8（审计里"V8 音色特征"
+	# 那条判定专门盯着这个）。
+	#   · 频谱上限整体下移：高转档位 6 阶以上的毛刺直接不出声
+	#   · 6 阶往上逐阶递降：留下排气中频，削掉 2.5~6kHz 的刺耳区
+	#   · 1~2 阶轻微加权：厚度和体量上来，低沉与音量不互相抵消
+	var cutoff_scale := lerpf(1.0, 0.58, tone_dark)
+	var lo_scale := lerpf(1.0, 1.06, tone_dark)
+	for band in cutoff.size():
+		cutoff[band] *= cutoff_scale
+		lo_boost[band] *= lo_scale
 	# 预生成 SPEED_STEPS 组，每组对应一个转速区间
 	for step in SPEED_STEPS:
 		var frac := (float(step) + 0.5) / float(SPEED_STEPS)
@@ -413,13 +452,25 @@ func _build_wavetables() -> void:
 					var order := float(k + 1)
 					var bw := hb if order >= 3.0 else lb
 					var par := 1.25 if (profile.begins_with("v8") and fmod(order, 2.0) < 0.5) else 1.0
-					s += sin(theta * order) * w * bw * par
+					s += sin(theta * order) * w * bw * par * _order_dark(order)
 				# 半频低频体量（V8 的"胸腔感"）
 				s += sin(theta * 0.5) * sub_weight * lb * 0.55
 				tbl[i] = s * 0.30
 			group.append(tbl)
 		_speed_tables.append(group)
 	_tables_ready = true
+
+
+## 低沉度对单个谐波**阶次**的衰减。
+##
+## 1~5 阶不衰减：缸型特征全在这里（十字 V8 的 4 阶突出、V6 的 2/3 阶、
+## I3 的奇数阶），动了就把四类引擎拉成同一种声音。
+## 6 阶往上按 tone_dark 逐阶递降，到 16 阶约剩 0.67 倍 —— 这一段对应
+## 2.5~6kHz 的排气毛刺区，是原先"尖锐"的主要来源。
+func _order_dark(order: float) -> float:
+	if order <= 5.0 or tone_dark <= 0.0:
+		return 1.0
+	return pow(lerpf(1.0, 0.34, tone_dark), (order - 5.0) / 11.0)
 
 
 ## 按当前转速选出波表组，并在相邻组之间交叉淡化。
@@ -553,12 +604,14 @@ func _fill_ice(buffer: PackedVector2Array, frames: int, load: float) -> void:
 	# 幅度加权法把 583Hz 的标定信号测成 1931Hz），压掉了哨声随转速上扬的
 	# 听感特征。现在上限只用来防止哨声跑到刺耳区（>6kHz），
 	# 真正的"不掩盖点火基频"由 0.12 的增益系数保证。
+	# tone_dark 再把这个上限往低音方向收（4200 → 2400）并减增益，
+	# 哨声随转速上扬的走势保留，只是不再跑到刺耳区。
 	var whistle_f := 0.0
 	var whistle_amp := 0.0
 	if has_turbo and _turbo_boost > 0.02:
 		whistle_f = whistle_hz * (0.52 + 0.40 * clampf(_real_rpm / maxf(redline_rpm, 1.0), 0.0, 1.4))
-		whistle_f = minf(whistle_f, 4200.0)
-		whistle_amp = whistle_gain * _turbo_boost
+		whistle_f = minf(whistle_f, lerpf(4200.0, 2400.0, tone_dark))
+		whistle_amp = whistle_gain * _turbo_boost * lerpf(1.0, 0.65, tone_dark)
 	var whistle_inc := whistle_f / MIX_RATE
 	var whistle_phase := 0.0
 
@@ -591,9 +644,13 @@ func _fill_ice(buffer: PackedVector2Array, frames: int, load: float) -> void:
 			sample *= 1.0 - lope_depth * 0.5 * (0.5 + 0.5 * _lope_sin)
 
 		# --- 排气脉冲锐度：低转更"顿"，高转更连续 ---
+		# tone_dark 把脉冲的"敲击感"磨圆：指数变小（边沿变缓，宽带点击声的
+		# 高频尾巴跟着缩短），幅度也减，只留低频的那点"顿"。
 		if pulse_sharp > 0.0:
 			var s_env := sin(_firing_phase * TAU)
-			sample *= 1.0 + pulse_sharp * 0.30 * (pow(maxf(s_env, 0.0), 6.0) - 0.5)
+			var sharp_k := lerpf(0.30, 0.18, tone_dark)
+			var sharp_exp := lerpf(6.0, 3.2, tone_dark)
+			sample *= 1.0 + pulse_sharp * sharp_k * (pow(maxf(s_env, 0.0), sharp_exp) - 0.5)
 
 		# --- 机械噪声：带限噪声（不是白噪声）---
 		# 真实引擎的机械噪声（气门、链条、进气）集中在 150Hz~2.5kHz，
@@ -608,7 +665,10 @@ func _fill_ice(buffer: PackedVector2Array, frames: int, load: float) -> void:
 		# 高通（去掉 120Hz 以下的直流漂移）
 		var hp := _noise2 - _noise_lp
 		_noise_lp = lerpf(_noise_lp, _noise2, 0.04)
-		var mech := (_noise2 * 0.45 + hp * 0.55) * 0.5
+		# 低沉度：把机械噪声的重心从"高通后的沙沙声"挪回"低通后的隆隆声"。
+		# hp 权重减、_noise2 权重加，总能量基本不变，所以音量不会因为变闷而变小。
+		var mech := (_noise2 * lerpf(0.45, 0.62, tone_dark)
+			+ hp * lerpf(0.55, 0.30, tone_dark)) * 0.5
 		sample += mech * mech_amt * 0.30
 
 		# --- 涡轮哨声：受 boost 控制的中频气流音 ---
@@ -625,8 +685,8 @@ func _fill_ice(buffer: PackedVector2Array, frames: int, load: float) -> void:
 			sample += _noise * _shift_pop * 0.28 * pop
 		if _blow_off > 0.001:
 			_blow_off = maxf(0.0, _blow_off - float(frames) / MIX_RATE * 1.8)
-			# 泄压阀：高频气流噪声
-			sample += _noise2 * _blow_off * 0.34
+			# 泄压阀：高频气流噪声；低沉度把它往"气流"而不是"嘶声"方向拉
+			sample += lerp(_noise2, _noise, tone_dark) * _blow_off * 0.34
 		if _overrun_pop > 0.001:
 			_overrun_pop = maxf(0.0, _overrun_pop - float(frames) / MIX_RATE * 6.5)
 			sample += _noise * _overrun_pop * 0.30
@@ -678,19 +738,21 @@ func _fill_ice(buffer: PackedVector2Array, frames: int, load: float) -> void:
 		for i in frames:
 			_ev_phase = fposmod(_ev_phase + m_inc, 1.0)
 			var m := sin(_ev_phase * TAU) * 0.72
-			m += sin(_ev_phase * TAU * 2.0) * ev_harmonic
-			m += sin(_ev_phase * TAU * 3.0) * ev_third
+			m += sin(_ev_phase * TAU * 2.0) * ev_harmonic * lerpf(1.0, 0.62, tone_dark)
+			m += sin(_ev_phase * TAU * 3.0) * ev_third * lerpf(1.0, 0.62, tone_dark)
 			# NVH：电机本体的低频振动
 			_half_phase = fposmod(_half_phase + m_inc * 0.5, 1.0)
-			m += sin(_half_phase * TAU) * ev_nvh * 0.6
+			m += sin(_half_phase * TAU) * ev_nvh * 0.6 * lerpf(1.0, 1.30, tone_dark)
 			buffer[i] = Vector2(buffer[i].x + m * m_amp, buffer[i].y + m * m_amp)
 
 	# 燃烧质感层：真实录音音量与转速/负载联动
 	if _texture != null and _texture.stream != null:
 		var t_amp := lerpf(-26.0, -13.0, clampf(_throttle * 0.7 + _band_frac * 0.5, 0.0, 1.0))
 		_texture.volume_db = t_amp
-		# 音高由谐波骨架精确控制，纹理层只做档位驱动的微调
-		_texture.pitch_scale = lerpf(0.94, 1.08, _band_frac)
+		# 音高由谐波骨架精确控制，纹理层只做档位驱动的微调；
+		# 低沉度再把整层往下压，真实录音里的高频嘶声跟着一起沉下去。
+		var tex_pitch_scale := lerpf(1.0, 0.86, tone_dark)
+		_texture.pitch_scale = lerpf(0.94, 1.08, _band_frac) * tex_pitch_scale
 
 	# 混动：真实电机录音质感层（叠加在程序化电驱层之上，只贡献宽带粗糙感）
 	if _ev_texture != null and fuel_type == "hybrid" and _ev_texture.stream != null:
@@ -705,19 +767,22 @@ func _fill_ev(buffer: PackedVector2Array, frames: int, load: float) -> void:
 	# 谐波只保留 2 阶与 3 阶的极小量，并加入 NVH 低频与齿轮啸叫，
 	# 让声音从"刺耳"变成"顺滑上扬"。
 	var speed_frac := clampf(_speed01, 0.0, 1.0)
-	var whine := lerpf(180.0, ev_max_whine, pow(speed_frac, 0.82))
-	# 负载会让基频再抬一点（电机扭矩电流变化）
-	whine *= lerpf(0.94, 1.06, _throttle)
-	whine = clampf(whine, 120.0, ev_max_whine)
+	# 基频由 _ev_motor_hz() 给出（含低沉度对上限的平移），与审计期望值同源
+	var whine := _ev_motor_hz()
 	var whine_inc := whine / MIX_RATE
 	# 齿轮啸叫：跟随车速的独立高频成分，音量低
 	# 上限压到 2.6kHz：真实 EV 的齿轮啸叫是"细微沙沙"，不该盖过电机基频，
 	# 否则整台车听感就变成一段尖锐的电子高音（实测质心会冲到 4.1kHz）。
-	var gear_f := lerpf(700.0, 2600.0, pow(speed_frac, 0.9))
+	# 低沉度再把这个上限和量级一起往下收。
+	var gear_top := lerpf(2600.0, 1750.0, tone_dark)
+	var gear_f := lerpf(700.0, gear_top, pow(speed_frac, 0.9))
 	var gear_inc := gear_f / MIX_RATE
 	# NVH：电机本体的低频振动
 	var nvh_f := lerpf(60.0, 220.0, speed_frac)
 	var nvh_inc := nvh_f / MIX_RATE
+	# 低频体量随低沉度加权，高频减重 —— 这是 EV"变沉"的主要来源
+	var low_boost := lerpf(1.0, 1.30, tone_dark)
+	var hf_scale := lerpf(1.0, 0.62, tone_dark)
 
 	var amp := (0.020 + _throttle * 0.052 + _speed01 * 0.030) * base_gain
 	amp *= lerpf(1.15, 0.90, speed_frac)
@@ -728,14 +793,14 @@ func _fill_ev(buffer: PackedVector2Array, frames: int, load: float) -> void:
 
 		var sample := sin(_ev_phase * TAU) * 0.72
 		# 极少量谐波：保留电机的"电子感"但不刺耳
-		sample += sin(_ev_phase * TAU * 2.0) * ev_harmonic
-		sample += sin(_ev_phase * TAU * 3.0) * ev_third
+		sample += sin(_ev_phase * TAU * 2.0) * ev_harmonic * hf_scale
+		sample += sin(_ev_phase * TAU * 3.0) * ev_third * hf_scale
 		# 齿轮啸叫：量级刻意压低，保持"背景沙沙"而非主旋律
-		sample += sin(_gear_phase * TAU) * ev_gear_whine * 0.55
+		sample += sin(_gear_phase * TAU) * ev_gear_whine * 0.55 * hf_scale
 		# NVH 低频体量
-		sample += sin(_half_phase * TAU) * ev_nvh
+		sample += sin(_half_phase * TAU) * ev_nvh * low_boost
 		# 电机体的低频"哼"
-		sample += sin(_half_phase * TAU * 2.0) * ev_body * 0.5
+		sample += sin(_half_phase * TAU * 2.0) * ev_body * 0.5 * low_boost
 		# 轻微的电流纹波，让纯音不至于太"电子"
 		var n := randf_range(-1.0, 1.0)
 		_noise = lerpf(_noise, n, 0.05)

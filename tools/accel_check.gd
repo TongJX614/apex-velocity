@@ -33,7 +33,9 @@ func _run() -> void:
 		car.engine_profile = String(spec.get("engineProfile", "i6")).to_lower()
 		car.drivetrain = String(spec.get("drivetrain", "RWD")).to_upper()
 		car.redline = clampf(float(spec.get("redline", 0.94)), 0.80, 1.0)
-		car.gear_count = clampi(int(spec.get("gears", 6)), 1, 6)
+		# 只赋挡位数：上限与齿比表由 Car.gear_count 的 setter 统一处理，
+		# 工具里不再复制一份 clamp，免得和车身的齿比表不同步。
+		car.gear_count = int(spec.get("gears", 6))
 		if car.fuel_type == "ev":
 			car.gear_count = 1
 		car.weight_kg = float(spec.get("weightKg", 1500.0))

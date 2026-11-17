@@ -135,7 +135,7 @@
    "drivetrain": "RWD",
    "engineProfile": "i6",
    "redline": 0.92,
-   "gears": 6
+   "gears": 8
   },
   {
    "id": "varis_m4_gts",
@@ -180,7 +180,7 @@
    "drivetrain": "RWD",
    "engineProfile": "i6",
    "redline": 0.94,
-   "gears": 6
+   "gears": 7
   },
   {
    "id": "bmw_csl_hommage",
@@ -315,7 +315,7 @@
    "drivetrain": "RWD",
    "engineProfile": "i6",
    "redline": 0.95,
-   "gears": 6
+   "gears": 7
   },
   {
    "id": "bmw_x5m",
@@ -360,7 +360,7 @@
    "drivetrain": "AWD",
    "engineProfile": "v8",
    "redline": 0.92,
-   "gears": 6
+   "gears": 8
   },
   {
    "id": "bmw_x6m",
@@ -405,7 +405,7 @@
    "drivetrain": "AWD",
    "engineProfile": "v8",
    "redline": 0.92,
-   "gears": 6
+   "gears": 8
   },
   {
    "id": "pandem_m3_e92",
@@ -540,7 +540,7 @@
    "drivetrain": "RWD",
    "engineProfile": "i6",
    "redline": 0.94,
-   "gears": 6
+   "gears": 7
   },
   {
    "id": "bmw_m4_coupe",
@@ -585,7 +585,7 @@
    "drivetrain": "RWD",
    "engineProfile": "i6",
    "redline": 0.94,
-   "gears": 6
+   "gears": 7
   },
   {
    "id": "bmw_m4_gt4",
@@ -630,7 +630,7 @@
    "drivetrain": "RWD",
    "engineProfile": "i6",
    "redline": 0.96,
-   "gears": 6
+   "gears": 7
   },
   {
    "id": "bmw_m5_f90",
@@ -675,7 +675,7 @@
    "drivetrain": "AWD",
    "engineProfile": "v8",
    "redline": 0.92,
-   "gears": 6
+   "gears": 8
   },
   {
    "id": "bmw_m6_gt3",
@@ -855,7 +855,7 @@
    "drivetrain": "RWD",
    "engineProfile": "i6",
    "redline": 0.94,
-   "gears": 6
+   "gears": 8
   },
   {
    "id": "bmw_m8_cabrio",
@@ -900,7 +900,7 @@
    "drivetrain": "AWD",
    "engineProfile": "v8",
    "redline": 0.93,
-   "gears": 6
+   "gears": 8
   },
   {
    "id": "bmw_m850i",
@@ -945,7 +945,7 @@
    "drivetrain": "AWD",
    "engineProfile": "v8",
    "redline": 0.93,
-   "gears": 6
+   "gears": 8
   },
   {
    "id": "bmw_218i",
@@ -990,7 +990,7 @@
    "drivetrain": "FWD",
    "engineProfile": "i3",
    "redline": 0.95,
-   "gears": 6
+   "gears": 7
   },
   {
    "id": "bmw_m4_g82",
@@ -1035,7 +1035,7 @@
    "drivetrain": "RWD",
    "engineProfile": "i6",
    "redline": 0.94,
-   "gears": 6
+   "gears": 8
   },
   {
    "id": "byd_dolphin",
@@ -1125,7 +1125,7 @@
    "drivetrain": "FWD",
    "engineProfile": "i4",
    "redline": 0.95,
-   "gears": 6
+   "gears": 7
   },
   {
    "id": "bmw_m4_adro_g82",
@@ -1170,7 +1170,7 @@
    "drivetrain": "RWD",
    "engineProfile": "i6",
    "redline": 0.94,
-   "gears": 6
+   "gears": 8
   },
   {
    "id": "bmw_m4_gt3",
@@ -1305,7 +1305,7 @@
    "drivetrain": "RWD",
    "engineProfile": "i6",
    "redline": 0.94,
-   "gears": 6
+   "gears": 8
   },
   {
    "id": "bmw_m3_touring",
@@ -1350,7 +1350,7 @@
    "drivetrain": "AWD",
    "engineProfile": "i6",
    "redline": 0.94,
-   "gears": 6
+   "gears": 8
   },
   {
    "id": "lambo_urus",
@@ -1395,7 +1395,7 @@
    "drivetrain": "AWD",
    "engineProfile": "v8",
    "redline": 0.92,
-   "gears": 6
+   "gears": 8
   },
   {
    "id": "lamborghini_aventador",
@@ -1575,7 +1575,7 @@
    "drivetrain": "RWD",
    "engineProfile": "i6",
    "redline": 0.94,
-   "gears": 6
+   "gears": 8
   },
   {
    "id": "byd_yangwang_u7",
@@ -1845,7 +1845,7 @@
    "drivetrain": "AWD",
    "engineProfile": "v8",
    "redline": 0.92,
-   "gears": 6
+   "gears": 8
   },
   {
    "id": "bmw_m5_sedan",
@@ -1890,7 +1890,7 @@
    "drivetrain": "AWD",
    "engineProfile": "v8",
    "redline": 0.92,
-   "gears": 6
+   "gears": 8
   },
   {
    "id": "zeekr_7x",
@@ -1980,7 +1980,7 @@
    "drivetrain": "FWD",
    "engineProfile": "i4",
    "redline": 0.92,
-   "gears": 6
+   "gears": 9
   },
   {
    "id": "bmw_m4_adro_kit",
@@ -2025,7 +2025,7 @@
    "drivetrain": "RWD",
    "engineProfile": "i6",
    "redline": 0.94,
-   "gears": 6
+   "gears": 8
   }
  ],
  "palettes": {

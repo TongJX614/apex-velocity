@@ -529,8 +529,8 @@ func _build() -> void:
 
 func _build_key_hints(root: Control) -> void:
 	var hints := [
-		["摇杆", "选择"], ["LB/RB", "赛道"], ["Ⓐ", "发车 / 确认"], ["START", "返回 / 设置"],
-		["X", "成就"], ["D", "合约"], ["P", "档案"], ["M", "模式"], ["Y", "车库"],
+		["摇杆", "选择"], ["LB/RB", "赛道"], ["Ⓐ", "发车 / 确认"], ["START", "设置"],
+		["X", "成就"], ["D / Ⓑ", "合约"], ["P", "档案"], ["右摇杆", "旋转展车"], ["Y", "车库"],
 	]
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 14)
@@ -1135,7 +1135,7 @@ func _has_tuning(car_id: String) -> bool:
 	return false
 
 
-func _refresh_history(track_id: String, _mode: String) -> void:
+func _refresh_history(track_id: String, mode: String) -> void:
 	if _history_label == null:
 		return
 	var hist := RecordsStore.history(track_id)
@@ -1153,6 +1153,19 @@ func _refresh_history(track_id: String, _mode: String) -> void:
 				String(run.get("mode", "")).to_upper(), car_name])
 		if hist.size() > 3:
 			lines.append("… 其余 %d 次可在赛道档案里排序查看" % (hist.size() - 3))
+	var track_def: Dictionary = {}
+	for def in GameData.tracks:
+		if String(def.get("id", "")) == track_id:
+			track_def = def
+			break
+	var path: TrackPath = track_paths.get(track_id)
+	if path != null and not bool(track_def.get("openField", false)):
+		var targets := ProfileStore.medal_targets(path, int(track_def.get("laps", 3)),
+			mode, int(track_def.get("difficulty", 2)))
+		lines.append("奖牌目标   金 %s   ·   银 %s   ·   铜 %s" % [
+			RaceManager.format_time(float(targets["gold"])),
+			RaceManager.format_time(float(targets["silver"])),
+			RaceManager.format_time(float(targets["bronze"]))])
 	_history_label.text = "\n".join(lines)
 
 
@@ -1244,7 +1257,7 @@ func _process(delta: float) -> void:
 	# 弹层关闭 / 点击空白后焦点可能丢失，A 会变成空按：默认回到发车按钮。
 	if get_viewport().gui_get_focus_owner() == null and _launch_btn != null:
 		_launch_btn.grab_focus()
-	# 键盘方向键 / 手柄左摇杆统一驱动焦点；这里做长按重复（十字键已解绑）。
+	# 键盘方向键 / 手柄左摇杆与十字键统一驱动焦点；这里做长按重复。
 	var v := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
 	if v.length() < 0.55:
 		_nav_cooldown = 0.0
@@ -1284,7 +1297,12 @@ func _input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("ui_cancel"):
-		settings_requested.emit()
+		if event is InputEventJoypadButton \
+				and (event as InputEventJoypadButton).button_index == JOY_BUTTON_B:
+			# 主菜单没有“返回”目标，B 直接打开每日合约，和 D 键一致。
+			daily_requested.emit()
+		else:
+			settings_requested.emit()
 		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventJoypadButton and event.pressed:

@@ -9,6 +9,8 @@ signal closed
 const MOVE_SPEED := 12.0
 const FAST_MUL := 3.2
 const ORBIT_SENS := 0.0024
+const STICK_LOOK_RATE := 2.4
+const STICK_PITCH_RATE := 1.7
 const MIN_FOV := 18.0
 const MAX_FOV := 95.0
 const PHOTO_DIR := "user://photos"
@@ -31,6 +33,9 @@ var _fov_label: Label
 var _flash: ColorRect
 var _flash_t := 0.0
 var _saving := false
+var _fast := false
+var _hud_hidden := false
+var _prev_buttons: Dictionary = {}
 
 
 func setup(chase_cam: Camera3D, car: Node3D) -> void:
@@ -125,12 +130,13 @@ func _build_ui() -> void:
 	root.add_child(cross_v)
 
 	_hint = UIStyle.label(
-		"移动鼠标 旋转   ·   滚轮 变焦   ·   WASD 前后左右   ·   Q/E 下降/上升   ·   Shift 加速   ·   R 复位   ·   F12 截图   ·   ESC 退出",
-		11, Color(0.86, 0.92, 0.96, 0.98))
+		"键盘  鼠标 旋转 · 滚轮/[/] 变焦 · WASD 移动 · Q/E 升降 · Shift 加速 · R 复位 · F12 截图 · ESC 退出\n"
+		+ "手柄  左摇杆/十字键 移动 · 右摇杆 旋转 · LT/RT 降/升 · LB/RB 变焦 · A 拍照 · X 复位 · Y 加速 · L3 隐藏界面 · B 退出",
+		10, Color(0.86, 0.92, 0.96, 0.98))
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hint.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.75))
 	_hint.add_theme_constant_override("outline_size", 3)
-	UIStyle.place(_hint, 0, 1, 1, 1, 0, -78, 0, -50)
+	UIStyle.place(_hint, 0, 1, 1, 1, 0, -96, 0, -48)
 	root.add_child(_hint)
 
 	_saved = UIStyle.label("", 11, Color(0.55, 0.92, 0.70, 1.0))
@@ -138,7 +144,7 @@ func _build_ui() -> void:
 	_saved.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_saved.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.75))
 	_saved.add_theme_constant_override("outline_size", 3)
-	UIStyle.place(_saved, 0, 1, 1, 1, 120, -108, -120, -80)
+	UIStyle.place(_saved, 0, 1, 1, 1, 120, -132, -120, -102)
 	root.add_child(_saved)
 
 	_flash = ColorRect.new()
@@ -149,7 +155,9 @@ func _build_ui() -> void:
 
 
 func _process(dt: float) -> void:
-	var step := dt * (FAST_MUL if Input.is_key_pressed(KEY_SHIFT) else 1.0)
+	var device := InputSetup.primary_joypad()
+	_poll_pad_buttons(device)
+	var step := dt * (FAST_MUL if (Input.is_key_pressed(KEY_SHIFT) or _fast) else 1.0)
 	var move := Vector3.ZERO
 	if Input.is_key_pressed(KEY_W):
 		move -= camera.global_transform.basis.z
@@ -163,6 +171,23 @@ func _process(dt: float) -> void:
 		move += Vector3.UP
 	if Input.is_key_pressed(KEY_Q) or Input.is_key_pressed(KEY_CTRL):
 		move -= Vector3.UP
+	# 手柄左摇杆 + 十字键：平面移动。
+	var pad_move := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
+	if pad_move.length_squared() > 0.0:
+		move += camera.global_transform.basis.x * pad_move.x
+		move += camera.global_transform.basis.z * pad_move.y
+	if device >= 0:
+		# 扳机升降；右摇杆环视。
+		var rt := Input.get_joy_axis(device, JOY_AXIS_TRIGGER_RIGHT)
+		var lt := Input.get_joy_axis(device, JOY_AXIS_TRIGGER_LEFT)
+		if rt > 0.12:
+			move += Vector3.UP * rt
+		if lt > 0.12:
+			move -= Vector3.UP * lt
+		var rs := InputSetup.right_stick()
+		if rs.length_squared() > 0.0:
+			_yaw -= rs.x * STICK_LOOK_RATE * dt
+			_pitch = clampf(_pitch - rs.y * STICK_PITCH_RATE * dt, -1.45, 1.45)
 	if move.length_squared() > 0.0:
 		_pos += move.normalized() * MOVE_SPEED * step
 	# 防止钻到地形下面：高度场地图用真实地面，其余地图以 0.4m 为下限。
@@ -178,7 +203,42 @@ func _process(dt: float) -> void:
 		_flash.color.a = 0.35 * (_flash_t / 0.45)
 
 
+func _poll_pad_buttons(device: int) -> void:
+	if device < 0:
+		return
+	if _pad_edge(device, JOY_BUTTON_A):
+		_save_photo()
+	if _pad_edge(device, JOY_BUTTON_B) or _pad_edge(device, JOY_BUTTON_START):
+		close()
+		return
+	if _pad_edge(device, JOY_BUTTON_X):
+		_reset_view()
+	if _pad_edge(device, JOY_BUTTON_Y):
+		_fast = not _fast
+		_saved.text = "快速移动  %s" % ("开" if _fast else "关")
+	if _pad_edge(device, JOY_BUTTON_RIGHT_SHOULDER):
+		_set_fov(_fov - 3.0)
+	if _pad_edge(device, JOY_BUTTON_LEFT_SHOULDER):
+		_set_fov(_fov + 3.0)
+	if _pad_edge(device, JOY_BUTTON_LEFT_STICK):
+		_hud_hidden = not _hud_hidden
+		if _ui != null:
+			_ui.visible = not _hud_hidden
+	if _pad_edge(device, JOY_BUTTON_RIGHT_STICK):
+		_yaw = _home_yaw
+		_pitch = _home_pitch
+
+
+func _pad_edge(device: int, button: int) -> bool:
+	var key := "%d:%d" % [device, button]
+	var now := Input.is_joy_button_pressed(device, button)
+	var was := bool(_prev_buttons.get(key, false))
+	_prev_buttons[key] = now
+	return now and not was
+
+
 func _input(event: InputEvent) -> void:
+	InputSetup.note_input(event)
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		var mm := event as InputEventMouseMotion
 		_yaw -= mm.relative.x * ORBIT_SENS
@@ -237,7 +297,7 @@ func _save_photo() -> void:
 	var path := PHOTO_DIR.path_join("apex_%s.png" % stamp)
 	var err := img.save_png(path)
 	if _ui != null:
-		_ui.visible = true
+		_ui.visible = not _hud_hidden
 	if err == OK:
 		_saved.text = "已保存  %s" % ProjectSettings.globalize_path(path)
 	else:

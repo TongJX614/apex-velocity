@@ -26,7 +26,8 @@ const XP_STEP := 250
 
 ## 正式经济：XP 同时是等级经验与可花积分，升级会真实扣款。
 ## 调试时如需无限积分，把它临时改回 true（不改玩法代码）。
-const DEV_INFINITE_CREDITS := false
+## !! 当前为改装测试打开，出包/分享前必须改回 false !!
+const DEV_INFINITE_CREDITS := true
 const INFINITE_CREDIT_DISPLAY := 9999999
 
 ## 单场 XP。名次奖励只在大奖赛（gp）生效，计时赛（ta）固定发车位不参与。
@@ -375,6 +376,17 @@ static func credit_balance(profile: Dictionary = {}) -> int:
 	if profile.is_empty():
 		profile = load_profile()
 	return maxi(0, _as_int(profile.get("xp"), 0) - _as_int(profile.get("xp_spent"), 0))
+
+
+## 界面文案：无限积分调试态显示"无限"，不把 9999999 这种调试数糊给用户。
+static func credit_text_from(balance: int) -> String:
+	if balance == INFINITE_CREDIT_DISPLAY:
+		return "无限"
+	return "%d XP" % balance
+
+
+static func credit_text(profile: Dictionary = {}) -> String:
+	return credit_text_from(credit_balance(profile))
 
 
 ## 扣款；余额不足返回 false 且不写档。
@@ -1059,9 +1071,9 @@ static func format_summary() -> Array[String]:
 	var best := _best_overall_lap(profile)
 	var lines: Array[String] = []
 	lines.append("车手等级  Lv.%d  ·  总经验 %d XP" % [int(profile["level"]), int(profile["xp"])])
-	lines.append("升级进度  %d / %d XP  (%d%%)  ·  可用积分 %d XP" % [
+	lines.append("升级进度  %d / %d XP  (%d%%)  ·  可用积分 %s" % [
 		int(progress["xp_into_level"]), int(progress["xp_needed"]),
-		int(round(float(progress["ratio"]) * 100.0)), credit_balance(profile)])
+		int(round(float(progress["ratio"]) * 100.0)), credit_text(profile)])
 	lines.append("完赛 %d  ·  胜场 %d  ·  登台 %d" % [
 		int(profile["races"]), int(profile["wins"]), int(profile["podiums"])])
 	lines.append("成就 %d / %d  ·  累计 %.1f km" % [

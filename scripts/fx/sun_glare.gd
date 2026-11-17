@@ -34,8 +34,9 @@ void fragment() {
 	vec2 p = (SCREEN_UV - 0.5) * vec2(aspect, 1.0);
 	vec2 s = (sun_uv - 0.5) * vec2(aspect, 1.0);
 	float r = length(p - s);
-	// 镜头内的迎光薄雾：越靠近太阳越亮，覆盖整屏，山体挡住日轮也还在。
-	float veil = exp(-r * r * 1.7) * 0.55 + exp(-r * 1.25) * 0.10;
+	// 镜头内的迎光薄雾：收紧到日轮附近，去掉覆盖整屏的宽雾项，
+	// 避免转向太阳时整张地图被抬亮（亮度锁定）。
+	float veil = exp(-r * r * 1.7) * 0.55 + exp(-r * 1.25) * 0.03;
 	vec3 col = tint * veil;
 	// 镜头鬼影：太阳与画面中心的连线上排三颗虚影。
 	float ghosts = 0.0;
@@ -124,7 +125,7 @@ func _process(_dt: float) -> void:
 	var k := smoothstep(0.18, 0.72, facing) * intensity
 	if k <= 0.003:
 		return
-	_veil_mat.albedo_color = Color(tint.r, tint.g, tint.b, k * 0.5)
+	_veil_mat.albedo_color = Color(tint.r, tint.g, tint.b, k * 0.30)
 	_core_mat.albedo_color = Color(
 		tint.r * 2.6, tint.g * 2.3, tint.b * 1.9, k * 0.95)
 	_streak_mat.albedo_color = Color(
@@ -138,7 +139,7 @@ func _process(_dt: float) -> void:
 	var uv := cam.unproject_position(sun_pos) / vp_size if in_front else Vector2(0.5, 0.5)
 	var edge := maxf(absf(uv.x - 0.5) * 2.0, absf(uv.y - 0.5) * 2.0)
 	var on_screen := clampf(1.0 - smoothstep(0.9, 1.3, edge), 0.0, 1.0) if in_front else 0.0
-	var screen_strength := k * 0.34 * on_screen
+	var screen_strength := k * 0.26 * on_screen
 	_screen_layer.visible = screen_strength > 0.002
 	if _screen_layer.visible:
 		_screen_mat.set_shader_parameter("sun_uv", uv)

@@ -1,15 +1,15 @@
 class_name CircuitArchive
 extends CanvasLayer
 ## 赛道档案：8 站精通等级 / 个人最佳 / 下一目标 / 纪录保持车总览。
-## 选中卡片后切回主菜单并定位到该赛道；ESC 关闭。
+## 选中卡片后切回主菜单并定位到该赛道；B / START / ESC 关闭。
 
 signal closed
 signal track_selected(track_id: String)
 
 const ACCENT := UIStyle.ACCENT
 const PANEL_W := 1240.0
-# 现在是 10 条赛道（2 列 × 5 行），680 高会让最后一行卡片溢出面板，
-# 800 高刚好容纳 5 行卡片 + 底栏，并给详情列表更长的可视区域。
+# 卡片行数随赛道数量增长（11 站 = 6 行），固定面板高度装不下，
+# 网格放进 ScrollContainer 裁剪 + 滚动，底栏始终保持可见。
 const PANEL_H := 800.0
 const PAD := 40.0
 const COL_GAP := 14.0
@@ -22,6 +22,8 @@ var current_track_id := ""
 
 var _panel: Panel
 var _cards: Array[Button] = []
+var _grid_scroll: ScrollContainer
+var _grid_root: Control
 var _detail_root: Control
 var _detail_title: Label
 var _detail_meta: Label
@@ -81,7 +83,7 @@ func _ready() -> void:
 	UIStyle.place(title, 0, 0, 1, 0, PAD, 48, -300, 92)
 	_panel.add_child(title)
 
-	_sub_label = UIStyle.label_tracked("%d 站精通 · 个人最佳 · ENTER / 点击卡片 查看全部成绩并可排序   ·   ESC 关闭" % _archive_tracks().size(),
+	_sub_label = UIStyle.label_tracked("%d 站精通 · 个人最佳 · ENTER / Ⓐ / 点击卡片 查看全部成绩并可排序   ·   B / START / ESC 关闭" % _archive_tracks().size(),
 		10, UIStyle.TXT_DIM, HORIZONTAL_ALIGNMENT_LEFT, 1)
 	UIStyle.place(_sub_label, 0, 0, 1, 0, PAD + 2, 94, -PAD, 114)
 	_panel.add_child(_sub_label)
@@ -120,13 +122,13 @@ func _ready() -> void:
 	_foot_row.add_theme_constant_override("separation", 10)
 	UIStyle.place(_foot_row, 0, 1, 1, 1, PAD, -56, -PAD, -26)
 	_panel.add_child(_foot_row)
-	var nav_key := UIStyle.keycap("↑ ↓ ← →", ACCENT, 9)
+	var nav_key := UIStyle.keycap("←→↑↓ / 摇杆", ACCENT, 9)
 	nav_key.visible = Settings.key_hints
 	_foot_row.add_child(nav_key)
 	var nav_lbl := UIStyle.label("选择赛道", 10, UIStyle.TXT_DIM)
 	nav_lbl.visible = Settings.key_hints
 	_foot_row.add_child(nav_lbl)
-	var enter_key := UIStyle.keycap("ENTER", ACCENT, 9)
+	var enter_key := UIStyle.keycap("ENTER / Ⓐ", ACCENT, 9)
 	enter_key.visible = Settings.key_hints
 	_foot_row.add_child(enter_key)
 	var enter_lbl := UIStyle.label("查看全部成绩", 10, UIStyle.TXT_DIM)
@@ -179,15 +181,26 @@ func _build_grid(profile: Dictionary) -> void:
 	var inner_w := PANEL_W - PAD * 2.0
 	var card_w := (inner_w - COL_GAP) * 0.5
 	var tracks := _archive_tracks()
+	var rows := (tracks.size() + 1) / 2
+	_grid_scroll = ScrollContainer.new()
+	_grid_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_grid_scroll.add_theme_constant_override("scrollbar_width", 6)
+	UIStyle.place(_grid_scroll, 0, 0, 1, 1, PAD - 6, GRID_TOP, -PAD + 6, -70)
+	_panel.add_child(_grid_scroll)
+	_grid_root = Control.new()
+	_grid_root.custom_minimum_size = Vector2(inner_w,
+		maxi(0, rows * (CARD_H + ROW_GAP) - ROW_GAP))
+	_grid_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_grid_scroll.add_child(_grid_root)
 	for i in tracks.size():
 		var track: Dictionary = tracks[i]
 		var col := i % 2
 		var row := i / 2
-		var left := PAD + col * (card_w + COL_GAP)
-		var top := GRID_TOP + row * (CARD_H + ROW_GAP)
+		var left := col * (card_w + COL_GAP)
+		var top := row * (CARD_H + ROW_GAP)
 		var card := _make_card(track, i + 1, profile)
 		UIStyle.place(card, 0, 0, 0, 0, left, top, left + card_w, top + CARD_H)
-		_panel.add_child(card)
+		_grid_root.add_child(card)
 		_cards.append(card)
 
 
@@ -457,12 +470,12 @@ func _build_detail() -> void:
 	_detail_list.add_theme_constant_override("separation", 4)
 	_detail_scroll.add_child(_detail_list)
 
-	var back := UIStyle.make_button("ESC   返回赛道列表", ACCENT, "ghost", 11, 30.0)
+	var back := UIStyle.make_button("B / ESC   返回赛道列表", ACCENT, "ghost", 11, 30.0)
 	UIStyle.place(back, 0, 0, 0, 0, PAD + 16, 664, PAD + 236, 696)
 	back.pressed.connect(_close_detail)
 	_detail_root.add_child(back)
 
-	var choose := UIStyle.make_button("ENTER   切换到该赛道", UIStyle.GOLD, "primary", 11, 30.0)
+	var choose := UIStyle.make_button("A / ENTER   切换到该赛道", UIStyle.GOLD, "primary", 11, 30.0)
 	# 右锚点按钮必须左右都用 1，否则左边缘以 0 锚点为基准、负偏移会把按钮
 	# 从画布左边一直拉到右边，变成横贯整屏的金色条。
 	UIStyle.place(choose, 1, 0, 1, 0, -PAD - 272, 664, -PAD - 16, 696)
@@ -476,6 +489,8 @@ func _open_detail(track_id: String) -> void:
 	_detail_root.visible = true
 	for card in _cards:
 		card.visible = false
+	if _grid_scroll != null:
+		_grid_scroll.visible = false
 	# 详情页有自己的返回/切换操作和排序栏，隐藏列表页的说明与底栏，
 	# 否则会出现两套互相矛盾的按键提示（截图里的 ESC/ENTER 冲突）。
 	if _close_btn != null:
@@ -496,6 +511,8 @@ func _close_detail() -> void:
 	_detail_root.visible = false
 	for card in _cards:
 		card.visible = true
+	if _grid_scroll != null:
+		_grid_scroll.visible = true
 	if _close_btn != null:
 		_close_btn.visible = true
 	if _sub_label != null:
@@ -749,11 +766,17 @@ func _date_text(unix_time: int) -> String:
 
 
 func _process(delta: float) -> void:
-	if not _detail_open or _detail_scroll == null:
+	if not _detail_open:
+		if _grid_scroll != null:
+			var gv := InputSetup.right_stick().y
+			if absf(gv) > 0.01:
+				_grid_scroll.scroll_vertical += int(gv * 620.0 * delta)
+		return
+	if _detail_scroll == null:
 		return
 	var step := 0.0
-	var v := Input.get_joy_axis(0, JOY_AXIS_RIGHT_Y)
-	if absf(v) > 0.35:
+	var v := InputSetup.right_stick().y
+	if absf(v) > 0.01:
 		step += v * 620.0 * delta
 	if Input.is_key_pressed(KEY_DOWN) or Input.is_key_pressed(KEY_S):
 		step += 620.0 * delta
