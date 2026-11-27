@@ -31,6 +31,9 @@ var _duck_peak_db := 0.0
 var _duck_attack := 0.04
 var _duck_hold := 0.60
 var _duck_release := 0.24
+# 每赛道多首主题曲：_bgm_choice 是本场锁定的那首，_bgm_last 用于下一场避开重复。
+var _bgm_choice := {}
+var _bgm_last := {}
 
 
 func _ready() -> void:
@@ -245,34 +248,70 @@ func play_menu_bgm() -> void:
 
 
 ## 赛道 BGM 的资源路径（主线程预读用；找不到直接返回空）。
+## 一条赛道可以挂多首主题曲：先定下本场要播的那首，预加载和播放取同一个结果。
 func bgm_path_for(track_id: String) -> String:
-	var entries: Array = GameData.bgm
-	var bgm_id := ""
-	for entry in entries:
-		if typeof(entry) == TYPE_DICTIONARY and String(entry.get("map", "")) == track_id:
-			bgm_id = String(entry.get("id", ""))
-			break
-	if bgm_id.is_empty() and entries.size() > 0 and typeof(entries[0]) == TYPE_DICTIONARY:
-		bgm_id = String(entries[0].get("id", ""))
+	var bgm_id := bgm_id_for(track_id)
 	if bgm_id.is_empty():
 		return ""
-	for entry in entries:
-		if typeof(entry) == TYPE_DICTIONARY and String(entry.get("id", "")) == bgm_id:
-			var file := String(entry.get("file", ""))
-			if not file.is_empty():
-				return AUDIO_ROOT.path_join(file)
-			break
-	return AUDIO_ROOT.path_join("bgm/%s.ogg" % bgm_id)
+	return AUDIO_ROOT.path_join(_bgm_file_of(bgm_id))
 
 
 func play_race_bgm(track_id: String) -> void:
-	var entries: Array = GameData.bgm
-	for entry in entries:
-		if typeof(entry) == TYPE_DICTIONARY and String(entry.get("map", "")) == track_id:
-			_play_bgm_id(String(entry.get("id", "")))
-			return
-	if entries.size() > 0 and typeof(entries[0]) == TYPE_DICTIONARY:
-		_play_bgm_id(String(entries[0].get("id", "")))
+	_play_bgm_id(bgm_id_for(track_id))
+
+
+## 该赛道在曲库里挂的所有主题曲 id（按 manifest 顺序，去重）。
+func bgm_pool_for(track_id: String) -> Array:
+	var pool: Array = []
+	for entry in GameData.bgm:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		if String(entry.get("map", "")) != track_id:
+			continue
+		var bgm_id := String(entry.get("id", ""))
+		if not bgm_id.is_empty() and not pool.has(bgm_id):
+			pool.append(bgm_id)
+	return pool
+
+
+## 本场该赛道要播的那首：随机取，且不重复上一场。选定后缓存到退场为止，
+## 避免"预加载猜一首、开播换另一首"造成首次进弯时同步解包卡顿。
+func bgm_id_for(track_id: String) -> String:
+	if _bgm_choice.has(track_id):
+		return String(_bgm_choice[track_id])
+	var pool := bgm_pool_for(track_id)
+	var picked := ""
+	if pool.size() > 1:
+		var fresh: Array = []
+		for bgm_id in pool:
+			if String(bgm_id) != String(_bgm_last.get(track_id, "")):
+				fresh.append(String(bgm_id))
+		picked = String((fresh if not fresh.is_empty() else pool).pick_random())
+	elif pool.size() == 1:
+		picked = String(pool[0])
+	if picked.is_empty():
+		var entries: Array = GameData.bgm
+		if entries.size() > 0 and typeof(entries[0]) == TYPE_DICTIONARY:
+			picked = String(entries[0].get("id", ""))
+	if not picked.is_empty():
+		_bgm_choice[track_id] = picked
+		_bgm_last[track_id] = picked
+	return picked
+
+
+## 退场时调用：清掉本场的选择，下一场重新随机。
+func forget_bgm_choice(track_id: String) -> void:
+	_bgm_choice.erase(track_id)
+
+
+func _bgm_file_of(bgm_id: String) -> String:
+	for entry in GameData.bgm:
+		if typeof(entry) == TYPE_DICTIONARY and String(entry.get("id", "")) == bgm_id:
+			var file := String(entry.get("file", ""))
+			if not file.is_empty():
+				return file
+			break
+	return "bgm/%s.ogg" % bgm_id
 
 
 func _play_bgm_id(bgm_id: String) -> void:

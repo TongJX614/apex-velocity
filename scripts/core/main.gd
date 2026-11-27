@@ -3083,7 +3083,8 @@ func _update_skid_marks() -> void:
 	if car.offroad or car.speed_kph < 8.0:
 		return
 	var skidding := car.drift_active or car.handbrake \
-		or (car.braking and car.speed_kph > 35.0)
+		or (car.braking and car.speed_kph > 35.0) \
+		or car.wheelspin > 0.28
 	if skidding:
 		skid_marks.emit_from_car(car)
 
@@ -3244,6 +3245,9 @@ func _clear_race() -> void:
 	if audio != null:
 		audio.stop_engine()
 		audio.stop_ambience()
+		if audio.has_method("forget_bgm_choice"):
+			## 退场即释放本场的主题曲选择，下一场重抽（且不重复这一场）。
+			audio.forget_bgm_choice(current_track_id)
 	if garage_screen != null:
 		garage_screen.queue_free()
 		garage_screen = null
@@ -3450,6 +3454,10 @@ func _spawn_ai() -> void:
 		ai.setup(track_path, ai_spec, -9.0 - i * 8.0, 2.6 if i % 2 == 0 else -2.6,
 			float(ai_def.get("baseSpeed", 72.0)), color,
 			String(ai_def.get("name", "")), int(ai_def.get("number", 0)))
+		# 车群里固定留一台慢车：它可以比别车多落后 500 m，作为「看不见的对手」锚点，
+		# 其余两台始终收在玩家身后 500 m 内。
+		if i == ids.size() - 1:
+			ai.lag_limit_m = 1000.0
 		if night_scale > 0.0:
 			ai.add_headlights(night_scale)
 		if i < routes.size():
@@ -3844,6 +3852,35 @@ func _update_overtake_reward(dt: float) -> void:
 # world dressing
 # ---------------------------------------------------------------------------
 
+## 阴影渲染参数：自建世界与「复用菜单/烘焙世界」两条路径必须完全一致。
+## 进比赛时如果菜单正在显示同一张图，_start_race 直接把菜单那套 3D 世界搬过来
+## （开赛几乎瞬间），这条路径不会重走 _setup_environment，Sun 会保留 .scn 里
+## 序列化的默认阴影参数——Godot 的 shadow_opacity 默认 1.0，于是玩家实机看到的
+## 车影仍然被砍到只剩环境光（实测影/阳路面亮度比 0.29、色温从暖翻成偏蓝），
+## 而自动化截图走的是自建世界，看起来永远是修好的。历史上两条路径各自漂移过
+## 一次，改这里务必同步两条路径。
+func _apply_sun_shadow(sun: DirectionalLight3D, theme: Dictionary, night: bool) -> void:
+	sun.shadow_enabled = true
+	# 光源角直径：0 是硬边阴影；半影柔化走 PCSS，实测 0.2° 就要 4% GPU。
+	# 十图对比软/硬边观感差异很小，统一硬边 + shadow_blur 柔化，字段保留给个别主题按需开启。
+	sun.light_angular_distance = clampf(float(theme.get("sunSoftness", 0.0)), 0.0, 5.0)
+	sun.shadow_bias = 0.016
+	sun.shadow_normal_bias = 1.1
+	# 阴影边缘柔化：实测 1.35→2.6 没有可测帧率差（同一遍 PCF 采样），
+	# 户外图默认更柔和，城内保持锐利以保住楼体投影轮廓。
+	sun.shadow_blur = clampf(float(theme.get("shadowBlur", 1.35)), 0.0, 4.0)
+	# 阴影不透明度：1.0 会把阳光全部砍掉，阴影里只剩偏蓝的环境光，再经 ACES
+	# 趾部压缩，实测阳光路面 85 灰阶、车影 31、车影中心只有 12——玩家看到的就是
+	# 车底一块边缘笔直的近黑方块（车壳是方正的 GT 车身，投影本身就是矩形）。
+	# 白天留一半阳光做补光，阴影回到可辨识但不塌黑的量级；夜景保持原样，
+	# 霓虹对比是拍板过的数值。
+	sun.shadow_opacity = 1.0 if night else 0.5
+	sun.directional_shadow_blend_splits = false
+	# 4 分裂会把整个可见场景画进 4 张阴影图：实测 M1 Pro 上阴影 pass
+	# 占了一半以上的 draw call。赛车游戏远景阴影几乎看不到，改成 2 分裂 + 收短距离。
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+
+
 func _setup_environment(parent: Node3D, def: Dictionary) -> void:
 	var theme: Dictionary = def.get("theme", {})
 	var night := SceneryKit.is_night_theme(theme)
@@ -4072,20 +4109,7 @@ func _setup_environment(parent: Node3D, def: Dictionary) -> void:
 		sun.light_energy = clampf(float(theme.get("sunPower", 5.0)) * 0.46, 1.9, 3.2)
 		sun.light_color = _c(theme.get("sunColor", "#fff2da"), Color(1.0, 0.95, 0.86)).lerp(
 			Color(1.0, 0.82, 0.58), 0.45)
-	sun.shadow_enabled = true
-	# 光源角直径：0 是硬边阴影；半影柔化走 PCSS，实测 0.2° 就要 4% GPU。
-	# 十图对比软/硬边观感差异很小，统一硬边 + shadow_blur 柔化，字段保留给个别主题按需开启。
-	sun.light_angular_distance = clampf(float(theme.get("sunSoftness", 0.0)), 0.0, 5.0)
-	sun.shadow_bias = 0.016
-	sun.shadow_normal_bias = 1.1
-	# 阴影边缘柔化：实测 1.35→2.6 没有可测帧率差（同一遍 PCF 采样），
-	# 户外图默认更柔和，城内保持锐利以保住楼体投影轮廓。
-	sun.shadow_blur = clampf(float(theme.get("shadowBlur", 1.35)), 0.0, 4.0)
-	sun.shadow_opacity = 1.0
-	sun.directional_shadow_blend_splits = false
-	# 4 分裂会把整个可见场景画进 4 张阴影图：实测 M1 Pro 上阴影 pass
-	# 占了一半以上的 draw call。赛车游戏远景阴影几乎看不到，改成 2 分裂 + 收短距离。
-	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+	_apply_sun_shadow(sun, theme, night)
 	parent.add_child(sun)
 	_sun = sun
 	# 逐图效果预算：干燥晴天 SSR 只在车漆上可见，关掉省 6~7% GPU；
@@ -4154,7 +4178,7 @@ func _bind_world_environment(root: Node3D, def: Dictionary) -> void:
 		_base_fog_density = _env.fog_density
 		_base_vol_density = _env.volumetric_fog_density
 	if _sun != null:
-		_sun.shadow_blur = clampf(float(theme.get("shadowBlur", 1.35)), 0.0, 4.0)
+		_apply_sun_shadow(_sun, theme, SceneryKit.is_night_theme(theme))
 
 
 func _toggle_cone_editor() -> void:
@@ -4424,12 +4448,17 @@ func _apply_quality() -> void:
 				and PlatformProfile.supports_metalfx():
 			want = "off"
 			scale = maxf(scale, clampf(float(q.get("big_scale", scale)), 0.4, 0.95))
-		# 只在真的降分辨率时才启用升频器；原生分辨率下时间升频纯属白烧 GPU。
+		# 时间升频改成只有玩家显式选「强制开启」才用。它的亚像素抖动 + 历史重投影
+		# 在细高对比几何上收敛不了，逐帧翻转就是「一闪一闪」：
+		# 车库静态机位实测非 HUD 区 0.15% 像素逐帧抖动（抖动全落在车身轮廓、防滚
+		# 杆、轮辐、转台蓝边这些细边上），改走空间路径后逐帧完全一致（最大 sd 0.0）；
+		# 海岸护栏带 8.2% → 0.0%，只剩倒数数字自己在动（那是 UI，不是渲染）。
+		# 帧率也是赚的：同 0.70 缩放 134.6fps → 150.5fps，时间升频每帧多花 0.8ms
+		# 且多 71 个 draw call。清晰度上它同样不占优（远处护栏高频比空间路径低 22%，
+		# 与原生持平的是空间路径）。原生分辨率下时间升频纯属白烧 GPU，这条保持不变。
 		# macOS 走 MetalFX，桌面走 FSR2；TAA 与时间升频不叠加，避免双重累积。
-		if want != "off" and scale < 0.99:
+		if want == "on" and scale < 0.99:
 			if PlatformProfile.supports_metalfx():
-				# auto/on 都走时间升频：同分辨率下比空间升频干净得多，
-				# 实测 M1 Pro 在 120 帧上限内没有帧率代价。
 				scale_mode = Viewport.SCALING_3D_MODE_METALFX_TEMPORAL
 				temporal = true
 			elif PlatformProfile.supports_fsr2():
@@ -4536,6 +4565,10 @@ func _apply_quality() -> void:
 			if blur_env.is_valid_float():
 				_sun.shadow_blur = clampf(float(blur_env), 0.0, 4.0)
 				print("[Q-OVERRIDE] shadow_blur=%s" % blur_env)
+			var op_env := OS.get_environment("APEX_Q_SHADOW_OPACITY")
+			if op_env.is_valid_float():
+				_sun.shadow_opacity = clampf(float(op_env), 0.0, 1.0)
+				print("[Q-OVERRIDE] shadow_opacity=%s" % op_env)
 		# 超高：两级阴影级联之间混合过渡，远处阴影边界不再有硬切换线
 		_sun.directional_shadow_blend_splits = preset_id == "ultra"
 	if streamer != null:
@@ -5135,9 +5168,8 @@ func _run_verification() -> void:
 		if race_root != null:
 			var has_sea := get_node_or_null("RaceWorld/TrackBuilder/Sea") != null
 			var has_grid := get_node_or_null("RaceWorld/TrackBuilder/StartGrid") != null
-			var has_marks := get_node_or_null("RaceWorld/TrackBuilder/TireMarks") != null
-			print("[M4] coast extras: sea=%s start_grid=%s tyre_marks=%s" % [str(has_sea), str(has_grid), str(has_marks)])
-			if not has_sea or not has_grid or not has_marks:
+			print("[M4] coast extras: sea=%s start_grid=%s" % [str(has_sea), str(has_grid)])
+			if not has_sea or not has_grid:
 				failures.append("M4: coast extras missing")
 	print("[M2] race car: maxSpeed=%.2f (tuned %.2f) topKph=%d procedural_wheels=%d" % [
 		car.max_speed, float(tuned.get("maxSpeed", 0.0)),
@@ -6109,12 +6141,27 @@ func _run_audio_test() -> void:
 	var menu_ok := audio.current_bgm == "apex" and audio.engine != null
 	print("[AUDIO] menu bgm='%s' playing=%s engine=%s" % [
 		audio.current_bgm, str(audio.bgm_player.playing), str(audio.engine != null)])
+	var rotation_fail: Array = []
 	for track_def in GameData.tracks:
 		var track_id := String(track_def.get("id", ""))
+		var pool := audio.bgm_pool_for(track_id)
 		audio.play_race_bgm(track_id)
+		var first := audio.current_bgm
 		await get_tree().create_timer(0.05).timeout
-		print("[AUDIO] %-8s -> %s" % [track_id, audio.current_bgm])
-	var pass_test := menu_ok and audio.bgm_player.stream != null
+		audio.play_race_bgm(track_id)
+		if String(audio.current_bgm) != first:
+			rotation_fail.append(track_id + ":same-race-churn")
+		audio.forget_bgm_choice(track_id)
+		audio.play_race_bgm(track_id)
+		var second := audio.current_bgm
+		print("[AUDIO] %-8s pool=%d -> %s / next -> %s" % [
+			track_id, pool.size(), first, second])
+		# 每条赛道至少两首，且换场必须换曲（同一首连着放会听腻）
+		if pool.size() < 2 or first == second:
+			rotation_fail.append(track_id)
+	var pass_test := menu_ok and audio.bgm_player.stream != null and rotation_fail.is_empty()
+	if not rotation_fail.is_empty():
+		print("[AUDIO] rotation issues: ", rotation_fail)
 	print("[AUDIO] " + ("PASS" if pass_test else "FAIL"))
 	get_tree().quit(0 if pass_test else 2)
 

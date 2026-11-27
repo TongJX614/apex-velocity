@@ -1,5 +1,5 @@
-﻿; APEX VELOCITY · 极速巅峰 — Windows 安装包 (NSIS 3.10, Unicode)
-Unicode true
+﻿Unicode true
+; APEX VELOCITY · 极速巅峰 — Windows 安装包 (NSIS 3.10, Unicode)
 ManifestDPIAware true
 
 !include "MUI2.nsh"
@@ -8,7 +8,7 @@ ManifestDPIAware true
 
 !define PRODUCT_NAME "APEX VELOCITY · 极速巅峰"
 !define PRODUCT_NAME_SHORT "APEX VELOCITY"
-!define PRODUCT_VERSION "0.54.0"
+!define PRODUCT_VERSION "0.55.0"
 !define PRODUCT_EXE "APEX_VELOCITY.exe"
 !define PRODUCT_PUBLISHER "APEX VELOCITY"
 !define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\APEXVELOCITY"
@@ -22,11 +22,11 @@ RequestExecutionLevel admin
 SetCompressor lzma
 SetCompressorDictSize 32
 
-VIProductVersion "0.54.0.0"
+VIProductVersion "0.55.0.0"
 VIAddVersionKey /LANG=2052 "ProductName" "${PRODUCT_NAME}"
 VIAddVersionKey /LANG=2052 "ProductVersion" "${PRODUCT_VERSION}"
 VIAddVersionKey /LANG=2052 "FileDescription" "${PRODUCT_NAME} 安装程序"
-VIAddVersionKey /LANG=2052 "FileVersion" "0.54.0.0"
+VIAddVersionKey /LANG=2052 "FileVersion" "0.55.0.0"
 VIAddVersionKey /LANG=2052 "LegalCopyright" ""
 
 !define MUI_ICON "/Users/tong/Desktop/极速巅峰/assets/branding/apex_icon.ico"

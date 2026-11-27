@@ -3,10 +3,22 @@ extends Node3D
 ## Kinematic rival: a faithful port of the legacy three.js AICar.
 ##
 ## The original rivals do not simulate a physics body — they follow the track
-## spline at a target speed driven by upcoming curvature, rubber-band slightly
-## against the player's pace, pick a lane to avoid traffic and capture a small
-## draft bonus. Keeping the same model means the grid behaves exactly like the
-## WebGL build instead of turning into a demolition derby.
+## spline at a target speed driven by upcoming curvature, pick a lane to avoid
+## traffic and capture a small draft bonus. The pace reference is the player's
+## own speed (see update_ai), not the car's spec sheet, so a rival in an SUV
+## still keeps up with a hypercar. Rivals run slightly quicker than the player
+## and yield once they have broken away, so there is always a car to chase.
+## Keeping the spline model means the grid behaves like the WebGL build
+## instead of a demolition derby.
+
+const KPH := 3.6                    # km/h -> m/s
+const PACE_LEAD_KPH := 24.0         # 领跑时比玩家快出的量：电脑先跑，玩家去追
+const PACE_CHASE_KPH := 5.0         # 刚被超掉时只贴不反超，留出超车的成就感
+const ATTACK_KPH := 30.0            # 进攻段可以比玩家快的量
+const CATCH_EXTRA_KPH := 25.0       # 深出回追带宽时额外加的回追额度
+const LEAD_EASE_M := 30.0           # 领先超过该距离开始收油，等玩家追上来
+const LEAD_RELEASE_M := 120.0       # 领先到该距离反而比玩家慢，把战斗拉回视野
+const LEAD_YIELD_KPH := 10.0        # 领先太远时让出的速度
 
 var track: TrackPath
 var spec: Dictionary
@@ -14,12 +26,11 @@ var display_name := ""
 var number := 0
 var car_color := Color.WHITE
 var base_speed := 70.0
-var pace_bias := 0.0
 var variant_id := ""
 ## 车手风格分化：弯道自信度（决定弯里减速多少）与直线爆发（决定能贴到多快）。
 ## 同一场里三台 AI 用不同组合，彻底避免「三车等速火车队」。
 var corner_conf := 1.0        # <1 弯里更怂，>1 弯里更凶
-var top_push := 1.0           # 直线段在 pace_ref 上的放大系数
+var top_push := 1.0           # 起步加速与自身能力配速上的放大系数
 var lane_pref := 0.0          # 常用车线（-1 内线 .. +1 外线），不同车手走不同线
 var aggression := 0.0         # 追近前车时的加力倾向
 # 走线/节奏个性：按车号确定性生成，保证同一场里三台 AI 各走各的线、快慢起伏不同。
@@ -28,7 +39,8 @@ var line_phase := 0.0         # 摆动线相位
 var wob_amp := 0.0            # 沿途摆动幅度（米）
 var wob_freq := 0.008         # 沿途摆动频率（rad/m）
 var tempo := 1.0              # 配速微调（每车手不同，制造速度差）
-var band_gain := 0.0007       # 橡皮筋强度（对玩家差距的敏感度）
+var pace_trim := 0.0          # 相对玩家节奏的固定偏移（m/s），拉开车手快慢
+var lag_limit_m := 500.0      # 允许落后玩家多少米；超出就强制回追
 var bump_lat := 0.0           # 碰撞弹开的横向冲量（米，随时间衰减）
 var bump_timer := 0.0         # 弹开避让剩余时间（秒）
 var avoid_dir := 0.0          # 锁存的避让方向，防止每帧左右抖动
@@ -38,6 +50,7 @@ var avoid_timer := 0.0        # 避让方向锁存剩余时间（秒）
 # 每台 AI 再叠一个固定的小偏移/摆动，保证同一条线也不会三车完全重合。
 var route_lat := PackedFloat32Array()
 var route_spd := PackedFloat32Array()
+var route_pace := 0.0         # 回放线的平均速度（m/s），用于缩放记录速度
 var route_step := 0.0
 var use_route := false
 var route_shift := 0.0
@@ -52,6 +65,12 @@ var mistake_cd := 8.0
 var mistake_timer := 0.0
 var mistake_kind := ""
 var mistake_side := 1.0
+# ---- 进攻层 ---------------------------------------------------------------
+# 被玩家超掉后只靠常态差距追得太慢，这里随机开一段「进攻窗口」：窗口内上限
+# 放到玩家 +30 km/h，让电脑车真的能追近扑回来；已经领先时不开窗口，防止跑没影。
+# 与失误层共用按车号播种的 rng，同一场重开时进攻时机可复现。
+var attack_cd := 10.0
+var attack_timer := 0.0
 var _rng := RandomNumberGenerator.new()
 
 var dist := 0.0
@@ -89,19 +108,18 @@ func setup(track_path: TrackPath, car_spec: Dictionary, start_dist: float, later
 	variant_id = String(car_spec.get("id", ""))
 	display_name = ai_name if not ai_name.is_empty() else String(car_spec.get("name", variant_id))
 	number = ai_number if ai_number > 0 else int(car_spec.get("number", 0))
-	# AI 天花板速度 = 它自己驾驶的那台车的真实极速 × 90% × 车手系数。
-	# ai.json 的 baseSpeed 现在表示车手能力（76.5 为基准车手，值越大越快），
-	# 这样 45 台车的真实性能表换掉之后，AI 不需要逐台重新配速。
+	# base_speed 只作兜底基准：玩家停车或已完赛时的自身能力配速、以及全场上限地板。
+	# 巡航快慢改由玩家节奏决定（见 update_ai），ai.json 的 baseSpeed 表示车手能力。
 	base_speed = speed_base
 	var skill := clampf(speed_base / 76.5, 0.90, 1.08)
 	var spec_top := float(car_spec.get("maxSpeed", 0.0))
 	if spec_top > 10.0:
 		base_speed = spec_top * 0.90 * skill
-	# 车手风格分化：按车手能力系数推导，保证快车手全程真的更快、慢车手全程更慢，
-	# 不再靠贴身跟随玩家来凑成绩。
+	# 车手风格分化：按车手能力系数推导，保证快车手贴玩家更紧、慢车手多让一点，
+	# 弯里快慢和进攻欲望也各不相同。
 	var skill01 := inverse_lerp(0.90, 1.08, skill)
 	driver_skill = clampf(skill01, 0.0, 1.0)
-	pace_bias = lerpf(-0.045, 0.045, skill01)
+	pace_trim = lerpf(-5.0, 5.0, skill01) / KPH
 	corner_conf = lerpf(0.86, 1.16, skill01)
 	top_push = lerpf(0.94, 1.08, skill01)
 	aggression = lerpf(0.25, 0.85, skill01)
@@ -115,10 +133,11 @@ func setup(track_path: TrackPath, car_spec: Dictionary, start_dist: float, later
 	wob_freq = lerpf(0.005, 0.012, _rng.randf())
 	line_phase = _rng.randf() * TAU
 	tempo = lerpf(0.97, 1.045, _rng.randf())
-	band_gain = lerpf(0.00016, 0.00030, _rng.randf())
 	mistake_cd = lerpf(7.0, 15.0, driver_skill) + _rng.randf_range(0.0, 5.0)
 	mistake_timer = 0.0
 	mistake_kind = ""
+	attack_cd = _rng.randf_range(5.0, 14.0)
+	attack_timer = 0.0
 	bump_lat = 0.0
 	bump_timer = 0.0
 	avoid_dir = 0.0
@@ -150,6 +169,7 @@ func setup(track_path: TrackPath, car_spec: Dictionary, start_dist: float, later
 func set_route(line: Dictionary, id: String = "") -> void:
 	route_lat = PackedFloat32Array()
 	route_spd = PackedFloat32Array()
+	route_pace = 0.0
 	route_step = 0.0
 	use_route = false
 	route_id = id
@@ -162,6 +182,11 @@ func set_route(line: Dictionary, id: String = "") -> void:
 	if typeof(spd) == TYPE_ARRAY:
 		for v in (spd as Array):
 			route_spd.append(float(v))
+		var spd_sum := 0.0
+		for v in route_spd:
+			spd_sum += v
+		if route_spd.size() > 0:
+			route_pace = spd_sum / float(route_spd.size()) / KPH
 	route_step = maxf(4.0, float(line.get("step", 0.0)))
 	use_route = route_step > 0.1
 
@@ -228,6 +253,31 @@ func _update_mistakes(dt: float) -> void:
 		mistake_timer = 0.8 + _rng.randf() * 0.6
 
 
+## 进攻调度：被玩家超掉后随机开一段 5~12 s 的窗口，窗口内放到玩家 +30 km/h，
+## 追近、反扑、再回到常态节奏。已经掉出回追带宽时冷却提前到期，保证落后太深
+## 的车优先拿到进攻机会；已经领先一大截时不进攻，免得一台车直接跑没影。
+func _update_attack(dt: float, gap: float) -> void:
+	if finished or elapsed < 6.0:
+		return
+	if gap < -LEAD_EASE_M:
+		attack_timer = 0.0
+		return
+	if attack_timer > 0.0:
+		attack_timer = maxf(attack_timer - dt, 0.0)
+		return
+	if mistake_timer > 0.0:
+		return
+	attack_cd -= dt + (1.5 if gap > lag_limit_m else 0.0)
+	if attack_cd > 0.0:
+		return
+	if _rng.randf() > lerpf(0.30, 0.60, driver_skill) + (0.18 if gap < 200.0 else 0.0):
+		# 没骰中就 3~7 s 后再掷；靠近玩家时骰子更偏进攻，看得见才值得发力。
+		attack_cd = _rng.randf_range(3.0, 7.0)
+		return
+	attack_timer = _rng.randf_range(5.0, 12.0)
+	attack_cd = _rng.randf_range(14.0, 28.0) * (1.0 - 0.35 * driver_skill)
+
+
 func update_ai(dt: float, player_car: Car, race_laps: int, rivals: Array, pace: float) -> void:
 	var prev_pos := pos
 	var prev_heading := heading
@@ -235,22 +285,38 @@ func update_ai(dt: float, player_car: Car, race_laps: int, rivals: Array, pace: 
 	var look_meters := 26.0 + speed * 1.9
 	var curvature := track.max_curvature_ahead(dist, look_meters, 12.0)
 
-	# 配速以「自己这台车 + 自己的车手性格」为基准，玩家 pace 只做温和校准。
-	# 三台车不再共用同一个跟随速度；固定节奏差会随着圈数自然拉开。
+	# 配速主控量是玩家节奏，但常态比玩家快一截（PACE_LEAD_KPH）：电脑先跑出去，
+	# 玩家必须主动踩油门去超。领先太多又自动收油回落到玩家节奏以下，始终把
+	# 对手留在能超车的距离里；被玩家超掉后靠进攻窗口反扑。
+	# 自己那台车的极速只在没有可跟的节奏时兜底，不再决定巡航快慢。
 	var own_cruise := base_speed * 0.90 * top_push * tempo
-	var pace_ref := own_cruise
 	var gap := player_car.race_dist - race_dist
-	if pace > 0.0:
-		var player_target := pace * (1.0 + pace_bias) * tempo
-		var follow := clampf(1.0 - absf(gap) / 140.0, 0.30, 0.85) * (0.50 + 0.35 * aggression)
-		pace_ref = lerpf(own_cruise, player_target, follow)
-		pace_ref = minf(pace_ref, pace * (1.10 + 0.20 * aggression) + 1.0)
-		pace_ref = maxf(pace_ref, base_speed * 0.52)
+	var over := maxf(gap - lag_limit_m, 0.0)
+	_update_attack(dt, gap)
+	# pace≈0 = 发车前或玩家把车停在赛道上；玩家已完赛后按自身能力跑。
+	var ref := pace
+	var ceiling := ref + PACE_LEAD_KPH / KPH + pace_trim
+	if pace <= 5.0 or player_car.player_finished:
+		ref = own_cruise
+		ceiling = own_cruise
+	else:
+		var lead := -gap
+		if lead > LEAD_EASE_M:
+			var ease := clampf(1.0 - (lead - LEAD_EASE_M) / (LEAD_RELEASE_M - LEAD_EASE_M), 0.0, 1.0)
+			ceiling = ref + lerpf(-LEAD_YIELD_KPH, PACE_LEAD_KPH, ease) / KPH + pace_trim * ease
+		elif gap > 0.0:
+			# 玩家刚超过去：先只比玩家快一点贴住，不立刻反超；落后越远追得越狠，
+			# 由进攻窗口负责真正反扑，超车成功后的身位能保住一段时间。
+			var chase := clampf(gap / 250.0, 0.0, 1.0)
+			ceiling = ref + lerpf(PACE_CHASE_KPH, PACE_LEAD_KPH, chase) / KPH + pace_trim
+	if attack_timer > 0.0:
+		ceiling = ref + ATTACK_KPH / KPH
+	# 发车时不能瞬间 200 km/h，但也不能跟着停着的玩家一起钉在原地。
+	ceiling = maxf(ceiling, base_speed * 0.45)
 	# 弯道减速按车手自信度分化：怂的车手弯里明显更慢，凶的车手几乎不减速。
-	var target := pace_ref * clampf(1.0 - curvature * 38.0 * corner_conf, 0.52, 1.0)
-	# 只保留很弱的远距离橡皮筋：防止某一台车掉出视野后永远追不回来，
-	# 但不再把三台车强行绑成同一速度（旧版 ±14% 的带宽是火车队的根源）。
-	target *= clampf(1.0 + gap * band_gain, 0.965, 1.035)
+	# 系数比按车型极速配速时代温和：玩家节奏本身已经含了弯道减速，这里再乘
+	# 一次重惩罚会让 AI 全程净慢于玩家（实测 -6%），永远追不上。
+	var target := ceiling * clampf(1.0 - curvature * 20.0 * corner_conf, 0.66, 1.0) * tempo
 	# 慢节奏起伏：每车手不同相位的速度波动，长直道上也能看到前后互换。
 	target *= 1.0 + 0.035 * sin(elapsed * 0.33 + line_phase)
 	avoid_timer = maxf(avoid_timer - dt, 0.0)
@@ -273,7 +339,8 @@ func update_ai(dt: float, player_car: Car, race_laps: int, rivals: Array, pace: 
 		lane_target += inside * corner_line * lane_limit * 0.55
 	# 有玩家历史走线时，用真实走线替换「车道偏好 + 摆动 + 弯道倾向」，
 	# 只保留一点点车手自身摆动，避免三台 AI 走成完全相同的轨迹。
-	if has_route():
+	# 发车格在起跑线后方（dist<0），回放线取模会绕到上一圈末尾，起步阶段不用它。
+	if has_route() and dist >= 0.0:
 		var span := route_step * float(route_lat.size())
 		var u := fposmod(dist, span) / route_step
 		var i0 := int(floor(u)) % route_lat.size()
@@ -281,12 +348,13 @@ func update_ai(dt: float, player_car: Car, race_laps: int, rivals: Array, pace: 
 		var frac := u - floorf(u)
 		var recorded := lerpf(route_lat[i0], route_lat[i1], frac) + route_shift
 		lane_target = recorded + sin(dist * wob_freq + line_phase) * wob_amp * 0.28
-		# 回放线里的速度只作为「这里该收油」的软提示，不直接锁 AI 速度，
-		# 否则一条跑崩的成绩会把整场 AI 一起拖慢。
-		if route_spd.size() == route_lat.size():
+		# 回放线里的速度只描述「哪里该收油」的形状：先按这条线自己的平均速度归一，
+		# 再乘到当前节奏上。直接拿绝对值封顶会把整场 AI 钉在一条旧成绩上。
+		if route_spd.size() == route_lat.size() and route_pace > 3.0:
 			var rec_kph := lerpf(route_spd[i0], route_spd[i1], frac)
 			if rec_kph > 20.0:
-				target = minf(target, rec_kph / 3.6 * (1.14 + 0.10 * corner_conf))
+				var shape := clampf(rec_kph / 3.6 / route_pace, 0.45, 1.0)
+				target = minf(target, ref * shape * (1.14 + 0.10 * corner_conf))
 	var f := _frame
 	if f.is_empty():
 		f = track.frame_at(dist)
@@ -389,16 +457,30 @@ func update_ai(dt: float, player_car: Car, race_laps: int, rivals: Array, pace: 
 		target *= 1.0 - 0.10 * bump_k
 
 	lane_target = clampf(lane_target, -lane_limit, lane_limit)
+	# 回追带宽是位置硬约束，兜底必须放在所有减速项（弯道、车间距、失误、碰撞）之后：
+	# 否则掉出带宽的电脑车会一直被这些系数压住，永远补不回来。超出越多追得越凶
+	# （0.5 km/h 每米，封顶再 +25 km/h）。
+	if over > 0.0:
+		target = maxf(target, ref + (ATTACK_KPH + minf(over * 0.5, CATCH_EXTRA_KPH)) / KPH)
 	target_speed = target
-	# 起步不能瞬间 200km/h：用有上限的加速度（和玩家车接近），车手差异 ±10%
+	# 起步不能瞬间 200km/h：用有上限的加速度（和玩家车接近），车手差异 ±10%。
+	# 加速 taper 的分母跟着目标节奏走，否则玩家快过这台车能力时 AI 永远补不上速度。
 	if target > speed:
-		var accel_rate := 12.0 * top_push * (1.0 - 0.42 * clampf(speed / maxf(base_speed, 1.0), 0.0, 1.0))
+		var accel_ref := maxf(base_speed, maxf(ref, 1.0))
+		var accel_rate := 12.0 * top_push * (1.0 - 0.42 * clampf(speed / accel_ref, 0.0, 1.0))
 		speed = minf(speed + accel_rate * dt, target)
 	else:
 		speed = _damp(speed, target, 2.3, dt)
 	dist += speed * dt
 	race_dist = dist
-	offset = _damp(offset, lane_target, 1.1 + 2.5 * clampf(bump_timer / 0.9, 0.0, 1.0), dt)
+	# 横向并线随速度解锁：低速时锁住当前车位，速度起来才允许并向目标线，并限制
+	# 最大横向速度。否则发车头一两秒会整体平移滑向目标线，看起来像漂移起步。
+	var lat_speed := clampf(speed / 26.0, 0.0, 1.0)
+	var lat_gate := clampf((speed - 2.0) / 12.0, 0.0, 1.0)
+	var lat_rate := 1.1 * lat_gate + 2.5 * clampf(bump_timer / 0.9, 0.0, 1.0)
+	var lat_step := (lane_target - offset) * (1.0 - exp(-lat_rate * dt))
+	var lat_cap := (0.5 + 2.0 * lat_speed) * dt
+	offset += clampf(lat_step, -lat_cap, lat_cap)
 
 	_frame = track.frame_at(dist)
 	pos = (_frame["pos"] as Vector3) + (_frame["side"] as Vector3) * offset

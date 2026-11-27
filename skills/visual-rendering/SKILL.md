@@ -126,6 +126,50 @@ mkdir -p /tmp/apex_shots
 - 雨量参考：赛道 6500 粒子（ULTRA），菜单 900；地面溅水 220 / 90。
 - 雨夜会增加约 5% GPU 开销，属于可接受范围；`APEX_Q_WEATHER_OFF=1` 可整体关天气做 A/B。
 
+### 漂移胎烟
+
+- 生成入口：`scripts/fx/vfx_library.gd` 的 `smoke_texture(variant)` /
+  `smoke_material(additive, variant)`，参数在 `scripts/fx/game_feel.gd`
+  `_make_smoke()`（漂移）和 `_spawn_launch_smoke()`（起步）。
+- CPUParticles3D 没有 turbulence、也没有 emission rate，单发射器浓度只能靠
+  `amount × lifetime × 尺寸 × alpha` 四项叠出来；`amount` 是硬上限，
+  实际每秒发射 ≈ `amount / lifetime`。改浓度先算这个乘积，不要只调贴图。
+- `BILLBOARD_ENABLED` 会丢掉逐粒子旋转，同一个贴图的多颗粒子朝向完全一致，
+  叠在一起就是「一串泡泡」。破法是给每个发射器换不同贴图变体（现 4 张
+  domain-warp 噪声图，RL/RR/FL/FR 各一张），不是加 `angle_min/max`。
+- `scale_amount_curve` 是乘在 `scale_amount_min/max` 上的，不是绝对尺寸；
+  出生点尺寸要靠 `scale_amount_min/max`，膨胀靠曲线的末端值。
+- 尾部收得快（62% 寿命后 alpha 迅速归零）：飘远的落单粒子如果还带着
+  0.15 以上的 alpha，在白天会读成天上一团团白球。
+- 贴图中心 alpha 压到 0.68 左右、边缘归 0，浓度交给粒子叠加；单张画到全不透明
+  会变成一团棉花。
+- 起步烟（`_spawn_launch_smoke`）必须比漂移烟克制：它正好在 GO 瞬间糊在跟车相机
+  前面，浓到看不见车就成了读图障碍。实测 44 团 / 1.15s / 峰值 alpha 0.70 是
+  「炸一下但看得见车」的位置，64 团 / 1.5s / 0.88 会把整台车埋掉。
+- 起步烟的 4 团按 `i % SMOKE_VARIANTS` 取变体，别共用一张。
+
+### 漂移胎痕
+
+- 入口 `scripts/fx/skid_marks.gd`（`SkidMarks extends Node3D`），由
+  `main._update_skid_marks()` 每物理帧调用；每条车轮一条独立环形缓冲
+  （`MARKS_PER_LANE=300`）+ 一张独立贴图，RWD 两条、AWD 四条。
+- 落段按「这条车轮实际走过的距离」判定（`STEP=0.42m`），段长
+  `dist × (1.34 + 0.34 × intensity)`。用时间限流必断：110km/h 时两帧之间
+  已经走出 1m 多，固定段长只能画出方块串。
+- `Basis.scaled(Vector3(w, L, 1))` 缩的是矩阵的列，不是基向量。贴地四边形
+  用它当实例变换，实际尺寸会变成 0.73/0.87 而不是 0.53/0.75，而且法线不再
+  朝上、面片被剪歪。地面贴花一律直接搭基：
+  `Basis(side * w, along * L, Vector3.UP)`。
+- 程序化贴图的噪声特征尺寸要按「世界尺寸」核对：面片只有 0.5m 宽，
+  `blob.frequency=0.032` 在 48px 上就是 ~31cm 的团，近景放大后读成华夫格
+  而不是橡胶。0.11 左右（~10cm）才对；纵向的 patch 同理。
+- 段两端只收到 alpha 0.36、不归零：重叠系数 1.34 时如果尾部全透明，
+  接缝处会露出周期性的淡斑。
+- 强度不靠逐实例颜色（4.7.2 的 `MultiMesh` 没有 `COLOR_RGBA`），靠
+  宽度 0.28→0.50m 和重叠深度自然叠出来。
+- 车被重置/穿墙回位时 `dist > 8m` 只更新 `last`、不画段，否则会拖出一条
+  横穿球场的假印。
+
 ### 辉光 / 镜头脏污
 
 - `Environment.glow_map` 用程序化低频噪声生成「镜头脏污」，让霓虹/路灯 bloom
@@ -151,6 +195,7 @@ mkdir -p /tmp/apex_shots
 | `APEX_Q_MENU_GLOW=0` / `APEX_Q_MENU_SSR=0` / `APEX_Q_SUN_GLARE=0` / `APEX_Q_MENU_PROBE=0` | 菜单环境单项关闭：泛光/SSR/太阳眩光/反射探针 |
 | `APEX_Q_PAINT_CC=0` / `=flat` | 车漆清漆关闭 / 镜面（0.03）对比，默认 0.09 |
 | `APEX_PERF_OVERRIDE=1` + `APEX_Q_SSIL/Q_SSAO/Q_VOL/Q_TAA` | 性能审计时单独开关后处理 |
+| `APEX_PERF_OVERRIDE=1` + `APEX_Q_SCALE=0.70` + `APEX_Q_UPSCALE=on/off` | 锁定内部分辨率对比升频路径；`APEX_Q_SCALE` 必须显式给，否则 `APEX_PERF_OVERRIDE` 会跳过 HiDPI 钳制、各档实际同配置 |
 
 ## 性能基线（本机 1600×900 / ULTRA / Retina 0.7 渲染比例）
 
@@ -171,6 +216,14 @@ mkdir -p /tmp/apex_shots
 - 本次路面/路肩/护栏/车漆/菜单 SSR+DOF 全套：帧率基本持平（coast 147.9→147.8）。
 - 跟随反射探针（high 预设 A/B）：coast 139.0→140.5、city 114.8→114.8 fps，
   差异在噪声内（3s 间隔 + 静止跳过把 6 面重绘摊薄），高/超高默认开。
+- MetalFX 时间升频（`APEX_Q_UPSCALE=on` vs 默认空间路径，同锁 0.70）：
+  coast 134.6 → 150.5 fps，draw calls 756 → 685，即时间升频每帧多花 0.8ms。
+
+### 闪烁量化方法
+
+静态机位连拍 30+ 帧，逐像素算跨帧标准差（先减均值帧去趋势），ROI 必须避开
+HUD、倒数数字和 AI 车。判定阈值 sd>8/255 的像素占比：稳定画面为 0.00%，
+JPEG 噪声在 0.3% 以下。车会转的区域不能当证据——转动车身的 sd 是运动不是闪。
 
 ## 已知约束
 
@@ -179,6 +232,9 @@ mkdir -p /tmp/apex_shots
 - 不要在运行时逐帧生成路面噪点纹理（高速会闪成马赛克）；宏观细节必须走
   mipmap + 各向异性 + 低频噪声。
 - 车模 GLB 的 `KHR_materials_clearcoat` 导入后不会自动生效，运行时补开。
+- 时间升频（MetalFX/FSR2）不要在 `auto` 里自动启用：亚像素抖动 + 历史重投影在
+  护栏、车道白线、轮辐、防滚杆这类细高对比几何上收敛不了，玩家看到的就是
+  「一闪一闪」。只有设置里显式选「强制开启」才走那条。
 - 加灯前先算「每车灯数」：玩家 1 盏 NightRim 可以，4 台 AI 各加一盏要重新测帧率。
 
 ## 参考来源（GitHub / 官方）

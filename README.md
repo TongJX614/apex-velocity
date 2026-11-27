@@ -11,7 +11,7 @@
 [![Docs](https://img.shields.io/badge/docs-54%20%E7%AF%87-8a2be2)](docs/README.md)
 
 [▶ 观看 84 秒宣传片](https://github.com/TongJX614/apex-velocity/releases/download/v0.54/apex-velocity-trailer-2026.mp4) ·
-[下载游戏资产](https://github.com/TongJX614/apex-velocity/releases/tag/v0.54) ·
+[下载 v0.55 安装包](https://github.com/TongJX614/apex-velocity/releases/tag/v0.55) ·
 [文档索引](docs/README.md)
 
 </div>
@@ -32,7 +32,7 @@
 | **11 条赛道** | 9 条封闭赛道 + 都会环线实景城市 + 漂移练习开放场地，每图独立光照、天气与菜单实景 |
 | **街机物理** | 扭矩负载起步打滑、速度敏感转向、OBB 车-车碰撞、防粘连分离、手动挡 / 氮气 |
 | **画面** | 四档画质、程序化天空与流动云、CC0 真实植被建筑、SSR / SSAO / SSIL / 体积雾 / 速度拉丝 |
-| **声音** | 逐车物理建模引擎声 + 16 首分赛道 BGM + 6 总线混音 |
+| **声音** | 逐车物理建模引擎声 + 29 首分赛道 BGM（每图 2-3 首随机轮换，无缝循环）+ 6 总线混音 |
 | **本地双人** | 真·分屏、独立相机与输入、P1/P2 同场竞速 |
 
 ## 画面
@@ -61,6 +61,17 @@
 ---
 
 ## 快速开始
+
+### 直接玩（不需要 Godot）
+
+从 [v0.55 Release](https://github.com/TongJX614/apex-velocity/releases/tag/v0.55) 下载安装包，已内置全部车辆与赛道资源：
+
+- **macOS 11+**：`APEX_VELOCITY_0.55.0_macOS_Universal.dmg`，支持 Apple Silicon 与 Intel。
+- **Windows 10 / 11 64 位**：`APEX_VELOCITY_0.55.0_Windows_x64_Setup.exe`，显卡需支持 Vulkan。
+
+macOS 首次打开如提示“无法验证开发者”，在 Finder 里右键 app 选择“打开”；Windows 首次运行如遇 SmartScreen，选择“更多信息 → 仍要运行”。安装包未做代码签名，发布页提供 SHA256 校验文件。
+
+### 从源码运行
 
 > **注意**：模型、贴图、音频等大体积资产（约 1.8GB 压缩包）因 GitHub 单文件与仓库体积限制，**不放在 Git 仓库里**，需要从 [Release](https://github.com/TongJX614/apex-velocity/releases/tag/v0.54) 下载后解压到项目根目录。
 
@@ -229,7 +240,7 @@ apex-velocity/
 │   └── tools/      (2)            装饰编辑器 / 覆盖数据
 ├── data/                          数值与配置（两者共享：cars / tracks / garage / engine_sounds …）
 ├── shaders/                       5 个着色器
-├── tools/                         管线脚本（调参器 / 磁轴桥 / Blender / 车模审计 / 一键导出）
+├── tools/                         管线脚本（调参器 / 磁轴桥 / Blender / 车模审计 / 程序化配乐 / 一键导出）
 ├── trailer/                       宣传片抓帧 capture.py · 剪辑 edit.py（成片在 Release）
 ├── docs/                          54 篇开发文档 + 各期截图
 └── assets/                        ★ 共享 UI / 品牌 / 菜单场景 / 视频（Release 下载）

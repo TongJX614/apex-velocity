@@ -21,8 +21,7 @@ const HITSTOP_TIME_SCALE := 0.35
 const HITSTOP_MIN_SEC := 0.05
 const HITSTOP_MAX_SEC := 0.10
 const IMPACT_FX_LIFETIME_MS := 900
-const SMOKE_BASE_AMOUNT := 34
-const SKID_MAX := 260
+const SMOKE_BASE_AMOUNT := 170
 const SHIFT_MIN_INTERVAL_MS := 70
 const SCRAPE_MIN_INTERVAL_MS := 90
 
@@ -51,9 +50,6 @@ var _nitro_flash: TextureRect
 var _nitro_vis := 0.0
 var _nitro_pulse_clock := 0.0
 var _launch_was_active := false
-var _skid_mm: MultiMeshInstance3D
-var _skid_index := 0
-var _skid_timer := 0.0
 var _transient: Array[Dictionary] = []
 
 
@@ -184,7 +180,7 @@ func prewarm() -> void:
 		holder.global_position = car_ref.global_position
 	_add_debris(holder, 0.05)
 	_add_sparks(holder, 0.05)
-	var smoke := _make_smoke("GameFeelPrewarmSmoke", Vector3(0.0, 0.9, 0.0))
+	var smoke := _make_smoke("GameFeelPrewarmSmoke", Vector3(0.0, 0.9, 0.0), 0)
 	if smoke != null:
 		smoke.amount = 2
 		smoke.emitting = true
@@ -383,17 +379,16 @@ func _rebuild_car_particles() -> void:
 	_free_car_particles()
 	if car_ref == null or not is_instance_valid(car_ref):
 		return
-	_smoke_left = _make_smoke("GameFeelSmokeRL", _rear_wheel_offset(-1.0))
-	_smoke_right = _make_smoke("GameFeelSmokeRR", _rear_wheel_offset(1.0))
+	_smoke_left = _make_smoke("GameFeelSmokeRL", _rear_wheel_offset(-1.0), 0)
+	_smoke_right = _make_smoke("GameFeelSmokeRR", _rear_wheel_offset(1.0), 1)
 	# 四驱车起步/漂移四轮同时打滑：前轮也补一路更淡的烟，后驱保持只有后轮。
 	if String(car_ref.drivetrain).to_upper() == "AWD":
-		_smoke_fl = _make_smoke("GameFeelSmokeFL", _front_wheel_offset(-1.0))
-		_smoke_fr = _make_smoke("GameFeelSmokeFR", _front_wheel_offset(1.0))
+		_smoke_fl = _make_smoke("GameFeelSmokeFL", _front_wheel_offset(-1.0), 2)
+		_smoke_fr = _make_smoke("GameFeelSmokeFR", _front_wheel_offset(1.0), 3)
 		for p in [_smoke_fl, _smoke_fr]:
-			p.amount = maxi(int(round(float(p.amount) * 0.55)), 12)
-			p.lifetime = 0.95
-			p.scale_amount_max *= 0.8
-	_build_skid_marks()
+			p.amount = maxi(int(round(float(p.amount) * 0.6)), 30)
+			p.lifetime = 1.35
+			p.scale_amount_max *= 0.85
 
 
 func _update_car_particles(car: Car, active: bool, dt: float) -> void:
@@ -414,7 +409,6 @@ func _update_car_particles(car: Car, active: bool, dt: float) -> void:
 	_launch_was_active = active and car.launch
 
 	_update_nitro_screen(car, active, dt)
-	_update_skid_marks(car, active and slipping and speed > 12.0, dt)
 
 
 func _update_nitro_fov(car: Car, active: bool, dt: float) -> void:
@@ -430,41 +424,57 @@ func _update_nitro_fov(car: Car, active: bool, dt: float) -> void:
 	_nitro_was_active = nitro_on
 
 
-func _make_smoke(node_name: String, local_pos: Vector3) -> CPUParticles3D:
+func _make_smoke(node_name: String, local_pos: Vector3, variant: int) -> CPUParticles3D:
 	var p := CPUParticles3D.new()
 	p.name = node_name
-	# 烟团更小、更密、更贴地：旧版单团最大近 3.6m，飘出去像一团云。
-	p.amount = clampi(int(round(SMOKE_BASE_AMOUNT * 1.7 * _particle_scale())), 18, 88)
-	p.lifetime = 1.26
+	# 烟量：CPU 粒子没有发射速率，能调的只有"同时在飞的粒子数 × 寿命"。
+	# 旧版 58 团 / 1.26s ≈ 46 团每秒，只够车尾两小撮；现在 170 团 / 1.55s
+	# ≈ 110 团每秒，配合下面的膨胀曲线，整条烟柱才连得起来。
+	p.amount = clampi(int(round(SMOKE_BASE_AMOUNT * _particle_scale())), 40, 220)
+	p.lifetime = 1.55
 	p.one_shot = false
 	p.explosiveness = 0.0
 	p.local_coords = false
-	p.direction = Vector3(0.0, 0.52, -0.66)
-	p.spread = 26.0
-	p.gravity = Vector3(0.0, 0.55, 0.0)
-	p.initial_velocity_min = 0.40
-	p.initial_velocity_max = 1.50
-	p.damping_min = 1.2
-	p.damping_max = 3.0
+	p.direction = Vector3(0.0, 0.46, -0.62)
+	p.spread = 40.0
+	p.randomness = 0.60
+	p.gravity = Vector3(0.0, 0.42, 0.0)
+	p.initial_velocity_min = 0.80
+	p.initial_velocity_max = 2.30
+	p.damping_min = 1.0
+	p.damping_max = 2.6
 	p.angle_min = -180.0
 	p.angle_max = 180.0
-	p.scale_amount_min = 0.50
-	p.scale_amount_max = 1.60
-	p.visibility_aabb = AABB(Vector3(-9.0, -2.0, -34.0), Vector3(18.0, 12.0, 38.0))
+	# 出生就是一片 0.5~1.0m 的雾，随寿命胀到 1.1~2.5m；透明度延到 8% 寿命才到
+	# 峰值，避免刚出生就画满、看着像一串悬浮泡泡。
+	p.scale_amount_min = 0.42
+	p.scale_amount_max = 0.95
+	var grow := Curve.new()
+	grow.add_point(Vector2(0.0, 0.80))
+	grow.add_point(Vector2(0.35, 1.15))
+	grow.add_point(Vector2(1.0, 1.75))
+	p.scale_amount_curve = grow
+	# 接地面是一条 0.6×0.8m 的带子，不是一个点：从整块胎面撒粒子，
+	# 烟才包住轮胎而不是从车轴中心喷出来。
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	p.emission_box_extents = Vector3(0.30, 0.05, 0.40)
+	p.visibility_aabb = AABB(Vector3(-11.0, -2.5, -42.0), Vector3(22.0, 14.0, 48.0))
 
 	var ramp := Gradient.new()
-	ramp.offsets = PackedFloat32Array([0.0, 0.06, 0.46, 1.0])
+	ramp.offsets = PackedFloat32Array([0.0, 0.08, 0.40, 0.72, 1.0])
 	ramp.colors = PackedColorArray([
-		Color(0.92, 0.94, 0.98, 0.0),
-		Color(0.96, 0.97, 1.00, 0.96),
-		Color(0.86, 0.88, 0.92, 0.54),
-		Color(0.74, 0.75, 0.78, 0.0),
+		Color(0.90, 0.92, 0.96, 0.0),
+		Color(0.94, 0.95, 0.98, 0.86),
+		Color(0.86, 0.88, 0.92, 0.46),
+		Color(0.78, 0.80, 0.84, 0.18),
+		Color(0.72, 0.73, 0.77, 0.0),
 	])
 	p.color_ramp = ramp
 
 	var quad := QuadMesh.new()
-	quad.size = Vector2(1.02, 1.02)
-	quad.material = VfxLibrary.smoke_material(false)
+	quad.size = Vector2(1.35, 1.35)
+	# 四台发射器各用一张不同形态的烟团贴图，左右两股不会互相照抄。
+	quad.material = VfxLibrary.smoke_material(false, variant)
 	p.mesh = quad
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	p.position = local_pos
@@ -486,40 +496,49 @@ func _spawn_launch_smoke(car: Car) -> void:
 	if String(car.drivetrain).to_upper() == "AWD":
 		puffs.append([_front_wheel_offset(-1.0), 0.55])
 		puffs.append([_front_wheel_offset(1.0), 0.55])
-	for entry in puffs:
+	for i in puffs.size():
+		var entry: Array = puffs[i]
 		var local: Vector3 = entry[0]
 		var k: float = entry[1]
 		var p := CPUParticles3D.new()
 		p.name = "GameFeelLaunchSmoke"
-		p.amount = clampi(int(round(40.0 * k * _particle_scale())), 12, 48)
+		# 起步烟比漂移烟克制：这团正好在 GO 瞬间糊在跟车相机前，
+		# 浓到看不见车就成了读图障碍，只保留"炸一下"的存在感。
+		p.amount = clampi(int(round(44.0 * k * _particle_scale())), 16, 52)
 		p.lifetime = 1.15
 		p.one_shot = true
 		p.explosiveness = 0.90
 		p.local_coords = false
-		p.direction = Vector3(0.0, 0.50, -0.55)
-		p.spread = 30.0
-		p.gravity = Vector3(0.0, 0.45, 0.0)
-		p.initial_velocity_min = 0.60
-		p.initial_velocity_max = 2.00
-		p.damping_min = 1.2
-		p.damping_max = 3.0
+		p.direction = Vector3(0.0, 0.48, -0.55)
+		p.spread = 34.0
+		p.randomness = 0.55
+		p.gravity = Vector3(0.0, 0.40, 0.0)
+		p.initial_velocity_min = 0.70
+		p.initial_velocity_max = 2.40
+		p.damping_min = 1.0
+		p.damping_max = 2.6
 		p.angle_min = -180.0
 		p.angle_max = 180.0
-		p.scale_amount_min = 0.55
-		p.scale_amount_max = 1.70
-		p.visibility_aabb = AABB(Vector3(-8.0, -2.0, -18.0), Vector3(16.0, 10.0, 22.0))
+		p.scale_amount_min = 0.46
+		p.scale_amount_max = 0.95
+		var grow := Curve.new()
+		grow.add_point(Vector2(0.0, 0.85))
+		grow.add_point(Vector2(0.30, 1.18))
+		grow.add_point(Vector2(1.0, 1.60))
+		p.scale_amount_curve = grow
+		p.visibility_aabb = AABB(Vector3(-10.0, -2.0, -22.0), Vector3(20.0, 12.0, 26.0))
 		var ramp := Gradient.new()
-		ramp.offsets = PackedFloat32Array([0.0, 0.06, 0.46, 1.0])
+		ramp.offsets = PackedFloat32Array([0.0, 0.08, 0.42, 1.0])
 		ramp.colors = PackedColorArray([
-			Color(0.94, 0.95, 0.98, 0.0),
-			Color(0.98, 0.99, 1.00, 1.0),
-			Color(0.88, 0.89, 0.92, 0.56),
-			Color(0.76, 0.77, 0.80, 0.0),
+			Color(0.92, 0.94, 0.97, 0.0),
+			Color(0.95, 0.96, 0.99, 0.70),
+			Color(0.86, 0.88, 0.92, 0.36),
+			Color(0.74, 0.75, 0.79, 0.0),
 		])
 		p.color_ramp = ramp
 		var quad := QuadMesh.new()
-		quad.size = Vector2(1.15, 1.15) * lerpf(0.82, 1.0, k)
-		quad.material = VfxLibrary.smoke_material(false)
+		quad.size = Vector2(1.20, 1.20) * lerpf(0.82, 1.0, k)
+		quad.material = VfxLibrary.smoke_material(false, i % VfxLibrary.SMOKE_VARIANTS)
 		p.mesh = quad
 		p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		local.y = 0.24
@@ -621,54 +640,6 @@ func _free_nitro_overlay() -> void:
 	_nitro_pulse_clock = 0.0
 
 
-func _build_skid_marks() -> void:
-	if race_root == null or not is_instance_valid(race_root):
-		return
-	if _skid_mm != null and is_instance_valid(_skid_mm):
-		_skid_mm.queue_free()
-	var quad := QuadMesh.new()
-	quad.size = Vector2(0.26, 0.34)
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.albedo_color = Color(0.015, 0.012, 0.01, 0.42)
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
-	mat.disable_receive_shadows = true
-	quad.material = mat
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = quad
-	mm.instance_count = SKID_MAX
-	for i in SKID_MAX:
-		mm.set_instance_transform(i, Transform3D(Basis().scaled(Vector3.ZERO), Vector3.ZERO))
-	_skid_mm = MultiMeshInstance3D.new()
-	_skid_mm.name = "GameFeelSkidMarks"
-	_skid_mm.multimesh = mm
-	_skid_mm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	race_root.add_child(_skid_mm)
-	_skid_index = 0
-	_skid_timer = 0.0
-
-
-func _update_skid_marks(car: Car, active: bool, dt: float) -> void:
-	if not active or _skid_mm == null or not is_instance_valid(_skid_mm) or car == null:
-		return
-	_skid_timer -= dt
-	if _skid_timer > 0.0:
-		return
-	_skid_timer = 0.035
-	var heading := car.heading
-	var gbasis := Basis(Vector3.UP, heading) * Basis(Vector3.RIGHT, -PI * 0.5)
-	for side in [-1.0, 1.0]:
-		var local := _rear_wheel_offset(side)
-		var wp := car.to_global(local)
-		wp.y = maxf(car.global_position.y, Terrain.height_at(wp)) + 0.022
-		var xf := Transform3D(gbasis.scaled(Vector3(1.0, 1.0, 1.0)), wp)
-		(_skid_mm.multimesh as MultiMesh).set_instance_transform(_skid_index % SKID_MAX, xf)
-		_skid_index += 1
-
-
 func _make_billboard_material(use_vertex_color: bool, additive: bool) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -723,9 +694,6 @@ func _free_car_particles() -> void:
 	_smoke_right = null
 	_smoke_fl = null
 	_smoke_fr = null
-	if _skid_mm != null and is_instance_valid(_skid_mm):
-		_skid_mm.queue_free()
-	_skid_mm = null
 
 
 func _set_emitting(p: CPUParticles3D, enabled: bool) -> void:

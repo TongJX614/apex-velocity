@@ -39,7 +39,8 @@ func build(def: Dictionary) -> TrackPath:
 	_build_guardrail()
 	_build_start_line()
 	_build_start_grid()
-	_build_tire_marks()
+	# 这里曾经有一层「预铺胎胶」：沿弯道中线 ±1.6m 铺无贴图的黑 quad，
+	# 玩家读成路面上凭空多出的黑方块/黑条带（阴影都比它自然），已整层删除。
 	_build_puddles()
 	_build_runoff()
 	_build_real_barriers()
@@ -401,6 +402,14 @@ func _build_road() -> void:
 	if road_rough < 0.5:
 		mat.roughness = clampf(road_rough, 0.42, 0.5)
 		mat.metallic = clampf(road_metal, 0.0, 0.08)
+	else:
+		# 干沥青必须压到接近真实 F0。BaseMaterial3D 默认 specular=0.5 让整片平坦路面去镜射
+		# 天空与太阳：中远景掠射角被抬亮、正下方近景抬不动，实测近 81 / 远 146，形成一条
+		# 永远跟着车走的横带。分界来自视角相关的高光——关掉阴影只把 64 阶降到 54 阶，
+		# 压 specular 到 0.10 才降到 7 阶；雾色 #c8e4ea 偏蓝而亮带偏暖，方向也对不上。
+		# 高光原本占路面近四成亮度，所以同步把漫反射补回来，否则整条路塌成暗灰。
+		mat.metallic_specular = 0.10
+		mat.albedo_color = mat.albedo_color * 1.85
 
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -432,7 +441,11 @@ func _build_road() -> void:
 				macro_meters, t0, t1)
 	# 法线贴图需要切线，否则路面高光会出现随机噪点
 	st.generate_tangents()
-	_new_mesh_instance(st.commit(), mat, "Road")
+	var road_mi := _new_mesh_instance(st.commit(), mat, "Road")
+	# 路面是零厚度贴皮，既往往阴影贴图里写深度、自己又受光：低太阳角下近处整片被判成
+	# 被自己遮住，实测比关掉投影时暗 12 个灰阶。它投给别的地面的影子只有
+	# 0.02m/tan(太阳高度) ≈ 2~3cm 看不见，所以跟漂移场大地面（:103）一样不做投影体。
+	road_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
 ## 路面横向磨损：中缝油渍 + 两条轮迹 + 路缘积灰。输入 -1..1 的横向坐标。
@@ -647,7 +660,7 @@ func _build_guardrail() -> void:
 	# 都能扫出高光。只取金属法线/粗糙度贴图，底色仍用主题护栏色，
 	# 避免贴图本身的暗色把整条护栏压成黑褐色。
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = _color(String(rail.get("color", "#8e9aa2")), Color(0.56, 0.6, 0.64)).lightened(0.10)
+	mat.albedo_color = _color(String(rail.get("color", "#8e9aa2")), Color(0.56, 0.6, 0.64)).lightened(0.24)
 	var rail_nor := PbrAssets.tex("textures/metal_plate/metal_plate_nor.jpg")
 	if rail_nor != null:
 		mat.normal_enabled = true
@@ -656,8 +669,14 @@ func _build_guardrail() -> void:
 	var rail_rough := PbrAssets.tex("textures/metal_plate/metal_plate_rough.jpg")
 	if rail_rough != null:
 		mat.roughness_texture = rail_rough
-	mat.metallic = 0.72
-	mat.roughness = 0.42
+	# 护栏剖面几乎是竖直薄板（7cm 深 / 72cm 高），正面朝向 ±side。金属度高时
+	# 漫反射项被压掉，朝向背光的那一面只剩镜面反射，实拍下整条护栏糊成一条
+	# 跟着车走的深蓝灰带（近处实测 RGB 36/53/71，饱和度 12），玩家把它读成
+	# 「车周围一圈阴影」。镀锌护栏本身是哑光亮面，靠漫反射就够，压低金属度、
+	# 抬高粗糙度与底色，让任何朝向的面都保持浅灰。
+	mat.metallic = 0.20
+	mat.roughness = 0.66
+	mat.metallic_specular = 0.28
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 
 	var lateral := path.half_width + 1.55
@@ -990,34 +1009,6 @@ func _build_start_grid() -> void:
 			var d2 := e2 + side * half + tangent * 0.16 + Vector3(0.0, 0.045, 0.0)
 			_add_quad(st, a2, b2, c2, d2, Vector2(0, 0), Vector2(1, 0), Vector2(0, 1), Vector2(1, 1))
 	_new_mesh_instance(st.commit(), mat, "StartGrid")
-
-
-func _build_tire_marks() -> void:
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.02, 0.02, 0.025, 0.55)
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_OPAQUE_ONLY
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var count := path.samples.size()
-	for i in count:
-		var curv := absf(path.curvatures[i])
-		if curv < 0.009:
-			continue
-		var j := (i + 1) % count
-		for lane: float in [-1.6, 1.6]:
-			var pi: Vector3 = path.samples[i] + path.sides[i] * lane
-			var pj: Vector3 = path.samples[j] + path.sides[j] * lane
-			var si: Vector3 = path.sides[i] * 0.28
-			var sj: Vector3 = path.sides[j] * 0.28
-			var a: Vector3 = pi - si + Vector3(0.0, 0.038, 0.0)
-			var b: Vector3 = pi + si + Vector3(0.0, 0.038, 0.0)
-			var c: Vector3 = pj - sj + Vector3(0.0, 0.038, 0.0)
-			var d: Vector3 = pj + sj + Vector3(0.0, 0.038, 0.0)
-			_add_quad(st, a, b, c, d, Vector2(0, 0), Vector2(1, 0), Vector2(0, 1), Vector2(1, 1))
-	_new_mesh_instance(st.commit(), mat, "TireMarks")
 
 
 ## 湿路积水：只在高/超高画质铺，沿路面随机摆放 Decal。积分水膜用低粗糙度

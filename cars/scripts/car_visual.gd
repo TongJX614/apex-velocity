@@ -1197,7 +1197,7 @@ static func _build_blob_shadow(parent: Node3D) -> void:
 	# Cheap contact shadow: real-time directional shadows still need a graphics
 	# pass, this keeps every car visually planted in the meantime.
 	var quad := QuadMesh.new()
-	quad.size = Vector2(3.0, 4.8)
+	quad.size = Vector2(2.4, 3.9)
 	var mi := MeshInstance3D.new()
 	mi.name = "BlobShadow"
 	mi.mesh = quad
@@ -1221,6 +1221,10 @@ static var _blob_tex: ImageTexture = null
 
 ## 车形接触阴影：车身一圈软椭圆 + 四个轮胎接地点更深的暗斑。
 ## 比一张均匀径向渐变更像车压出来的影子，且随车体旋转，不额外吃灯光/阴影 pass。
+## 这层是不受光的纯黑 alpha 叠加，追车机位下车周围整片地面都会被它压暗：
+## 旧参数 3.0x4.8 m / 峰值 0.62 实测把车侧路面压掉 10~14 个灰阶，边缘还能看出
+## 一块跟着车走的暗垫。车在最高画质也照样投真实方向光阴影，所以这里只留
+## 「贴地」这一层信息，压到 0.24 上限并把衰减起点提前，肉眼不再有边界。
 static func _blob_shadow_texture() -> ImageTexture:
 	if _blob_tex != null:
 		return _blob_tex
@@ -1231,17 +1235,17 @@ static func _blob_shadow_texture() -> ImageTexture:
 			var u := (float(x) + 0.5) / float(size)
 			var v := (float(y) + 0.5) / float(size)
 			# 外层柔光 + 车身椭圆
-			var outer := 1.0 - smoothstep(0.70, 1.16,
-				Vector2((u - 0.5) / 0.45, (v - 0.5) / 0.58).length())
-			var body := 1.0 - smoothstep(0.55, 1.00,
-				Vector2((u - 0.5) / 0.35, (v - 0.5) / 0.47).length())
-			var alpha := outer * 0.12 + body * 0.20
+			var outer := 1.0 - smoothstep(0.34, 1.02,
+				Vector2((u - 0.5) / 0.46, (v - 0.5) / 0.48).length())
+			var body := 1.0 - smoothstep(0.60, 1.00,
+				Vector2((u - 0.5) / 0.34, (v - 0.5) / 0.42).length())
+			var alpha := outer * 0.05 + body * 0.08
 			# 四轮接地点
-			for wx: float in [0.30, 0.70]:
-				for wy: float in [0.24, 0.76]:
-					var d := Vector2((u - wx) / 0.085, (v - wy) / 0.115).length()
-					alpha += (1.0 - smoothstep(0.65, 1.10, d)) * 0.30
-			alpha = clampf(alpha, 0.0, 0.66)
+			for wx: float in [0.31, 0.69]:
+				for wy: float in [0.26, 0.74]:
+					var d := Vector2((u - wx) / 0.075, (v - wy) / 0.10).length()
+					alpha += (1.0 - smoothstep(0.45, 1.10, d)) * 0.10
+			alpha = clampf(alpha, 0.0, 0.24)
 			img.set_pixel(x, y, Color(0.0, 0.0, 0.0, alpha))
 	img.generate_mipmaps()
 	_blob_tex = ImageTexture.create_from_image(img)
